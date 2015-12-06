@@ -1,0 +1,22 @@
+{
+  "name": "diogenes",
+  "main": "src/diogenes.js",
+  "version": "0.0.1",
+  "homepage": "",
+  "authors": [
+    "Maurizio Lupo <maurizio.lupo@gmail.com>"
+  ],
+  "description": "",
+  "keywords": [
+  ],
+  "license": "mit",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+  }
+}
