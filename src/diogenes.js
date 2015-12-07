@@ -75,8 +75,9 @@ Diogenes.prototype.addService = function addService(name) {
       service: service,
       deps: deps
     };
-  })
-
+  });
+  
+  return this;
 };
 
 function getDeps(name, deplist, deps){
@@ -123,6 +124,7 @@ Diogenes.prototype.getService = function start(name, globalConfig, done) {
     });
   }());
 
+  return this;
 };
 
 Diogenes.getRegistry = function (){

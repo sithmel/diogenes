@@ -118,19 +118,16 @@ describe("diogenes", function () {
       isAnything = Diogenes.validator();
       isReversed = isAnything.has("reverse");
 
-      registry.addService("hello", isAnything, function (config, deps, next){
+      registry
+      .addService("hello", isAnything, function (config, deps, next){
         next("hello ");
-      });
-
-      registry.addService("world", isAnything, ["hello"], function (config, deps, next){
+      })
+      .addService("world", isAnything, ["hello"], function (config, deps, next){
         next(deps.hello + "world!") ;
-      });
-
-      registry.addService("hello", isReversed, ["world"], function (config, deps, next){
+      })
+      .addService("hello", isReversed, ["world"], function (config, deps, next){
         next(deps.world + "hello!");
-      });
-
-      registry.addService("world", isReversed, function (config, deps, next){
+      }).addService("world", isReversed, function (config, deps, next){
         next("world ") ;
       });
     });

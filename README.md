@@ -40,7 +40,61 @@ and let the system do the job:
 
     registry.getService("html", configuration, returnHTML);
 
-It resolves all the dependency tree for you, executing the components in the right order (and in parallel if they don't dependen each other).
+It resolves all the dependency tree for you, executing the components in the right order (and in parallel if they don't depend each other).
 Then it serves you the result on a silver platter.
 
-It is not all, more to come ...
+Importing diogenes
+==================
+
+Creating a registry
+===================
+
+
+Defining a service
+==================
+A service is defined by a name (a string), a list of dependencies (list of strings) and a function with a specific interface:
+
+    registry.addService("myservice", ["service1", "service2"], function (config, deps, next) {
+        // config contains the configuration of the services (common to all of them)
+        // in deps.service1 and deps.service2 there will be the output of the service1 and service2 services
+        
+        // ...
+        
+        next(outputOfThisService);
+    });
+
+In case of error conditions, the service will output an Error instance instead of its output.
+
+Calling a service
+=================
+You can call a service using the method getService with the name and the configuration.
+
+    registry.getService("myservice", config, function (service){
+        // service is the output of the service
+    });
+    
+That is equivalent to calling service1 and service2 with config as parameter and then myservice.
+Diogenes will take care of doing the correct order.
+
+Chaining
+========
+addService and getService are chainable. So you can:
+
+    registry.addService("service1", service1)
+    .addService("service1", service2);
+    .addService("myservice", ["service1", "service2"], myservice);
+
+    registry.getService("service1", doSomethingWithService1)
+    .getService("myservice", doSomethingWithMyService);
+
+Plugins
+=======
+...
+
+Errors
+======
+...
+
+Use cases
+=========
+...
