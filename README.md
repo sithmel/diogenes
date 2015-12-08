@@ -61,6 +61,24 @@ or if you prefer:
 
     var registry = new Diogenes();
 
+Without argument you create a "local registry" that is reachable within the scope of the variable.
+If you pass a name to the constructor you create a global registry that is available everywhere:
+
+    var registry = Diogenes.getRegistry("myregistry");
+
+or if you prefer:
+
+    var registry = new Diogenes("myregistry");
+
+For example:
+
+    var registry1 = new Diogenes();
+    var registry2 = new Diogenes();
+    registry1 !== registry2
+
+    var registry1 = new Diogenes("myregistry");
+    var registry2 = new Diogenes("myregistry");
+    registry1 === registry2
 
 Defining a service
 ==================

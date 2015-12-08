@@ -35,8 +35,26 @@ function dfs (adjlists, startingNode){
   return out;
 }
 
-var Diogenes = function (){
-  this.services = {};
+// initialize global registries
+var _registries = typeof window == "undefined" ? global : window;
+
+if(!_registries._diogenes_registries){
+  _registries._diogenes_registries = {};
+}
+
+// constructor
+var Diogenes = function (regName){
+  // if regName exists I'll use a global registry
+  if (regName){
+    if (!(regName in _registries._diogenes_registries)){
+      console.log("new")
+      _registries._diogenes_registries[regName] = {};
+    }
+    this.services = _registries._diogenes_registries[regName];
+  }
+  else {
+    this.services = {};
+  }
 };
 
 Diogenes.prototype.addService = function addService(name) {
@@ -157,8 +175,8 @@ Diogenes.prototype.getService = function start(name, globalConfig, done) {
   return this;
 };
 
-Diogenes.getRegistry = function (){
-  return new Diogenes();
+Diogenes.getRegistry = function (regName){
+  return new Diogenes(regName);
 }
 Diogenes.validator = or.validator;
 

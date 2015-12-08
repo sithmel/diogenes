@@ -1,6 +1,23 @@
 var Diogenes = require('../src/diogenes');
 var assert = require('chai').assert;
 
+describe("diogenes local/global registry", function () {
+
+  it("must be different if local", function () {
+    var registry1 = Diogenes.getRegistry();
+    var registry2 = Diogenes.getRegistry();
+
+    assert.notEqual(registry1.services, registry2.services);
+  });
+
+  it("must be equal if global", function () {
+    var registry1 = Diogenes.getRegistry("default");
+    var registry2 = Diogenes.getRegistry("default");
+
+    assert.equal(registry1.services, registry2.services);
+  });
+
+});
 describe("diogenes", function () {
   var registry,
       isAnything;
