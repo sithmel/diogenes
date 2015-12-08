@@ -47,7 +47,6 @@ var Diogenes = function (regName){
   // if regName exists I'll use a global registry
   if (regName){
     if (!(regName in _registries._diogenes_registries)){
-      console.log("new")
       _registries._diogenes_registries[regName] = {};
     }
     this.services = _registries._diogenes_registries[regName];
