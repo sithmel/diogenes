@@ -3,6 +3,10 @@
 
 var or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
 
+if (typeof or === "undefined"){
+  throw new Error('Diogenes: requires occamsrazor');
+}
+
 // depth first search
 function dfs (adjlists, startingNode){
   var already_visited = {};
@@ -59,10 +63,10 @@ Diogenes.prototype.addService = function addService(name) {
   var service = arguments[arguments.length - 1];
 
   if (typeof name !== "string"){
-
+    throw new Error('Diogenes: the first argument should be the name of the service (string)');
   }
   if (typeof service !== "function"){
-
+    throw new Error('Diogenes: the last argument should be the service (function)');
   }
 
   if (!(name in this.services)){
@@ -76,23 +80,26 @@ Diogenes.prototype.addService = function addService(name) {
       deps: deps
     };
   });
-  
+
   return this;
 };
 
 function getDeps(name, deplist, deps){
   var out = {};
   for (var i = 0; i < deplist.length; i++){
+    if (! (deplist[i] in deps)) {
+      throw new Error("Diogenes: circular dependency: " + name + " requires " + deplist[i]);
+    }
     out[deplist[i]] = deps[deplist[i]];
   }
   return out;
 }
 
 Diogenes.prototype.getService = function start(name, globalConfig, done) {
-  var node, n, config, adjlists = {};
+  var sorted_services, n, config, adjlists = {};
 
   if (!(name in this.services)){
-    return done(new Error("Not found"));
+    return done(new Error("Diogenes: service " + name + ": not found"));
   }
 
   if (typeof globalConfig === "function"){
@@ -102,26 +109,49 @@ Diogenes.prototype.getService = function start(name, globalConfig, done) {
 
   for (n in this.services){
     config = globalConfig;
-    adjlists[n] = this.services[n](config);
+    try {
+      adjlists[n] = this.services[n](config);
+    }
+    catch (e){
+      return done(e);
+    }
   }
-  
+
   if (!Object.keys(adjlists).length){
-    return done(new Error("Not found with this configuration"));
+    return done(new Error("Diogenes: service " + name + ": not found with this configuration"));
   }
-  
-  var sorted_services = dfs(adjlists, name);
+
+  try {
+    sorted_services = dfs(adjlists, name);
+  }
+  catch (e){
+    return done(new Error('Diogenes: missing dependency'));
+  }
 
   var deps = {};
 
   (function resolve(name, dep){
+    var node, dependencies;
     if (name){
       deps[name] = dep;
     }
     node = adjlists[sorted_services.shift()];
 
-    node.service(globalConfig, getDeps(node.name, node.deps, deps), function (dep){
-      return sorted_services.length ? resolve(node.name, dep) : done(dep);
-    });
+    try{
+      dependencies = getDeps(node.name, node.deps, deps);
+      node.service(globalConfig, dependencies, function (err, dep){
+        if (err){
+          done(err);
+        }
+        else {
+          return sorted_services.length ? resolve(node.name, dep) : done(undefined, dep);
+        }
+      });
+    }
+    catch (e){
+      done(e);
+    }
+
   }());
 
   return this;
