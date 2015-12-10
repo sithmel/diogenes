@@ -18,6 +18,7 @@ describe("diogenes local/global registry", function () {
   });
 
 });
+
 describe("diogenes", function () {
   var registry,
       isAnything;
@@ -41,6 +42,7 @@ describe("diogenes", function () {
 
   it("must return undefined (1 function)", function (done) {
     registry.getService("hello", {}, function (err, dep){
+      assert.equal(err.message, 'Diogenes: missing dependency: hello');
       assert.instanceOf(err, Error);
       done();
     });
@@ -99,7 +101,7 @@ describe("diogenes", function () {
 
     registry.getService("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
-      assert.equal(err.message, 'Diogenes: missing dependency');
+      assert.equal(err.message, 'Diogenes: missing dependency: world');
       done();
     });
   });

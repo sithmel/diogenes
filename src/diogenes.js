@@ -1,10 +1,13 @@
 (function (){
 "use strict";
 
-var or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
+var or;
 
-if (typeof or === "undefined"){
-  throw new Error('Diogenes: requires occamsrazor');
+try {
+  or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
+}
+catch (e){
+  or = undefined;
 }
 
 // depth first search
@@ -19,10 +22,15 @@ function dfs (adjlists, startingNode){
     if (!(node in already_visited)){
       already_visited[node] = true;
     }
-
-    adjlist = adjlists[node].deps.filter(function (adj){
-      return !(adj in already_visited);
-    });
+    
+    try {
+      adjlist = adjlists[node].deps.filter(function (adj){
+        return !(adj in already_visited);
+      });      
+    }
+    catch (e){
+      throw new Error("Diogenes: missing dependency: " + node);
+    }
 
     if (adjlist.length){
       stack.push(adjlist[0]);
@@ -57,7 +65,10 @@ var Diogenes = function (regName){
 };
 
 Diogenes.prototype.addService = function addService(name) {
-  var configValidator = arguments.length > 2 && typeof arguments[1] === "function" ? arguments[1] :  or.validator();
+  var configValidator = arguments.length > 2 && typeof arguments[1] === "function" ? 
+    arguments[1] : 
+    or ? or.validator() : undefined;
+
   var deps;
 
   if (arguments.length > 2){
@@ -86,17 +97,24 @@ Diogenes.prototype.addService = function addService(name) {
     throw new Error('Diogenes: the last argument should be the service (function)');
   }
 
-  if (!(name in this.services)){
-    this.services[name] = or();
-  }
-
-  this.services[name].add(configValidator, function (){
+  var func = function (){
     return {
       name: name,
       service: service,
       deps: deps
     };
-  });
+  };
+
+  if (configValidator) {
+    if (!(name in this.services)){
+      this.services[name] = or();
+    }
+
+    this.services[name].add(configValidator, func);
+  }
+  else {
+    this.services[name] = func;    
+  }
 
   return this;
 };
@@ -115,10 +133,6 @@ function getDeps(name, deplist, deps){
 Diogenes.prototype.getService = function start(name, globalConfig, done) {
   var sorted_services, n, config, adjlists = {};
 
-  if (!(name in this.services)){
-    return done(new Error("Diogenes: service " + name + ": not found"));
-  }
-
   if (typeof globalConfig === "function"){
     done = globalConfig;
     globalConfig = {};
@@ -134,15 +148,11 @@ Diogenes.prototype.getService = function start(name, globalConfig, done) {
     }
   }
 
-  if (!Object.keys(adjlists).length){
-    return done(new Error("Diogenes: service " + name + ": not found with this configuration"));
-  }
-
   try {
     sorted_services = dfs(adjlists, name);
   }
   catch (e){
-    return done(new Error('Diogenes: missing dependency'));
+    return done(e);
   }
 
   var deps = {};
