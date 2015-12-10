@@ -78,7 +78,7 @@ describe("diogenes", function () {
     });
   });
 
-  it("must recognize a circular dependency", function (done) {
+  it.skip("must recognize a circular dependency", function (done) {
     registry.addService("hello", ["world"], function (config, deps, next){
       next(undefined, "hello ");
     });
@@ -89,7 +89,7 @@ describe("diogenes", function () {
 
     registry.getService("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
-      assert.equal(err.message, 'Diogenes: circular dependency: world requires hello');
+      assert.equal(err.message, 'Diogenes: circular dependency: world, hello');
       done();
     });
   });
@@ -125,8 +125,6 @@ describe("diogenes", function () {
   describe("dfs: 4 functions", function (done) {
 
     beforeEach(function (){
-      registry = Diogenes.getRegistry();
-      isAnything = Diogenes.validator();
       /*
 
       A ----> B
@@ -190,8 +188,6 @@ describe("diogenes", function () {
     var isReversed;
 
     beforeEach(function (){
-      registry = Diogenes.getRegistry();
-      isAnything = Diogenes.validator();
       isReversed = isAnything.has("reverse");
 
       registry
@@ -233,6 +229,55 @@ describe("diogenes", function () {
     it("must extract the leftmost inverted service", function (done) {
       registry.getService("world", {reverse: true}, function (err, dep){
         assert.deepEqual(dep, "world ");
+        done();
+      });
+    });
+
+  });
+
+  describe("async parallel execution", function (done) {
+    var str;
+    
+    beforeEach(function (){
+      /*
+
+      A      B
+      |     / 
+      |    /  
+      |   /   
+      |  /    
+      | /     
+      VV      
+      C
+
+      */
+      
+      str = '';
+      
+      registry.addService("A", function (config, deps, next){
+        setTimeout(function (){
+          str += 'A';
+          next(undefined, "A");
+        }, 50);
+      });
+
+      registry.addService("B", function (config, deps, next){
+        setTimeout(function (){
+          str += 'B';
+          next(undefined, "B") ;
+        }, 20);
+      });
+
+      registry.addService("C", ["A", "B"], function (config, deps, next){
+        str += 'C';
+        next(undefined, "C") ;
+      });
+
+    });
+
+    it("must run service asynchronously", function (done) {
+      registry.getService("C", {}, function (err, dep){
+        assert.equal(str, "BAC");
         done();
       });
     });
