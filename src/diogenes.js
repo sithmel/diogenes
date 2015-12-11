@@ -12,36 +12,33 @@ catch (e){
 
 // depth first search
 function dfs (adjlists, startingNode){
-  var already_visited = {}, already_backtracked = {};
+  var already_visited = {};
+  var already_backtracked = {};
   var adjlist, node;
   var stack = [startingNode];
   var out = [];
 
   while (stack.length){
     node = stack[stack.length - 1];
-    if (!(node in already_visited)){
-      already_visited[node] = true;
-    }
-    
-    try {
-      adjlist = adjlists[node].deps.filter(function (adj){
-        // if (adj in already_visited && !(adj in already_backtracked)){
-        //   console.log("circular")
-        // }
-        // console.log((adj in already_visited && !(adj in already_backtracked)), adj);
-        return !(adj in already_visited);
-      });      
-    }
-    catch (e){
+    already_visited[node] = true;
+
+    if (!(node in adjlists)){
       throw new Error("Diogenes: missing dependency: " + node);
     }
+
+    adjlist = adjlists[node].deps.filter(function (adj){
+      if (adj in already_visited && !(adj in already_backtracked)){
+        throw new Error("Diogenes: circular dependency: " + adj);
+      }
+      return !(adj in already_visited);
+    });
 
     if (adjlist.length){
       stack.push(adjlist[0]);
     }
     else {
+      already_backtracked[node] = true; // detecting circular deps
       out.push(node);
-      already_backtracked[node];
       stack.pop();
     }
   }
@@ -56,7 +53,7 @@ if(!_registries._diogenes_registries){
 }
 
 // constructor
-var Diogenes = function (regName){
+function Diogenes (regName){
   // if regName exists I'll use a global registry
   if (regName){
     if (!(regName in _registries._diogenes_registries)){
@@ -67,11 +64,15 @@ var Diogenes = function (regName){
   else {
     this.services = {};
   }
+}
+
+Diogenes.getRegistry = function (regName){
+  return new Diogenes(regName);
 };
 
 Diogenes.prototype.addService = function addService(name) {
-  var configValidator = arguments.length > 2 && typeof arguments[1] === "function" ? 
-    arguments[1] : 
+  var configValidator = arguments.length > 2 && typeof arguments[1] === "function" ?
+    arguments[1] :
     or ? or.validator() : undefined;
 
   var deps;
@@ -110,7 +111,7 @@ Diogenes.prototype.addService = function addService(name) {
     };
   };
 
-  if (configValidator) {
+  if (or) {
     if (!(name in this.services)){
       this.services[name] = or();
     }
@@ -118,7 +119,7 @@ Diogenes.prototype.addService = function addService(name) {
     this.services[name].add(configValidator, func);
   }
   else {
-    this.services[name] = func;    
+    this.services[name] = func;
   }
 
   return this;
@@ -132,6 +133,17 @@ function getDeps(name, deplist, deps){
   return out;
 }
 
+function getFunc(name, ok, ko) {
+  return function (err, dep){
+    if (err){
+      return ko(err);
+    }
+    else {
+      return ok(name, dep);
+    }
+  };
+}
+
 function isReady(o, deps){
   var i, deps_array = o.deps;
   for (i = 0 ; i < deps_array.length ; i++){
@@ -142,35 +154,43 @@ function isReady(o, deps){
   return true;
 }
 
-Diogenes.prototype.getService = function start(name, globalConfig, done) {
-  var sorted_services, n, adjlists = {};
+Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
+  var n, adjlists = {}
+  for (n in this.services){
+    adjlists[n] = this.services[n](globalConfig);
+  }
+  return adjlists;
+};
+
+Diogenes.prototype.removeService = function removeService(name, func) {
+};
+
+Diogenes.prototype.getServiceOrder = function getServiceOrder(name, globalConfig) {
+  var adjlists = this._filterByConfig(globalConfig);
+  return dfs(adjlists, name);
+};
+
+Diogenes.prototype.getService = function getService(name, globalConfig, done) {
+  var sorted_services, adjlists;
+  var deps = {}; // all dependencies already resolved
 
   if (typeof globalConfig === "function"){
     done = globalConfig;
     globalConfig = {};
   }
 
-  for (n in this.services){
-    try {
-      adjlists[n] = this.services[n](globalConfig);
-    }
-    catch (e){
-      return done(e);
-    }
-  }
-
   try {
+    adjlists = this._filterByConfig(globalConfig);
     sorted_services = dfs(adjlists, name);
   }
   catch (e){
     return done(e);
   }
 
-  var deps = {}; // all dependencies already resolved
-
   (function resolve(name, dep){
-    var func, i, node, dependencies, ready = [], not_ready = [];
-    
+    var func, i, node, dependencies,
+        ready = [], not_ready = [];
+
     if (name){
       deps[name] = dep;
     }
@@ -178,38 +198,23 @@ Diogenes.prototype.getService = function start(name, globalConfig, done) {
     if (sorted_services.length === 0){
       return done(undefined, dep);
     }
- 
+
     for (i = 0; i < sorted_services.length ; i++){
       if (isReady(adjlists[sorted_services[i]], deps)){
         ready.push(sorted_services[i]);
       }
       else {
-        not_ready.push(sorted_services[i]);        
+        not_ready.push(sorted_services[i]);
       }
     }
-    
+
     sorted_services = not_ready;
 
-    // checkCircularDep(sorted_services, );
-    // if (ready.length === 0){
-    //   done(new Error("Diogenes: circular dependency: " + not_ready.join(', ')));
-    // }
-
-    for (i = 0 ; i < ready.length; i++){
+    for (i = 0 ; i < ready.length; i++) {
       node = adjlists[ready[i]];
       try{
         dependencies = getDeps(node.name, node.deps, deps);
-        func = (function (name){
-          return function (err, dep){
-            if (err){
-              done(err);
-            }
-            else {
-              return resolve(name, dep);
-            }
-          }
-        }(node.name));
-        
+        func = getFunc(node.name, resolve, done);
         node.service(globalConfig, dependencies, func);
       }
       catch (e){
@@ -222,10 +227,9 @@ Diogenes.prototype.getService = function start(name, globalConfig, done) {
   return this;
 };
 
-Diogenes.getRegistry = function (regName){
-  return new Diogenes(regName);
+if (or){
+  Diogenes.validator = or.validator;
 }
-Diogenes.validator = or.validator;
 
 if (typeof exports === 'object'){
   module.exports = Diogenes;

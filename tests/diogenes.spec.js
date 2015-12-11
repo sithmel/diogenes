@@ -78,7 +78,7 @@ describe("diogenes", function () {
     });
   });
 
-  it.skip("must recognize a circular dependency", function (done) {
+  it("must recognize a circular dependency", function (done) {
     registry.addService("hello", ["world"], function (config, deps, next){
       next(undefined, "hello ");
     });
@@ -89,7 +89,27 @@ describe("diogenes", function () {
 
     registry.getService("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
-      assert.equal(err.message, 'Diogenes: circular dependency: world, hello');
+      assert.equal(err.message, 'Diogenes: circular dependency: hello');
+      done();
+    });
+  });
+
+  it("must recognize a circular dependency (3 services)", function (done) {
+    registry.addService("A", ['C'], function (config, deps, next){
+      next(undefined, undefined);
+    });
+
+    registry.addService("B", ['A'], function (config, deps, next){
+      next(undefined, undefined);
+    });
+
+    registry.addService("C", ['B'], function (config, deps, next){
+      next(undefined, undefined);
+    });
+
+    registry.getService("C", {}, function (err, dep){
+      assert.instanceOf(err, Error);
+      assert.equal(err.message, 'Diogenes: circular dependency: C');
       done();
     });
   });
@@ -237,23 +257,23 @@ describe("diogenes", function () {
 
   describe("async parallel execution", function (done) {
     var str;
-    
+
     beforeEach(function (){
       /*
 
       A      B
-      |     / 
-      |    /  
-      |   /   
-      |  /    
-      | /     
-      VV      
+      |     /
+      |    /
+      |   /
+      |  /
+      | /
+      VV
       C
 
       */
-      
+
       str = '';
-      
+
       registry.addService("A", function (config, deps, next){
         setTimeout(function (){
           str += 'A';
@@ -270,7 +290,7 @@ describe("diogenes", function () {
 
       registry.addService("C", ["A", "B"], function (config, deps, next){
         str += 'C';
-        next(undefined, "C") ;
+        next(undefined, deps.A + deps.B + "C") ;
       });
 
     });
@@ -278,6 +298,7 @@ describe("diogenes", function () {
     it("must run service asynchronously", function (done) {
       registry.getService("C", {}, function (err, dep){
         assert.equal(str, "BAC");
+        assert.equal(dep, "ABC");
         done();
       });
     });
