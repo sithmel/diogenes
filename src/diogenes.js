@@ -162,7 +162,8 @@ Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
   return adjlists;
 };
 
-Diogenes.prototype.removeService = function removeService(name, func) {
+Diogenes.prototype.removeService = function removeService(name) {
+  delete this.services[name];
 };
 
 Diogenes.prototype.getServiceOrder = function getServiceOrder(name, globalConfig) {
