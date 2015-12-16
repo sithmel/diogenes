@@ -14,6 +14,6 @@
     "mocha": "^2.1.0"
   },
   "dependencies": {
-    "occamsrazor": "^3.3.0"
+    "occamsrazor": "^4.0.0"
   }
 }

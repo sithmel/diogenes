@@ -71,27 +71,23 @@ Diogenes.getRegistry = function (regName){
 };
 
 Diogenes.prototype.addService = function addService(name) {
-  var configValidator = arguments.length > 2 && typeof arguments[1] === "function" ?
-    arguments[1] :
-    or ? or.validator() : undefined;
+  var deps = arguments.length > 2 ? arguments[1] : [];
+  var thirdArg = arguments.length > 3 ? arguments[2] : undefined;
+  var configValidator;
 
-  var deps;
-
-  if (arguments.length > 2){
-    if (Array.isArray(arguments[1])){
-      deps = arguments[1];
+  if (or){
+    if (typeof thirdArg === 'undefined'){
+      configValidator = or.validator();
+    }
+    else if (thirdArg.toString() === 'validator'){
+      configValidator = thirdArg;
     }
     else {
-      if (Array.isArray(arguments[2])){
-        deps = arguments[2]
-      }
-      else {
-        deps = [];
-      }
+      configValidator = or.validator().match(thirdArg);
     }
   }
   else {
-    deps = [];
+    configValidator = undefined;
   }
 
   var service = arguments[arguments.length - 1];
@@ -166,7 +162,7 @@ Diogenes.prototype.removeService = function removeService(name) {
   delete this.services[name];
 };
 
-Diogenes.prototype.getServiceOrder = function getServiceOrder(name, globalConfig) {
+Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalConfig) {
   var adjlists = this._filterByConfig(globalConfig);
   return dfs(adjlists, name);
 };

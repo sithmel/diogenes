@@ -29,7 +29,7 @@ describe("diogenes", function () {
   });
 
   it("must return a service in a simple case (1 function)", function (done) {
-    registry.addService("hello", isAnything, function (config, deps, next){
+    registry.addService("hello", function (config, deps, next){
       assert.deepEqual(deps, {});
       next(undefined, "hello");
     });
@@ -62,12 +62,12 @@ describe("diogenes", function () {
   });
 
   it("must return a service in a simple case (2 functions)", function (done) {
-    registry.addService("hello", isAnything, function (config, deps, next){
+    registry.addService("hello", function (config, deps, next){
       assert.deepEqual(deps, {});
       next(undefined, "hello ");
     });
 
-    registry.addService("world", isAnything, ["hello"], function (config, deps, next){
+    registry.addService("world", ["hello"], function (config, deps, next){
       assert.deepEqual(deps, {hello: "hello "});
       next(undefined, deps.hello + "world!") ;
     });
@@ -137,7 +137,7 @@ describe("diogenes", function () {
 
     registry.getService("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
-      assert.equal(err.message, 'More than one adapter fits');
+      assert.equal(err.message, 'Occamsrazor (get): More than one adapter fits');
       done();
     });
   });
@@ -157,19 +157,19 @@ describe("diogenes", function () {
       C ----> D
 
       */
-      registry.addService("A", isAnything, function (config, deps, next){
+      registry.addService("A", function (config, deps, next){
         next(undefined, "A");
       });
 
-      registry.addService("B", isAnything, ["A"], function (config, deps, next){
+      registry.addService("B", ["A"], function (config, deps, next){
         next(undefined, deps["A"] + "B") ;
       });
 
-      registry.addService("C", isAnything, ["A", "B"], function (config, deps, next){
+      registry.addService("C", ["A", "B"], function (config, deps, next){
         next(undefined, deps["A"] + deps["B"] + "C") ;
       });
 
-      registry.addService("D", isAnything, ["B", "C"], function (config, deps, next){
+      registry.addService("D", ["B", "C"], function (config, deps, next){
         next(undefined, deps["B"] + deps["C"] + "D") ;
       });
     });
@@ -202,25 +202,40 @@ describe("diogenes", function () {
       });
     });
 
+    it("must return execution order", function () {
+      var list = registry.getExecutionOrder("D", {});
+      assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
+    });
+
+    it("must replace node", function () {
+      registry.removeService("D");
+      registry.addService("D", ["A"], function (config, deps, next){
+        next(undefined, deps["A"] + "D") ;
+      });
+
+      var list = registry.getExecutionOrder("D", {});
+      assert.deepEqual(list, [ 'A', 'D' ]);
+    });
+
   });
 
   describe("correct services in the correct order (using the config/plugin)", function () {
     var isReversed;
 
     beforeEach(function (){
-      isReversed = isAnything.has("reverse");
+      isReversed = isAnything.match(["reverse"]);
 
       registry
-      .addService("hello", isAnything, function (config, deps, next){
+      .addService("hello", [], isAnything, function (config, deps, next){
         next(undefined, "hello ");
       })
-      .addService("world", isAnything, ["hello"], function (config, deps, next){
+      .addService("world", ["hello"], isAnything, function (config, deps, next){
         next(undefined, deps.hello + "world!") ;
       })
-      .addService("hello", isReversed, ["world"], function (config, deps, next){
+      .addService("hello", ["world"], isReversed, function (config, deps, next){
         next(undefined, deps.world + "hello!");
       })
-      .addService("world", isReversed, function (config, deps, next){
+      .addService("world", [], isReversed, function (config, deps, next){
         next(undefined, "world ") ;
       });
     });
