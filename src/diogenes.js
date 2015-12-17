@@ -1,8 +1,11 @@
 (function (){
 "use strict";
 
-var or;
+if (typeof exports === 'object'){
+  require("setimmediate");
+}
 
+var or;
 try {
   or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
 }
@@ -121,33 +124,30 @@ Diogenes.prototype.addService = function addService(name) {
   return this;
 };
 
-function getDeps(name, deplist, deps){
-  var out = {};
-  for (var i = 0; i < deplist.length; i++){
-    out[deplist[i]] = deps[deplist[i]];
-  }
-  return out;
-}
-
-function getFunc(name, ok, ko) {
-  return function (err, dep){
-    if (err){
-      return ko(err);
+function getFunc(node, dependencies, globalConfig, ok, ko){
+  var deps = {};
+  for (var i = 0; i < node.deps.length; i++){
+    if (!(node.deps[i] in dependencies)) {
+      return;
     }
-    else {
-      return ok(name, dep);
+    deps[node.deps[i]] = dependencies[node.deps[i]];
+  }
+
+  return function (){
+    try {
+      node.service(globalConfig, deps, function (err, dep){
+        if (err){
+          return ko(err);
+        }
+        else {
+          return ok(node.name, dep);
+        }
+      });
+    }
+    catch (e){
+      ko(e);
     }
   };
-}
-
-function isReady(o, deps){
-  var i, deps_array = o.deps;
-  for (i = 0 ; i < deps_array.length ; i++){
-    if (!(deps_array[i] in deps)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
@@ -160,6 +160,7 @@ Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
 
 Diogenes.prototype.removeService = function removeService(name) {
   delete this.services[name];
+  return this;
 };
 
 Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalConfig) {
@@ -185,9 +186,7 @@ Diogenes.prototype.getService = function getService(name, globalConfig, done) {
   }
 
   (function resolve(name, dep){
-    var func, i, node, dependencies,
-        ready = [], not_ready = [];
-
+    var func, i = 0;
     if (name){
       deps[name] = dep;
     }
@@ -196,29 +195,16 @@ Diogenes.prototype.getService = function getService(name, globalConfig, done) {
       return done(undefined, dep);
     }
 
-    for (i = 0; i < sorted_services.length ; i++){
-      if (isReady(adjlists[sorted_services[i]], deps)){
-        ready.push(sorted_services[i]);
+    while (i < sorted_services.length){
+      func = getFunc(adjlists[sorted_services[i]], deps, globalConfig, resolve, done)
+      if (func){
+        sorted_services.splice(i, 1);
+        setImmediate(func);
       }
       else {
-        not_ready.push(sorted_services[i]);
+        i++;
       }
     }
-
-    sorted_services = not_ready;
-
-    for (i = 0 ; i < ready.length; i++) {
-      node = adjlists[ready[i]];
-      try{
-        dependencies = getDeps(node.name, node.deps, deps);
-        func = getFunc(node.name, resolve, done);
-        node.service(globalConfig, dependencies, func);
-      }
-      catch (e){
-        done(e);
-      }
-    }
-
   }());
 
   return this;

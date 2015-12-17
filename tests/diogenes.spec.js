@@ -320,4 +320,76 @@ describe("diogenes", function () {
 
   });
 
+  describe("from the readme", function (done) {
+    var text = ["Diogenes became notorious for his philosophical ",
+      "stunts such as carrying a lamp in the daytime, claiming to ",
+      "be looking for an honest man."].join();
+
+    beforeEach(function (){
+      registry.addService("text", function (config, deps, next) {
+        next(undefined, text);
+      });
+
+      registry.addService("tokens", ['text'], function (config, deps, next) {
+        next(undefined, deps.text.split(' '));
+      });
+
+      registry.addService("count", ['tokens'], function (config, deps, next) {
+        next(undefined, deps.tokens.length);
+      });
+
+      registry.addService("abstract", ['tokens'], function (config, deps, next) {
+        var len = config.abstractLen;
+        var ellipsis = config.abstractEllipsis;
+        next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
+      });
+
+      registry.addService("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
+        next(undefined, {
+            count: deps.count,
+            abstract: deps.abstract,
+            text: deps.text
+        });
+      });
+
+      var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
+
+      registry.addService("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
+          var len = config.abstractLen;
+          var ellipsis = config.abstractEllipsis;
+          next(undefined, deps.text.slice(0, len) + ellipsis);
+      });
+
+    });
+
+    it("must return a correct order (readme example)", function () {
+      var a = registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
+      assert.deepEqual(a, ["text", "tokens", "abstract", "count", "paragraph"]);
+    });
+
+    it("must work (readme example)", function (done) {
+      registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
+        assert.equal(p.count, 23);
+        assert.equal(p.abstract, "Diogenes became notorious for his...");
+        assert.equal(p.text, text);
+        done();
+      });
+    });
+
+    it("must return a correct order (readme example) - alternate version", function () {
+      var a = registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
+      assert.deepEqual(a, ["text", "abstract", "tokens", "count", "paragraph"]);
+    });
+
+    it("must work (readme example) - alternate version", function (done) {
+      registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
+        assert.equal(p.count, 23);
+        assert.equal(p.abstract, "Dioge...");
+        assert.equal(p.text, text);
+        done();
+      });
+    });
+
+  });
+
 });
