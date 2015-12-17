@@ -1,7 +1,7 @@
 {
   "name": "diogenes",
   "version": "0.0.1",
-  "description": "searching for a man",
+  "description": "Diogenes is a services registry.",
   "main": "src/diogenes.js",
   "scripts": {
     "test": "mocha tests/*.js"
