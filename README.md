@@ -56,7 +56,7 @@ The easiest way to import Diogenes is using commonjs:
 
     var Diogenes = require('diogenes');
 
-You can also import it as a global module. In that case you should take care of the dependencies.
+You can also import it as a global module. In that case you should take care of the dependencies (setImmediate and occamsrazor, this one is optional).
 
 Creating a registry
 -------------------
@@ -77,26 +77,29 @@ A service is defined by a name (a string), a list of dependencies (an optional l
         var text = ["Diogenes became notorious for his philosophical ",
           "stunts such as carrying a lamp in the daytime, claiming to ",
           "be looking for an honest man."].join();
-        next(undefined, text);  // if the service is successful I pass undefined
-                                // as the first argument and the result as second
+        next(undefined, text);
     });
 
-    registry.addService("tokens", ['text'], function (config, deps, next) { // it depends on text
-        // deps is an object. It contains an attribute for every dependency
-        // in this example: deps.text
+if the service is successful I pass undefined as the first argument and the result as second:
+
+    registry.addService("tokens", ['text'], function (config, deps, next) {
         next(undefined, deps.text.split(' '));
     });
+
+The array specifies a list of dependencies. This service depends on the "text" service. The deps argument will contain an attribute for every dependency
+in this example: deps.text.
 
     registry.addService("count", ['tokens'], function (config, deps, next) {
         next(undefined, deps.tokens.length);
     });
 
     registry.addService("abstract", ['tokens'], function (config, deps, next) {
-        // config is passed to all services
         var len = config.abstractLen;
         var ellipsis = config.abstractEllipsis;
         next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
     });
+
+The "config" argument is passed to all services.
 
     registry.addService("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
         next(undefined, {
@@ -108,23 +111,27 @@ A service is defined by a name (a string), a list of dependencies (an optional l
 
 Calling a service
 -----------------
-You can call a service using the method getService with the name and the configuration.
+You can call a service using the method getService with the name and the configuration (the same one will be passed as argument to all services).
 
     registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
-        // p is the output of the "paragraph" service
-        console.log("This paragraph is " + p.count + " words long");
-        console.log("The abstract is: " + p.anstract);
-        console.log("This is the original text:");
-        console.log(p.text);
+        if (err){
+            console.log("Something went wrong!");
+        }
+        else {
+            console.log("This paragraph is " + p.count + " words long");
+            console.log("The abstract is: " + p.anstract);
+            console.log("This is the original text:");
+            console.log(p.text);            
+        }
     });
 
+p will be the output of the paragraph service. If any services throws, or returns an error. This function will be executed anyway and the "err" argument will contain the exception.
 Diogenes calls all the services in order. You can get the ordering using:
 
     registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
 
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
 Diogenes does not follow that order exactly: "count", for example doesn't require to wait for abstract as it depends on tokens only.
-If any services throws, or returns an error. This function will be executed anyway and the "err" argument will contain the exception.
 
 Plugins
 -------
@@ -145,11 +152,15 @@ You should notice that specifying a validator you are also able to use a differe
     registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
 
     registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
-        // p is the output of the "paragraph" service
-        console.log("This paragraph is " + p.count + " words long");
-        console.log("The abstract is: " + p.anstract);
-        console.log("This is the original text:");
-        console.log(p.text);
+        if (err){
+            console.log("Something went wrong!");
+        }
+        else {
+            console.log("This paragraph is " + p.count + " words long");
+            console.log("The abstract is: " + p.anstract);
+            console.log("This is the original text:");
+            console.log(p.text);
+        }
     });
 
 The key point is that you just extended the system without changing the original code!
@@ -198,15 +209,13 @@ it adds a service to a registry. It has different signatures:
 * The name (mandatory) is a string. It is the name of the service. A registry can have more than one service with the same name BUT they should validate alternatively (see the validator argument).
 * dependencies: it is an array of strings. Every string is the name of a service. This should be executed and its output should be pushed in the function
 * validator: it is an occamsrazor validator. (https://github.com/sithmel/occamsrazor.js). You can also pass a different value as explained in the "match" validator (https://github.com/sithmel/occamsrazor.js#occamsrazorvalidatormatch);
-* The function (mandatory) is a function that returns a service:
+* The function (mandatory) is a function that returns a service.
 
-  	var func = function (config, deps, next){
-  		// config is a value passed to all services when getService is invoked
-      // deps is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
-      // if this services depends on service "A", deps.A will contain the output of the service A.
-  		// next will be called with the output of this service. next(undefined, output).
-  		// errors will be passed as first argument next(new Error('service broken'))
-    };
+The function will have these arguments (config, deps, next):
+* config is a value passed to all services when getService is invoked
+* deps is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
+* next is the function called with the output of this service: next(undefined, output)
+* If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')). 
 
 removeService
 -------------
@@ -224,11 +233,11 @@ The function takes 2 arguments:
 * an error
 * the value of the service required
 
-getServiceOrder
----------------
-Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services is parallel if possible.
+getExecutionOrder
+-----------------
+Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
 
-    registry.getServiceOrder(name, config);
+    registry.getExecutionOrder(name, config);
 
 Chaining
 --------
@@ -248,4 +257,16 @@ The library is currently able to detect and throws exceptions in a few cases:
 * the service returns or throws an exception
 
 The first 3 exceptions can be thrown by getExecutionOrder and getService.
-The last one only when you execute a service using getService.
+The last one only using getService.
+
+Tricks and tips
+===============
+
+Avoid mutations
+---------------
+Do not mutate the config and deps arguments! It will lead to unpredictable bugs. Clone the object instead.
+
+Using memoize
+-------------
+There are cases in which you need to invoke a service more than once (directly or indirectly through a dependency). If this service has side effects (for example it opens a connection to a database), you may want to do it only once.
+You can solve the issue using a function to memoize the output. I can suggest memoizee (https://github.com/medikoo/memoizee). Look at the async mode!
