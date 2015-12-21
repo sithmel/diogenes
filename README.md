@@ -34,15 +34,15 @@ With Diogenes you can describe the flow of informations in terms of services, de
     var Diogenes = require('diogenes');
     var registry = Diogenes.getRegistry();
 
-    registry.addService("id", decodeURL);
-    registry.addService("db",  getDB);
-    registry.addService("data", ["db", "url"], getDataFromDB); // the array defines the dependencies
-    registry.addService("template", retrieveTemplate);
-    registry.addService("html", ["template", "data"], renderTemplate);
+    registry.add("id", decodeURL);
+    registry.add("db",  getDB);
+    registry.add("data", ["db", "url"], getDataFromDB); // the array defines the dependencies
+    registry.add("template", retrieveTemplate);
+    registry.add("html", ["template", "data"], renderTemplate);
 
 and let the system do the job:
 
-    registry.getService("html", configuration, returnHTML);
+    registry.run("html", configuration, returnHTML);
 
 Diogenes resolves all the dependency tree for you, executing the services in the right order (even in parallel when possible).
 Then it serves you the result on a silver platter.
@@ -56,7 +56,7 @@ The easiest way to import Diogenes is using commonjs:
 
     var Diogenes = require('diogenes');
 
-You can also import it as a global module. In that case you should take care of the dependencies (setImmediate and occamsrazor, this one is optional).
+You can also import it as a global module. In that case you should take care of the dependencies (setImmediate and occamsrazor).
 
 Creating a registry
 -------------------
@@ -73,7 +73,7 @@ Defining services
 -----------------
 A service is defined by a name (a string), a list of dependencies (an optional list of strings) and a function with a specific interface:
 
-    registry.addService("text", function (config, deps, next) {
+    registry.add("text", function (config, deps, next) {
         var text = ["Diogenes became notorious for his philosophical ",
           "stunts such as carrying a lamp in the daytime, claiming to ",
           "be looking for an honest man."].join();
@@ -82,18 +82,18 @@ A service is defined by a name (a string), a list of dependencies (an optional l
 
 if the service is successful I pass undefined as the first argument and the result as second:
 
-    registry.addService("tokens", ['text'], function (config, deps, next) {
+    registry.add("tokens", ['text'], function (config, deps, next) {
         next(undefined, deps.text.split(' '));
     });
 
 The array specifies a list of dependencies. This service depends on the "text" service. The deps argument will contain an attribute for every dependency
 in this example: deps.text.
 
-    registry.addService("count", ['tokens'], function (config, deps, next) {
+    registry.add("count", ['tokens'], function (config, deps, next) {
         next(undefined, deps.tokens.length);
     });
 
-    registry.addService("abstract", ['tokens'], function (config, deps, next) {
+    registry.add("abstract", ['tokens'], function (config, deps, next) {
         var len = config.abstractLen;
         var ellipsis = config.abstractEllipsis;
         next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
@@ -101,7 +101,7 @@ in this example: deps.text.
 
 The "config" argument is passed to all services.
 
-    registry.addService("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
+    registry.add("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
         next(undefined, {
             count: deps.count,
             abstract: deps.abstract,
@@ -113,7 +113,7 @@ Calling a service
 -----------------
 You can call a service using the method getService with the name and the configuration (the same one will be passed as argument to all services).
 
-    registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
+    registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
         if (err){
             console.log("Something went wrong!");
         }
@@ -141,7 +141,7 @@ Diogenes.validator is a copy of occamsrazor.validator (for convenience). Let's s
 
     var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
 
-    registry.addService("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
+    registry.add("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
         var len = config.abstractLen;
         var ellipsis = config.abstractEllipsis;
         next(undefined, deps.text.slice(0, len) + ellipsis);
@@ -151,7 +151,7 @@ You should notice that specifying a validator you are also able to use a differe
 
     registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
 
-    registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
+    registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
         if (err){
             console.log("Something went wrong!");
         }
@@ -165,15 +165,27 @@ You should notice that specifying a validator you are also able to use a differe
 
 The key point is that you just extended the system without changing the original code!
 
+Add a value
+-----------
+
+Run service only once
+---------------------
+
+Working with a single service
+-----------------------------
+
+Cache a service
+---------------
+
 Dependencies
 ============
-Diogenes depends on setimmediate and occamsrazor (this one is optional).
+Diogenes depends on setimmediate and occamsrazor.
 
 Syntax
 ======
 
-getRegistry
------------
+Diogenes.getRegistry
+--------------------
 Create a registry of services:
 
     var registry = Diogenes.getRegistry();
@@ -196,8 +208,16 @@ This is convenient if you want any application register its services to a specif
 Registry's methods
 ==================
 
-addService
-----------
+service
+-------
+Returns a single service. It creates the service if it doesn't exist.
+
+Syntax:
+
+    registry.service("name");
+
+add
+---
 it adds a service to a registry. It has different signatures:
 
     registry.addService(name, func);   
@@ -217,14 +237,27 @@ The function will have these arguments (config, deps, next):
 * next is the function called with the output of this service: next(undefined, output)
 * If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')). 
 
-removeService
--------------
+It returns the registry.
+
+addValue
+--------
+
+addOnce
+-------
+
+addValueOnce
+------------
+
+remove
+------
 It remove a service from the registry:
 
     registry.removeService(name);
 
-getService
-----------
+It returns the registry.
+
+run
+---
 It executes all the dependency tree required by the service and call the function. All the services are called using config:
 
     registry.getService(name, config, func);
@@ -232,6 +265,8 @@ It executes all the dependency tree required by the service and call the functio
 The function takes 2 arguments:
 * an error
 * the value of the service required
+
+It returns the registry.
 
 getExecutionOrder
 -----------------
@@ -241,11 +276,42 @@ Returns an array of services that should be executed with those arguments. The s
 
 Chaining
 --------
-addService, removeService and getService are chainable. So you can do for example:
+add, remove and run are chainable. So you can do for example:
 
-    registry.addService("service1", service1)
-    .addService("service1", service2);
-    .addService("myservice", ["service1", "service2"], myservice);
+    registry.add("service1", service1)
+    .add("service1", service2);
+    .add("myservice", ["service1", "service2"], myservice);
+
+Service's methods
+==================
+You can get a service with the "service" method.
+
+add
+---
+
+addValue
+--------
+
+addOnce
+-------
+
+addValueOnce
+------------
+
+remove
+------
+
+run
+---
+
+cacheOn
+-------
+
+cacheOff
+--------
+
+cacheReset
+----------
 
 Exceptions
 ==========
@@ -266,7 +332,3 @@ Avoid mutations
 ---------------
 Do not mutate the config and deps arguments! It will lead to unpredictable bugs. Clone the object instead.
 
-Using memoize
--------------
-There are cases in which you need to invoke a service more than once (directly or indirectly through a dependency). If this service has side effects (for example it opens a connection to a database), you may want to do it only once.
-You can solve the issue using a function to memoize the output. I can suggest memoizee (https://github.com/medikoo/memoizee). Look at the async mode!

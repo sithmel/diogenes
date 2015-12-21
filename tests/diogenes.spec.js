@@ -29,19 +29,43 @@ describe("diogenes", function () {
   });
 
   it("must return a service in a simple case (1 function)", function (done) {
-    registry.addService("hello", function (config, deps, next){
+    registry.service("hello").add(function (config, deps, next){
       assert.deepEqual(deps, {});
       next(undefined, "hello");
     });
 
-    registry.getService("hello", {}, function (err, dep){
+    registry.run("hello", {}, function (err, dep){
+      assert.deepEqual(dep, "hello");
+      done();
+    });
+  });
+
+  it("must return a service in a simple case (1 function) with shortcut", function (done) {
+    registry.add("hello", function (config, deps, next){
+      assert.deepEqual(deps, {});
+      next(undefined, "hello");
+    });
+
+    registry.run("hello", {}, function (err, dep){
+      assert.deepEqual(dep, "hello");
+      done();
+    });
+  });
+
+  it("must return a service in a simple case (1 function) from service", function (done) {
+    registry.service("hello").add(function (config, deps, next){
+      assert.deepEqual(deps, {});
+      next(undefined, "hello");
+    });
+
+    registry.service("hello").run({}, function (err, dep){
       assert.deepEqual(dep, "hello");
       done();
     });
   });
 
   it("must return undefined (1 function)", function (done) {
-    registry.getService("hello", {}, function (err, dep){
+    registry.run("hello", {}, function (err, dep){
       assert.equal(err.message, 'Diogenes: missing dependency: hello');
       assert.instanceOf(err, Error);
       done();
@@ -49,12 +73,12 @@ describe("diogenes", function () {
   });
 
   it("must return an exception if the function fails", function (done) {
-    registry.addService("hello", function (config, deps, next){
+    registry.service("hello").add(function (config, deps, next){
       throw new Error('broken');
       next(undefined, "hello");
     });
 
-    registry.getService("hello", {}, function (err, dep){
+    registry.run("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'broken');
       done();
@@ -62,32 +86,68 @@ describe("diogenes", function () {
   });
 
   it("must return a service in a simple case (2 functions)", function (done) {
-    registry.addService("hello", function (config, deps, next){
+    registry.service("hello").add(function (config, deps, next){
       assert.deepEqual(deps, {});
       next(undefined, "hello ");
     });
 
-    registry.addService("world", ["hello"], function (config, deps, next){
+    registry.service("world").add(["hello"], function (config, deps, next){
       assert.deepEqual(deps, {hello: "hello "});
       next(undefined, deps.hello + "world!") ;
     });
 
-    registry.getService("world", {}, function (err, dep){
+    registry.run("world", {}, function (err, dep){
       assert.deepEqual(dep, "hello world!");
       done();
     });
   });
 
+  it("must return a service only once", function (done) {
+    registry.service("hello").addOnce([], isAnything.match(['special']), function (config, deps, next){
+      next(undefined, "hello special");
+    });
+
+    registry.service("hello").add([], isAnything, function (config, deps, next){
+      next(undefined, "hello");
+    });
+
+    registry.run("hello", {special: 1}, function (err, dep){
+      assert.deepEqual(dep, "hello special");
+      registry.run("hello", {special: 1}, function (err, dep){
+        assert.deepEqual(dep, "hello");
+        done();
+      });
+    });
+  });
+
+  it("must return a service only once (short form)", function (done) {
+    registry.addOnce("hello", [], isAnything.match(['special']), function (config, deps, next){
+      next(undefined, "hello special");
+    });
+
+    registry.add("hello", [], isAnything, function (config, deps, next){
+      next(undefined, "hello");
+    });
+
+    registry.run("hello", {special: 1}, function (err, dep){
+      assert.deepEqual(dep, "hello special");
+      registry.run("hello", {special: 1}, function (err, dep){
+        assert.deepEqual(dep, "hello");
+        done();
+      });
+    });
+  });
+
   it("must recognize a circular dependency", function (done) {
-    registry.addService("hello", ["world"], function (config, deps, next){
+    registry.service("hello").add(["world"], function (config, deps, next){
       next(undefined, "hello ");
     });
 
-    registry.addService("world", ["hello"], function (config, deps, next){
+    registry.service("world").add(["hello"], function (config, deps, next){
       next(undefined, "world!") ;
     });
 
-    registry.getService("hello", {}, function (err, dep){
+    registry.run("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Diogenes: circular dependency: hello');
       done();
@@ -95,19 +155,19 @@ describe("diogenes", function () {
   });
 
   it("must recognize a circular dependency (3 services)", function (done) {
-    registry.addService("A", ['C'], function (config, deps, next){
+    registry.service("A").add(['C'], function (config, deps, next){
       next(undefined, undefined);
     });
 
-    registry.addService("B", ['A'], function (config, deps, next){
+    registry.service("B").add(['A'], function (config, deps, next){
       next(undefined, undefined);
     });
 
-    registry.addService("C", ['B'], function (config, deps, next){
+    registry.service("C").add(['B'], function (config, deps, next){
       next(undefined, undefined);
     });
 
-    registry.getService("C", {}, function (err, dep){
+    registry.run("C", {}, function (err, dep){
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Diogenes: circular dependency: C');
       done();
@@ -115,11 +175,11 @@ describe("diogenes", function () {
   });
 
   it("must throw an exception when missing dependency", function (done) {
-    registry.addService("hello", ["world"], function (config, deps, next){
+    registry.service("hello").add(["world"], function (config, deps, next){
       next(undefined, "hello ");
     });
 
-    registry.getService("hello", {}, function (err, dep){
+    registry.run("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Diogenes: missing dependency: world');
       done();
@@ -127,18 +187,62 @@ describe("diogenes", function () {
   });
 
   it("must throw an exception when more than one plugin matches", function (done) {
-    registry.addService("hello", function (config, deps, next){
+    registry.service("hello").add(function (config, deps, next){
       next(undefined, "hello1");
     });
 
-    registry.addService("hello", function (config, deps, next){
+    registry.service("hello").add(function (config, deps, next){
       next(undefined, "hello2");
     });
 
-    registry.getService("hello", {}, function (err, dep){
+    registry.run("hello", {}, function (err, dep){
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Occamsrazor (get): More than one adapter fits');
       done();
+    });
+  });
+
+  it("must add a value", function (done) {
+    registry.service("hello").addValue("hello");
+
+    registry.run("hello", {}, function (err, dep){
+      assert.equal(dep, 'hello');
+      done();
+    });
+  });
+
+  it("must add a value (short form)", function (done) {
+    registry.addValue("hello", "hello");
+
+    registry.run("hello", {}, function (err, dep){
+      assert.equal(dep, 'hello');
+      done();
+    });
+  });
+
+  it("must add a value (only once)", function (done) {
+    registry.service("hello").addValueOnce("hello");
+
+    registry.run("hello", {}, function (err, dep){
+      assert.equal(dep, 'hello');
+      registry.run("hello", {}, function (err, dep){
+       assert.equal(err.message, 'Occamsrazor (get): Function not found');
+        assert.instanceOf(err, Error);
+        done();
+      });
+    });
+  });
+
+  it("must add a value (short form)", function (done) {
+    registry.addValueOnce("hello", "hello");
+
+    registry.run("hello", {}, function (err, dep){
+      assert.equal(dep, 'hello');
+      registry.run("hello", {}, function (err, dep){
+       assert.equal(err.message, 'Occamsrazor (get): Function not found');
+        assert.instanceOf(err, Error);
+        done();
+      });
     });
   });
 
@@ -157,46 +261,46 @@ describe("diogenes", function () {
       C ----> D
 
       */
-      registry.addService("A", function (config, deps, next){
+      registry.service("A").add(function (config, deps, next){
         next(undefined, "A");
       });
 
-      registry.addService("B", ["A"], function (config, deps, next){
+      registry.service("B").add(["A"], function (config, deps, next){
         next(undefined, deps["A"] + "B") ;
       });
 
-      registry.addService("C", ["A", "B"], function (config, deps, next){
+      registry.service("C").add(["A", "B"], function (config, deps, next){
         next(undefined, deps["A"] + deps["B"] + "C") ;
       });
 
-      registry.addService("D", ["B", "C"], function (config, deps, next){
+      registry.service("D").add(["B", "C"], function (config, deps, next){
         next(undefined, deps["B"] + deps["C"] + "D") ;
       });
     });
 
     it("must return leftmost service", function (done) {
-      registry.getService("A", {}, function (err, dep){
+      registry.run("A", {}, function (err, dep){
         assert.deepEqual(dep, "A");
         done();
       });
     });
 
     it("must return middle service (1)", function (done) {
-      registry.getService("B", {}, function (err, dep){
+      registry.run("B", {}, function (err, dep){
         assert.deepEqual(dep, "AB");
         done();
       });
     });
 
     it("must return middle service (2)", function (done) {
-      registry.getService("C", {}, function (err, dep){
+      registry.run("C", {}, function (err, dep){
         assert.deepEqual(dep, "AABC");
         done();
       });
     });
 
     it("must return rightmost service", function (done) {
-      registry.getService("D", {}, function (err, dep){
+      registry.run("D", {}, function (err, dep){
         assert.deepEqual(dep, "ABAABCD");
         done();
       });
@@ -208,8 +312,8 @@ describe("diogenes", function () {
     });
 
     it("must replace node", function () {
-      registry.removeService("D");
-      registry.addService("D", ["A"], function (config, deps, next){
+      registry.remove("D");
+      registry.service("D").add(["A"], function (config, deps, next){
         next(undefined, deps["A"] + "D") ;
       });
 
@@ -225,44 +329,46 @@ describe("diogenes", function () {
     beforeEach(function (){
       isReversed = isAnything.match(["reverse"]);
 
-      registry
-      .addService("hello", [], isAnything, function (config, deps, next){
+      registry.service("hello")
+      .add([], isAnything, function (config, deps, next){
         next(undefined, "hello ");
       })
-      .addService("world", ["hello"], isAnything, function (config, deps, next){
-        next(undefined, deps.hello + "world!") ;
-      })
-      .addService("hello", ["world"], isReversed, function (config, deps, next){
+      .add(["world"], isReversed, function (config, deps, next){
         next(undefined, deps.world + "hello!");
       })
-      .addService("world", [], isReversed, function (config, deps, next){
+      
+      registry.service("world")
+      .add(["hello"], isAnything, function (config, deps, next){
+        next(undefined, deps.hello + "world!") ;
+      })
+      .add([], isReversed, function (config, deps, next){
         next(undefined, "world ") ;
       });
     });
 
     it("must extract the rightmost service", function (done) {
-      registry.getService("world", {}, function (err, dep){
+      registry.run("world", {}, function (err, dep){
         assert.deepEqual(dep, "hello world!");
         done();
       });
     });
 
     it("must extract the leftmost service", function (done) {
-      registry.getService("hello", {}, function (err, dep){
+      registry.run("hello", {}, function (err, dep){
         assert.deepEqual(dep, "hello ");
         done();
       });
     });
 
     it("must extract the rightmost inverted service", function (done) {
-      registry.getService("hello", {reverse: true}, function (err, dep){
+      registry.run("hello", {reverse: true}, function (err, dep){
         assert.deepEqual(dep, "world hello!");
         done();
       });
     });
 
     it("must extract the leftmost inverted service", function (done) {
-      registry.getService("world", {reverse: true}, function (err, dep){
+      registry.run("world", {reverse: true}, function (err, dep){
         assert.deepEqual(dep, "world ");
         done();
       });
@@ -289,21 +395,21 @@ describe("diogenes", function () {
 
       str = '';
 
-      registry.addService("A", function (config, deps, next){
+      registry.service("A").add(function (config, deps, next){
         setTimeout(function (){
           str += 'A';
           next(undefined, "A");
         }, 50);
       });
 
-      registry.addService("B", function (config, deps, next){
+      registry.service("B").add(function (config, deps, next){
         setTimeout(function (){
           str += 'B';
           next(undefined, "B") ;
         }, 20);
       });
 
-      registry.addService("C", ["A", "B"], function (config, deps, next){
+      registry.service("C").add(["A", "B"], function (config, deps, next){
         str += 'C';
         next(undefined, deps.A + deps.B + "C") ;
       });
@@ -311,7 +417,7 @@ describe("diogenes", function () {
     });
 
     it("must run service asynchronously", function (done) {
-      registry.getService("C", {}, function (err, dep){
+      registry.run("C", {}, function (err, dep){
         assert.equal(str, "BAC");
         assert.equal(dep, "ABC");
         done();
@@ -326,25 +432,23 @@ describe("diogenes", function () {
       "be looking for an honest man."].join();
 
     beforeEach(function (){
-      registry.addService("text", function (config, deps, next) {
-        next(undefined, text);
-      });
+      registry.service("text").addValue(text);
 
-      registry.addService("tokens", ['text'], function (config, deps, next) {
+      registry.service("tokens").add(['text'], function (config, deps, next) {
         next(undefined, deps.text.split(' '));
       });
 
-      registry.addService("count", ['tokens'], function (config, deps, next) {
+      registry.service("count").add(['tokens'], function (config, deps, next) {
         next(undefined, deps.tokens.length);
       });
 
-      registry.addService("abstract", ['tokens'], function (config, deps, next) {
+      registry.service("abstract").add(['tokens'], function (config, deps, next) {
         var len = config.abstractLen;
         var ellipsis = config.abstractEllipsis;
         next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
       });
 
-      registry.addService("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
+      registry.service("paragraph").add(['text', 'abstract', 'count'], function (config, deps, next) {
         next(undefined, {
             count: deps.count,
             abstract: deps.abstract,
@@ -354,7 +458,7 @@ describe("diogenes", function () {
 
       var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
 
-      registry.addService("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
+      registry.service("abstract").add(['text'], useAlternativeClamp, function (config, deps, next) {
           var len = config.abstractLen;
           var ellipsis = config.abstractEllipsis;
           next(undefined, deps.text.slice(0, len) + ellipsis);
@@ -368,7 +472,7 @@ describe("diogenes", function () {
     });
 
     it("must work (readme example)", function (done) {
-      registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
+      registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
         assert.equal(p.count, 23);
         assert.equal(p.abstract, "Diogenes became notorious for his...");
         assert.equal(p.text, text);
@@ -382,13 +486,32 @@ describe("diogenes", function () {
     });
 
     it("must work (readme example) - alternate version", function (done) {
-      registry.getService("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
+      registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
         assert.equal(p.count, 23);
         assert.equal(p.abstract, "Dioge...");
         assert.equal(p.text, text);
         done();
       });
     });
+
+  });
+  
+  describe("cache", function () {
+    var cached;
+    
+    beforeEach(function (){
+      var c = 0;
+      cached = registry.service("cached").add(function (config, deps, next) {
+        next(undefined, 'hello ' + c++);
+      });
+    });
+    
+    it("must configure key", function () {
+      cached.cacheOn();
+      
+      // cached.key()
+    });
+    
 
   });
 

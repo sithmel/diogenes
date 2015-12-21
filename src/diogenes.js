@@ -5,13 +5,7 @@ if (typeof exports === 'object'){
   require("setimmediate");
 }
 
-var or;
-try {
-  or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
-}
-catch (e){
-  or = undefined;
-}
+var or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
 
 // depth first search
 function dfs (adjlists, startingNode){
@@ -55,6 +49,187 @@ if(!_registries._diogenes_registries){
   _registries._diogenes_registries = {};
 }
 
+function getArgs(args){
+  var out = {};
+
+  out.deps = args.length > 1 ? args[0] : [];
+
+  if (args.length <= 2 || typeof args[1] === 'undefined'){
+    out.validator = or.validator();
+  }
+  else if (args[1].toString() === 'validator'){
+    out.validator = args[1];
+  }
+  else {
+    out.validator = or.validator().match(args[1]);
+  }
+
+  out.func = args[args.length - 1];  
+  return out;
+}
+
+function Service(name, registry){
+  this.name = name;
+  this.registry = registry; // backreference
+  this.service = or();
+}
+
+Service.prototype._wrap = function (func, deps, isValue){
+  var name = this.name;
+  var service;
+
+  if (!isValue && typeof func !== "function"){
+    throw new Error('Diogenes: expecting a function as last argument');
+  }
+  
+  if(!isValue){
+    service = func;
+  }
+  else {
+    service = function (conf, deps, next){
+      return next(undefined, func);
+    };    
+  }
+
+  return function (){
+    return {
+      name: name,
+      service: service,
+      deps: deps
+    };
+  };  
+};
+
+Service.prototype.add = function (){
+  var args = getArgs(arguments);
+  this.service.add(args.validator, this._wrap(args.func, args.deps));
+  return this;
+};
+
+Service.prototype.addValue = function (){
+  var args = getArgs(arguments);
+  this.service.add(args.validator, this._wrap(args.func, args.deps, true));
+  return this;
+};
+
+Service.prototype.addOnce = function (){
+  var args = getArgs(arguments);
+  this.service.one(args.validator, this._wrap(args.func, args.deps));
+  return this;
+};
+
+Service.prototype.addValueOnce = function (){
+  var args = getArgs(arguments);
+  this.service.one(args.validator, this._wrap(args.func, args.deps, true));
+  return this;
+};
+
+Service.prototype.remove = function (){
+  this.registry.remove(this.name);
+};
+
+Service.prototype.get = function (config){
+  var key, hit;
+  if (this.cache){ // cache check here !!!
+    this.cachePurge(); // purge stale cache entries
+    key = this.key(config);
+    if (key in this.cache){
+      hit = this.cache[key]; // cache hit!
+      return {
+        name: this.name,
+        service: function (config, deps, next){
+          next(undefined, hit);
+        },
+        deps: [] // no dependencies needed for cached values
+      };      
+    }
+  }
+  
+  return this.service(config);
+};
+
+Service.prototype.run = function (globalConfig, done){
+  this.registry.run(this.name, globalConfig, done);
+  return this;
+};
+
+Service.prototype.cacheOn = function (opts){
+  opts = opts || {};
+  var key = opts.key;
+
+  if (typeof key === "function"){
+    this.key = key;
+  }
+  else if (typeof key === "string"){
+    this.key = function (config){
+      return JSON.stringify(config[key]);
+    };
+  }
+  else if (Array.isArray(key)){
+    this.key = function (config){
+      var value = config;
+      for (var i = 0; i < key.length; i++){
+        value = config[key[i]];
+      }
+      return JSON.stringify(value);
+    };
+  }
+  else {
+    this.key = function (config){
+      return '_default';
+    }    
+  }
+
+  this.cache = {}; // key, value
+  this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx} new ones first
+
+  this.maxAge = opts.maxAge || Infinity;
+  this.maxSize = opts.maxSize || Infinity;
+};
+
+Service.prototype.cachePush = function (config, output){
+  if (!this.cache) return;
+  this.cachePurge();
+  var k = this.key(config);
+  if (k in this.cache) return;
+  this.cache[k] = output;
+  this.cacheKeys.unshift({
+    key: k,
+    ts: Date.now()
+  });
+};
+
+Service.prototype.cachePurge = function (){
+  if (!this.cache) return;
+  // remove old entries
+  var now = Date.now();
+  this.cacheKeys = this.cacheKeys.filter(function (item){
+    if (item.ts + this.maxAge < now ){
+      delete this.cache[item.key];
+      return false;
+    }
+    return true;
+  });
+  
+  // trim cache
+  var keysToRemove = this.cacheKeys.slice(this.maxSize, Infinity);
+  keysToRemove.forEach(function (item){
+    var k = item.key;
+    delete this.cache[k];
+  });
+  this.cacheKeys = this.cacheKeys.slice(0, this.maxSize);
+};
+
+Service.prototype.cacheOff = function (){
+  this.cache = undefined;
+  this.cacheKeys = undefined;
+};
+
+Service.prototype.cacheReset = function (){
+  this.cache = {}; // key, value
+  this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+};
+
 // constructor
 function Diogenes (regName){
   // if regName exists I'll use a global registry
@@ -73,54 +248,39 @@ Diogenes.getRegistry = function (regName){
   return new Diogenes(regName);
 };
 
-Diogenes.prototype.addService = function addService(name) {
-  var deps = arguments.length > 2 ? arguments[1] : [];
-  var thirdArg = arguments.length > 3 ? arguments[2] : undefined;
-  var configValidator;
-
-  if (or){
-    if (typeof thirdArg === 'undefined'){
-      configValidator = or.validator();
-    }
-    else if (thirdArg.toString() === 'validator'){
-      configValidator = thirdArg;
-    }
-    else {
-      configValidator = or.validator().match(thirdArg);
-    }
-  }
-  else {
-    configValidator = undefined;
-  }
-
-  var service = arguments[arguments.length - 1];
-
+Diogenes.prototype.service = function service(name) {
   if (typeof name !== "string"){
-    throw new Error('Diogenes: the first argument should be the name of the service (string)');
-  }
-  if (typeof service !== "function"){
-    throw new Error('Diogenes: the last argument should be the service (function)');
+    throw new Error('Diogenes: the name of the service should be a string');
   }
 
-  var func = function (){
-    return {
-      name: name,
-      service: service,
-      deps: deps
-    };
-  };
-
-  if (or) {
-    if (!(name in this.services)){
-      this.services[name] = or();
-    }
-
-    this.services[name].add(configValidator, func);
-  }
-  else {
-    this.services[name] = func;
+  if (!(name in this.services)){
+    this.services[name] = new Service(name, this);
   }
 
+  return this.services[name];
+};
+
+Diogenes.prototype.add = function add(name) {
+  var s = this.service(name);
+  s.add.apply(s, Array.prototype.slice.call(arguments, 1));
+  return this;
+};
+
+Diogenes.prototype.addValue = function addValue(name) {
+  var s = this.service(name);
+  s.addValue.apply(s, Array.prototype.slice.call(arguments, 1));
+  return this;
+};
+
+Diogenes.prototype.addOnce = function addOnce(name) {
+  var s = this.service(name);
+  s.addOnce.apply(s, Array.prototype.slice.call(arguments, 1));
+  return this;
+};
+
+Diogenes.prototype.addValueOnce = function addValueOnce(name) {
+  var s = this.service(name);
+  s.addValueOnce.apply(s, Array.prototype.slice.call(arguments, 1));
   return this;
 };
 
@@ -153,12 +313,12 @@ function getFunc(node, dependencies, globalConfig, ok, ko){
 Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
   var n, adjlists = {}
   for (n in this.services){
-    adjlists[n] = this.services[n](globalConfig);
+    adjlists[n] = this.services[n].get(globalConfig);
   }
   return adjlists;
 };
 
-Diogenes.prototype.removeService = function removeService(name) {
+Diogenes.prototype.remove = function removeService(name) {
   delete this.services[name];
   return this;
 };
@@ -168,10 +328,11 @@ Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalCo
   return dfs(adjlists, name);
 };
 
-Diogenes.prototype.getService = function getService(name, globalConfig, done) {
+Diogenes.prototype.run = function run(name, globalConfig, done) {
   var sorted_services, adjlists;
   var deps = {}; // all dependencies already resolved
-
+  var services = this.services;
+  
   if (typeof globalConfig === "function"){
     done = globalConfig;
     globalConfig = {};
@@ -189,6 +350,7 @@ Diogenes.prototype.getService = function getService(name, globalConfig, done) {
     var func, i = 0;
     if (name){
       deps[name] = dep;
+      services[name].cachePush(globalConfig, dep);
     }
 
     if (sorted_services.length === 0){

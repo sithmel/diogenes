@@ -1,7 +1,7 @@
 {
   "name": "diogenes",
-  "version": "0.0.1",
-  "description": "Diogenes is a services registry.",
+  "version": "0.0.2",
+  "description": "A is a services registry.",
   "main": "src/diogenes.js",
   "scripts": {
     "test": "mocha tests/*.js"
@@ -14,7 +14,7 @@
     "mocha": "^2.1.0"
   },
   "dependencies": {
-    "occamsrazor": "^4.0.0",
+    "occamsrazor": "^4.2.0",
     "setimmediate": "^1.0.4"
   }
 }
