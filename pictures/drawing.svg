@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="drawing.svg">
+  <defs
+     id="defs4">
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0.0"
+       refX="0.0"
+       id="Arrow1Lend"
+       style="overflow:visible;">
+      <path
+         id="path3862"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt;"
+         transform="scale(0.8) rotate(180) translate(12.5,0)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lstart"
+       orient="auto"
+       refY="0.0"
+       refX="0.0"
+       id="Arrow1Lstart"
+       style="overflow:visible">
+      <path
+         id="path3859"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt"
+         transform="scale(0.8) translate(12.5,0)" />
+    </marker>
+    <filter
+       inkscape:collect="always"
+       id="filter3785"
+       x="-0.050560268"
+       width="1.1011205"
+       y="-0.13603122"
+       height="1.2720624">
+      <feGaussianBlur
+         inkscape:collect="always"
+         stdDeviation="6.8015599"
+         id="feGaussianBlur3787" />
+    </filter>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="2.8"
+     inkscape:cx="308.77918"
+     inkscape:cy="714.3989"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1920"
+     inkscape:window-height="1002"
+     inkscape:window-x="0"
+     inkscape:window-y="34"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g3791"
+       transform="matrix(0.24807629,0,0,0.24834642,179.42917,196.63735)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <rect
+         ry="37.142857"
+         y="433.79074"
+         x="257.14285"
+         height="119.99998"
+         width="322.85715"
+         id="rect2985"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)" />
+      <rect
+         style="fill:#eeffaa;stroke:#add700;stroke-width:6.4000001;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         id="rect3755"
+         width="322.85715"
+         height="119.99998"
+         x="248.85712"
+         y="440.07648"
+         ry="37.142857" />
+    </g>
+    <g
+       id="g3824"
+       transform="matrix(0.3910885,0,0,0.3910885,209.47632,240.99605)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <rect
+         transform="matrix(0.63432263,0,0,0.63501336,-71.937902,140.94131)"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect3797"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="23.58621"
+         y="420.39575"
+         x="85.917801"
+         height="76.201591"
+         width="204.79559"
+         id="rect3799"
+         style="fill:#ebdeff;fill-opacity:1;stroke:#a676f8;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <g
+       id="g3836"
+       transform="matrix(0.3910885,0,0,0.3910885,405.16398,171.3733)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <rect
+         ry="37.142857"
+         y="433.79074"
+         x="257.14285"
+         height="119.99998"
+         width="322.85715"
+         id="rect3830"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         transform="matrix(0.63432263,0,0,0.63501336,-83.366477,180.94131)" />
+      <rect
+         style="fill:#ffe9bd;fill-opacity:1;stroke:#f8ca76;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         id="rect3832"
+         width="204.79559"
+         height="76.201591"
+         x="74.489227"
+         y="460.39575"
+         ry="23.58621" />
+    </g>
+    <g
+       id="g3848"
+       transform="matrix(0.3910885,0,0,0.3910885,406.02193,153.05567)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <rect
+         transform="matrix(0.63432263,0,0,0.63501336,-77.652191,-67.63012)"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect3842"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="23.58621"
+         y="211.82433"
+         x="80.203514"
+         height="76.201591"
+         width="204.79559"
+         id="rect3844"
+         style="fill:#bde9ff;fill-opacity:1;stroke:#66c7fa;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <g
+       id="g3868"
+       transform="matrix(0.3910885,0,0,0.3910885,32.677144,326.14113)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <rect
+         ry="37.142857"
+         y="433.79074"
+         x="257.14285"
+         height="119.99998"
+         width="322.85715"
+         id="rect3862"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         transform="matrix(0.63432263,0,0,0.63501336,-44.795048,-179.05869)" />
+      <rect
+         style="fill:#fed1ce;fill-opacity:1;stroke:#ff5f55;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         id="rect3864"
+         width="204.79559"
+         height="76.201591"
+         x="113.06065"
+         y="100.39575"
+         ry="23.58621" />
+    </g>
+    <g
+       id="g3880"
+       transform="matrix(0.3910885,0,0,0.3910885,-101.39121,129.24614)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <rect
+         transform="matrix(0.63432263,0,0,0.63501336,313.77638,-51.91583)"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect3874"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="23.58621"
+         y="227.5386"
+         x="471.63208"
+         height="76.201591"
+         width="204.79559"
+         id="rect3876"
+         style="fill:#f5f5f5;fill-opacity:1;stroke:#b9b9b9;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3884"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       transform="matrix(0.41984482,0,0,0.41984482,-14.96711,306.40435)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><flowRegion
+         id="flowRegion3886"><rect
+           id="rect3888"
+           width="183.34267"
+           height="82.327423"
+           x="238.396"
+           y="157.36702" /></flowRegion><flowPara
+         id="flowPara3890"><flowSpan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Droid Sans;-inkscape-font-specification:Droid Sans"
+           id="flowSpan3892"><flowSpan
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+             id="flowSpan3894">Service1 </flowSpan></flowSpan></flowPara></flowRoot>    <flowRoot
+       transform="matrix(0.41984482,0,0,0.41984482,151.70806,342.76984)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot3016"
+       xml:space="preserve"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><flowRegion
+         id="flowRegion3018"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect3020" /></flowRegion><flowPara
+         id="flowPara3022"><flowSpan
+           id="flowSpan3024"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Droid Sans;-inkscape-font-specification:Droid Sans"><flowSpan
+             id="flowSpan3026"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda">Service2 </flowSpan></flowSpan></flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3028"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       transform="matrix(0.41984482,0,0,0.41984482,148.73888,244.7749)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><flowRegion
+         id="flowRegion3030"><rect
+           id="rect3032"
+           width="183.34267"
+           height="82.327423"
+           x="238.396"
+           y="157.36702" /></flowRegion><flowPara
+         id="flowPara3040"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda">Service3 </flowPara></flowRoot>    <flowRoot
+       transform="matrix(0.41984482,0,0,0.41984482,343.63704,292.26222)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot3051"
+       xml:space="preserve"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><flowRegion
+         id="flowRegion3053"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect3055" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+         id="flowPara3057">Service4 </flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3059"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       transform="matrix(0.41984482,0,0,0.41984482,343.63704,174.07437)"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><flowRegion
+         id="flowRegion3061"><rect
+           id="rect3063"
+           width="183.34267"
+           height="82.327423"
+           x="238.396"
+           y="157.36702" /></flowRegion><flowPara
+         id="flowPara3065"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda">Service5 </flowPara></flowRoot>    <flowRoot
+       transform="matrix(0.41984482,0,0,0.41984482,-8.9061962,159.93224)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot3067"
+       xml:space="preserve"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><flowRegion
+         id="flowRegion3069"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect3071" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+         id="flowPara3073">Service6 </flowPara></flowRoot>    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 156.8005,387.84468 88.13915,21.21656"
+       id="path3075"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3868"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3824"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 152.4047,366.64851 91.83726,-33.25064"
+       id="path3077"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3868"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3791"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="M 319.70788,306.26293 440.30942,263.22101"
+       id="path3079"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3791"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3848"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 322.59502,328.53389 113.43304,26.72384"
+       id="path3081"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3791"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 154.77187,247.99767 101.63017,56.37006"
+       id="path3083"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3880"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3791"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:none;marker-end:url(#Arrow1Lend)"
+       d="M 163.15187,233.46753 437.3886,247.13862"
+       id="path3085"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3880"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3848"
+       inkscape:connection-end-point="d4"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"
+       inkscape:export-filename="/home/sithmel/path3086.png" />
+    <g
+       inkscape:export-ydpi="90"
+       inkscape:export-xdpi="90"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       transform="matrix(0.24807629,0,0,0.24834642,179.42917,237.35164)"
+       id="g5405">
+      <rect
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect5407"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="37.142857"
+         y="440.07648"
+         x="248.85712"
+         height="119.99998"
+         width="322.85715"
+         id="rect5409"
+         style="fill:#eeffaa;stroke:#add700;stroke-width:6.4000001;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.8278864;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:3.31154572, 3.31154572;stroke-dashoffset:1.159041"
+       id="rect5411"
+       width="101.24354"
+       height="99.457832"
+       x="229.62823"
+       y="288.41901"
+       ry="20.282557"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <flowRoot
+       inkscape:export-ydpi="90"
+       inkscape:export-xdpi="90"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       transform="matrix(0.41984482,0,0,0.41984482,148.38174,285.56061)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot5413"
+       xml:space="preserve"><flowRegion
+         id="flowRegion5415"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect5417" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+         id="flowPara5419">Service3 </flowPara></flowRoot>    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 283.80272,376.44462 0.94289,28.96337"
+       id="path5423"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g5405"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3824"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 323.31342,360.97514 110.98244,2.75011"
+       id="path5425"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g5405"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3086.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90" />
+  </g>
+</svg>

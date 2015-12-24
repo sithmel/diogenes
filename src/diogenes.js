@@ -1,53 +1,23 @@
 (function (){
 "use strict";
 
+/*
+
+Imports
+
+*/
+
 if (typeof exports === 'object'){
   require("setimmediate");
 }
 
 var or = typeof exports === 'object' ? require('occamsrazor') : window.occamsrazor;
 
-// depth first search
-function dfs (adjlists, startingNode){
-  var already_visited = {};
-  var already_backtracked = {};
-  var adjlist, node;
-  var stack = [startingNode];
-  var out = [];
+/*
 
-  while (stack.length){
-    node = stack[stack.length - 1];
-    already_visited[node] = true;
+Service utilities
 
-    if (!(node in adjlists)){
-      throw new Error("Diogenes: missing dependency: " + node);
-    }
-
-    adjlist = adjlists[node].deps.filter(function (adj){
-      if (adj in already_visited && !(adj in already_backtracked)){
-        throw new Error("Diogenes: circular dependency: " + adj);
-      }
-      return !(adj in already_visited);
-    });
-
-    if (adjlist.length){
-      stack.push(adjlist[0]);
-    }
-    else {
-      already_backtracked[node] = true; // detecting circular deps
-      out.push(node);
-      stack.pop();
-    }
-  }
-  return out;
-}
-
-// initialize global registries
-var _registries = typeof window == "undefined" ? global : window;
-
-if(!_registries._diogenes_registries){
-  _registries._diogenes_registries = {};
-}
+*/
 
 function getArgs(args){
   var out = {};
@@ -67,6 +37,12 @@ function getArgs(args){
   out.func = args[args.length - 1];  
   return out;
 }
+
+/*
+
+Service object
+
+*/
 
 function Service(name, registry){
   this.name = name;
@@ -144,8 +120,16 @@ Service.prototype.get = function (config){
       };      
     }
   }
-  
-  return this.service(config);
+  try{
+    return this.service(config);
+  }
+  catch (e){
+    // this should throw only if this service
+    // is part of the execution graph
+    return {
+      error: e
+    };      
+  }
 };
 
 Service.prototype.run = function (globalConfig, done){
@@ -162,16 +146,26 @@ Service.prototype.cacheOn = function (opts){
   }
   else if (typeof key === "string"){
     this.key = function (config){
-      return JSON.stringify(config[key]);
+      if (typeof config[key] === "object"){
+        return JSON.stringify(config[key]);      
+      }
+      else {
+        return config[key];
+      }
     };
   }
   else if (Array.isArray(key)){
     this.key = function (config){
       var value = config;
       for (var i = 0; i < key.length; i++){
-        value = config[key[i]];
+        value = value[key[i]];
       }
-      return JSON.stringify(value);
+      if (typeof value === "object"){
+        return JSON.stringify(value);      
+      }
+      else {
+        return value;
+      }
     };
   }
   else {
@@ -189,7 +183,6 @@ Service.prototype.cacheOn = function (opts){
 
 Service.prototype.cachePush = function (config, output){
   if (!this.cache) return;
-  this.cachePurge();
   var k = this.key(config);
   if (k in this.cache) return;
   this.cache[k] = output;
@@ -197,27 +190,32 @@ Service.prototype.cachePush = function (config, output){
     key: k,
     ts: Date.now()
   });
+  this.cachePurge();
 };
 
 Service.prototype.cachePurge = function (){
   if (!this.cache) return;
   // remove old entries
+  var maxAge = this.maxAge;
+  var maxSize = this.maxSize;
+  var cache = this.cache;
+  
   var now = Date.now();
   this.cacheKeys = this.cacheKeys.filter(function (item){
-    if (item.ts + this.maxAge < now ){
-      delete this.cache[item.key];
+    if (item.ts + maxAge < now ){
+      delete cache[item.key];
       return false;
     }
     return true;
   });
   
   // trim cache
-  var keysToRemove = this.cacheKeys.slice(this.maxSize, Infinity);
+  var keysToRemove = this.cacheKeys.slice(maxSize, Infinity);
   keysToRemove.forEach(function (item){
     var k = item.key;
-    delete this.cache[k];
+    delete cache[k];
   });
-  this.cacheKeys = this.cacheKeys.slice(0, this.maxSize);
+  this.cacheKeys = this.cacheKeys.slice(0, maxSize);
 };
 
 Service.prototype.cacheOff = function (){
@@ -230,7 +228,86 @@ Service.prototype.cacheReset = function (){
   this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
 };
 
-// constructor
+/*
+
+Registry utilities
+
+*/
+// depth first search
+function dfs (adjlists, startingNode){
+  var already_visited = {};
+  var already_backtracked = {};
+  var adjlist, node;
+  var stack = [startingNode];
+  var out = [];
+
+  while (stack.length){
+    node = stack[stack.length - 1];
+    already_visited[node] = true;
+
+    if (!(node in adjlists)){
+      throw new Error("Diogenes: missing dependency: " + node);
+    }
+
+    if (adjlists[node].error) throw adjlists[node].error;
+    adjlist = adjlists[node].deps.filter(function (adj){
+      if (adj in already_visited && !(adj in already_backtracked)){
+        throw new Error("Diogenes: circular dependency: " + adj);
+      }
+      return !(adj in already_visited);
+    });
+
+    if (adjlist.length){
+      stack.push(adjlist[0]);
+    }
+    else {
+      already_backtracked[node] = true; // detecting circular deps
+      out.push(node);
+      stack.pop();
+    }
+  }
+  return out;
+}
+
+function getFunc(node, dependencies, globalConfig, ok, ko){
+  var deps = {};
+  for (var i = 0; i < node.deps.length; i++){
+    if (!(node.deps[i] in dependencies)) {
+      return;
+    }
+    deps[node.deps[i]] = dependencies[node.deps[i]];
+  }
+
+  return function (){
+    try {
+      node.service(globalConfig, deps, function (err, dep){
+        if (err){
+          return ko(err);
+        }
+        else {
+          return ok(node.name, dep);
+        }
+      });
+    }
+    catch (e){
+      ko(e);
+    }
+  };
+}
+
+// initialize global registries
+var _registries = typeof window == "undefined" ? global : window;
+
+if(!_registries._diogenes_registries){
+  _registries._diogenes_registries = {};
+}
+
+/*
+
+Registry object
+
+*/
+
 function Diogenes (regName){
   // if regName exists I'll use a global registry
   if (regName){
@@ -284,32 +361,6 @@ Diogenes.prototype.addValueOnce = function addValueOnce(name) {
   return this;
 };
 
-function getFunc(node, dependencies, globalConfig, ok, ko){
-  var deps = {};
-  for (var i = 0; i < node.deps.length; i++){
-    if (!(node.deps[i] in dependencies)) {
-      return;
-    }
-    deps[node.deps[i]] = dependencies[node.deps[i]];
-  }
-
-  return function (){
-    try {
-      node.service(globalConfig, deps, function (err, dep){
-        if (err){
-          return ko(err);
-        }
-        else {
-          return ok(node.name, dep);
-        }
-      });
-    }
-    catch (e){
-      ko(e);
-    }
-  };
-}
-
 Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
   var n, adjlists = {}
   for (n in this.services){
@@ -325,11 +376,12 @@ Diogenes.prototype.remove = function removeService(name) {
 
 Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalConfig) {
   var adjlists = this._filterByConfig(globalConfig);
-  return dfs(adjlists, name);
+  var sorted_services = dfs(adjlists, name);
+  return sorted_services;
 };
 
 Diogenes.prototype.run = function run(name, globalConfig, done) {
-  var sorted_services, adjlists;
+  var adjlists, sorted_services;
   var deps = {}; // all dependencies already resolved
   var services = this.services;
   
@@ -372,9 +424,13 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
   return this;
 };
 
-if (or){
-  Diogenes.validator = or.validator;
-}
+/*
+
+Exports
+
+*/
+
+Diogenes.validator = or.validator;
 
 if (typeof exports === 'object'){
   module.exports = Diogenes;

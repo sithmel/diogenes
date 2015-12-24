@@ -1,0 +1,538 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="drawing2.svg">
+  <defs
+     id="defs4">
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0.0"
+       refX="0.0"
+       id="Arrow1Lend"
+       style="overflow:visible;">
+      <path
+         id="path3862"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt;"
+         transform="scale(0.8) rotate(180) translate(12.5,0)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow1Lstart"
+       orient="auto"
+       refY="0.0"
+       refX="0.0"
+       id="Arrow1Lstart"
+       style="overflow:visible">
+      <path
+         id="path3859"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt"
+         transform="scale(0.8) translate(12.5,0)" />
+    </marker>
+    <filter
+       inkscape:collect="always"
+       id="filter3785"
+       x="-0.050560268"
+       width="1.1011205"
+       y="-0.13603122"
+       height="1.2720624">
+      <feGaussianBlur
+         inkscape:collect="always"
+         stdDeviation="6.8015599"
+         id="feGaussianBlur3787" />
+    </filter>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.979899"
+     inkscape:cx="284.64103"
+     inkscape:cy="694.05618"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1920"
+     inkscape:window-height="1002"
+     inkscape:window-x="0"
+     inkscape:window-y="34"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g3791"
+       transform="matrix(0.24807629,0,0,0.24834642,179.42917,196.63735)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722">
+      <rect
+         ry="37.142857"
+         y="433.79074"
+         x="257.14285"
+         height="119.99998"
+         width="322.85715"
+         id="rect2985"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)" />
+      <rect
+         style="fill:#eeffaa;stroke:#add700;stroke-width:6.4000001;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         id="rect3755"
+         width="322.85715"
+         height="119.99998"
+         x="248.85712"
+         y="440.07648"
+         ry="37.142857" />
+    </g>
+    <g
+       id="g3824"
+       transform="matrix(0.3910885,0,0,0.3910885,294.11918,269.56748)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722">
+      <rect
+         transform="matrix(0.63432263,0,0,0.63501336,-71.937902,140.94131)"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect3797"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="23.58621"
+         y="420.39575"
+         x="85.917801"
+         height="76.201591"
+         width="204.79559"
+         id="rect3799"
+         style="fill:#ebdeff;fill-opacity:1;stroke:#a676f8;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <g
+       id="g3836"
+       transform="matrix(0.3910885,0,0,0.3910885,405.16398,171.3733)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722">
+      <rect
+         ry="37.142857"
+         y="433.79074"
+         x="257.14285"
+         height="119.99998"
+         width="322.85715"
+         id="rect3830"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         transform="matrix(0.63432263,0,0,0.63501336,-83.366477,180.94131)" />
+      <rect
+         style="fill:#ffe9bd;fill-opacity:1;stroke:#f8ca76;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         id="rect3832"
+         width="204.79559"
+         height="76.201591"
+         x="74.489227"
+         y="460.39575"
+         ry="23.58621" />
+    </g>
+    <g
+       id="g3848"
+       transform="matrix(0.3910885,0,0,0.3910885,207.80765,136.26996)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722">
+      <rect
+         transform="matrix(0.63432263,0,0,0.63501336,-77.652191,-67.63012)"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect3842"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="23.58621"
+         y="211.82433"
+         x="80.203514"
+         height="76.201591"
+         width="204.79559"
+         id="rect3844"
+         style="fill:#bde9ff;fill-opacity:1;stroke:#66c7fa;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <g
+       id="g3868"
+       transform="matrix(0.3910885,0,0,0.3910885,32.677144,326.14113)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722">
+      <rect
+         ry="37.142857"
+         y="433.79074"
+         x="257.14285"
+         height="119.99998"
+         width="322.85715"
+         id="rect3862"
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         transform="matrix(0.63432263,0,0,0.63501336,-44.795048,-179.05869)" />
+      <rect
+         style="fill:#fed1ce;fill-opacity:1;stroke:#ff5f55;stroke-width:4.06187439;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         id="rect3864"
+         width="204.79559"
+         height="76.201591"
+         x="113.06065"
+         y="100.39575"
+         ry="23.58621" />
+    </g>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3884"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       transform="matrix(0.41984482,0,0,0.41984482,-21.752824,304.26149)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722"><flowRegion
+         id="flowRegion3886"><rect
+           id="rect3888"
+           width="209.71294"
+           height="88.282005"
+           x="238.396"
+           y="157.36702" /></flowRegion><flowPara
+         id="flowPara3890"><flowSpan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Droid Sans;-inkscape-font-specification:Droid Sans"
+           id="flowSpan3892"><flowSpan
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+             id="flowSpan3894">Paragraph </flowSpan></flowSpan></flowPara></flowRoot>    <flowRoot
+       transform="matrix(0.41984482,0,0,0.41984482,249.5652,375.62698)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot3016"
+       xml:space="preserve"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722"><flowRegion
+         id="flowRegion3018"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect3020" /></flowRegion><flowPara
+         id="flowPara3022"><flowSpan
+           id="flowSpan3024"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Droid Sans;-inkscape-font-specification:Droid Sans"><flowSpan
+             id="flowSpan3026"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda">count </flowSpan></flowSpan></flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3028"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       transform="matrix(0.41984482,0,0,0.41984482,148.73888,244.7749)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722"><flowRegion
+         id="flowRegion3030"><rect
+           id="rect3032"
+           width="183.34267"
+           height="82.327423"
+           x="238.396"
+           y="157.36702" /></flowRegion><flowPara
+         id="flowPara3040"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda">abstract </flowPara></flowRoot>    <flowRoot
+       transform="matrix(0.41984482,0,0,0.41984482,349.35133,291.54794)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot3051"
+       xml:space="preserve"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722"><flowRegion
+         id="flowRegion3053"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect3055" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+         id="flowPara3057">tokens </flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3059"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       transform="matrix(0.41984482,0,0,0.41984482,165.42276,158.36009)"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722"><flowRegion
+         id="flowRegion3061"><rect
+           id="rect3063"
+           width="183.34267"
+           height="82.327423"
+           x="238.396"
+           y="157.36702" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+         id="flowPara5611">text </flowPara></flowRoot>    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 156.48768,388.99453 174.03174,47.57932"
+       id="path3075"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3868"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3824"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 152.4047,366.64851 91.83726,-33.25064"
+       id="path3077"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3868"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3791"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <g
+       inkscape:export-ydpi="132.49722"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       transform="matrix(0.24807629,0,0,0.24834642,179.42917,237.35164)"
+       id="g5405">
+      <rect
+         style="fill:#000000;fill-opacity:0.6;stroke:none;filter:url(#filter3785)"
+         id="rect5407"
+         width="322.85715"
+         height="119.99998"
+         x="257.14285"
+         y="433.79074"
+         ry="37.142857" />
+      <rect
+         ry="37.142857"
+         y="440.07648"
+         x="248.85712"
+         height="119.99998"
+         width="322.85715"
+         id="rect5409"
+         style="fill:#eeffaa;stroke:#add700;stroke-width:6.4000001;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.8278864;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:3.31154572, 3.31154572;stroke-dashoffset:1.159041"
+       id="rect5411"
+       width="101.24354"
+       height="99.457832"
+       x="229.62823"
+       y="288.41901"
+       ry="20.282557"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <flowRoot
+       inkscape:export-ydpi="132.49722"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       transform="matrix(0.41984482,0,0,0.41984482,148.38174,285.56061)"
+       style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       id="flowRoot5413"
+       xml:space="preserve"><flowRegion
+         id="flowRegion5415"><rect
+           y="157.36702"
+           x="238.396"
+           height="82.327423"
+           width="183.34267"
+           id="rect5417" /></flowRegion><flowPara
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Garuda;-inkscape-font-specification:Garuda"
+         id="flowPara5419">abstract </flowPara></flowRoot>    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 323.31342,360.97514 110.98244,2.75011"
+       id="path5425"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g5405"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 133.79355,365.40475 129.222,-116.49117"
+       id="path5615"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3868"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3848"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path5617"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path5619"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path5621"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path5623"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path5625"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path5627"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-mid:url(#Arrow1Lend)"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path3061"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 387.04472,433.97942 68.10055,-52.74907"
+       id="path4029"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3824"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3836"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="M 456.72644,351.42878 305.55192,248.91358"
+       id="path4399"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3836"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3848"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 282.92519,304.36773 -1.27136,-55.45415"
+       id="path4585"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3791"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g3848"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 156.98444,374.40576 84.18028,-9.6144"
+       id="path4771"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="3"
+       inkscape:connection-start="#g3868"
+       inkscape:connection-start-point="d4"
+       inkscape:connection-end="#g5405"
+       inkscape:connection-end-point="d4"
+       inkscape:export-filename="/home/sithmel/path3087.png"
+       inkscape:export-xdpi="132.49722"
+       inkscape:export-ydpi="132.49722" />
+  </g>
+</svg>
