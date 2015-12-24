@@ -1,7 +1,7 @@
 {
   "name": "diogenes",
-  "version": "0.1.0",
-  "description": "A is a services registry.",
+  "version": "0.1.1",
+  "description": "Defines and executes functions with a common interface (services) configured in a directed acyclic graph",
   "main": "src/diogenes.js",
   "scripts": {
     "test": "mocha tests/*.js"
