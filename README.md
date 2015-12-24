@@ -12,17 +12,17 @@ From functions to services
 --------------------------
 Let's say that you have a function returning an html page. You usually need to execute a certain number of steps (already incapsulated into functions):
 ```js
-    decodeURL(url, function (id){
-      getDB(config, function (db){
-        getDataFromDB(id, function (obj){
-          retrieveTemplate("template.html", function (template){
-            renderTemplate(template, obj, function (html){
-              returnHTML(html)
-            });
-          });
+decodeURL(url, function (id){
+    getDB(config, function (db){
+    getDataFromDB(id, function (obj){
+        retrieveTemplate("template.html", function (template){
+        renderTemplate(template, obj, function (html){
+            returnHTML(html)
         });
-      });
+        });
     });
+    });
+});
 ```
 I am sure you have already seen something like this.
 Well, I can see more than one issue here. The first one, the pyramid of doom, can be solved easily using promises (or other techniques).
@@ -31,18 +31,18 @@ This is awkward as you'll either use the same patterns again and again, or you'l
 
 With Diogenes you can describe the flow of informations in terms of services, describing the relations between them:
 ```js
-    var Diogenes = require('diogenes');
-    var registry = Diogenes.getRegistry();
+var Diogenes = require('diogenes');
+var registry = Diogenes.getRegistry();
 
-    registry.add("id", decodeURL);
-    registry.add("db",  getDB);
-    registry.add("data", ["db", "url"], getDataFromDB); // the array defines the dependencies
-    registry.add("template", retrieveTemplate);
-    registry.add("html", ["template", "data"], renderTemplate);
+registry.add("id", decodeURL);
+registry.add("db",  getDB);
+registry.add("data", ["db", "url"], getDataFromDB); // the array defines the dependencies
+registry.add("template", retrieveTemplate);
+registry.add("html", ["template", "data"], renderTemplate);
 ```
 and let the system do the job:
 ```js
-    registry.run("html", configuration, returnHTML);
+registry.run("html", configuration, returnHTML);
 ```
 Diogenes resolves all the dependency tree for you, executing the services in the right order (even in parallel when possible).
 Then it serves you the result on a silver platter.
@@ -54,7 +54,7 @@ Importing diogenes
 ------------------
 The easiest way to import Diogenes is using commonjs:
 ```js
-    var Diogenes = require('diogenes');
+var Diogenes = require('diogenes');
 ```
 You can also import it as a global module. In that case you should take care of the dependencies (setImmediate and occamsrazor).
 
@@ -62,73 +62,76 @@ Creating a registry
 -------------------
 You can create a registry with:
 ```js
-    var registry = Diogenes.getRegistry();
+var registry = Diogenes.getRegistry();
 ```
 Without arguments you create a "local registry" that is reachable within the scope of the "registry" variable.
 If you pass a name to the constructor you create a global registry that is available everywhere:
 ```js
-    var registry = Diogenes.getRegistry("myregistry");
+var registry = Diogenes.getRegistry("myregistry");
 ```
 Defining services
 -----------------
 A service is defined by a name (a string), a list of dependencies (an optional list of strings) and a function with a specific interface:
 ```js
-    registry.add("text", function (config, deps, next) {
-        var text = ["Diogenes became notorious for his philosophical ",
-          "stunts such as carrying a lamp in the daytime, claiming to ",
-          "be looking for an honest man."].join();
-        next(undefined, text);
-    });
+registry.add("text", function (config, deps, next) {
+    var text = ["Diogenes became notorious for his philosophical ",
+        "stunts such as carrying a lamp in the daytime, claiming to ",
+        "be looking for an honest man."].join();
+    next(undefined, text);
+});
 ```
 if the service is successful I pass undefined as the first argument and the result as second:
 ```js
-    registry.add("tokens", ['text'], function (config, deps, next) {
-        next(undefined, deps.text.split(' '));
-    });
+registry.add("tokens", ['text'], function (config, deps, next) {
+    next(undefined, deps.text.split(' '));
+});
 ```
 The array specifies a list of dependencies. This service depends on the "text" service. The deps argument will contain an attribute for every dependency
 in this example: deps.text.
 ```js
-    registry.add("count", ['tokens'], function (config, deps, next) {
-        next(undefined, deps.tokens.length);
-    });
+registry.add("count", ['tokens'], function (config, deps, next) {
+    next(undefined, deps.tokens.length);
+});
 
-    registry.add("abstract", ['tokens'], function (config, deps, next) {
-        var len = config.abstractLen;
-        var ellipsis = config.abstractEllipsis;
-        next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
-    });
+registry.add("abstract", ['tokens'], function (config, deps, next) {
+    var len = config.abstractLen;
+    var ellipsis = config.abstractEllipsis;
+    next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
+});
 ```
 The "config" argument is passed to all services.
 ```js
-    registry.add("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
-        next(undefined, {
-            count: deps.count,
-            abstract: deps.abstract,
-            text: deps.text
-        });
+registry.add("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
+    next(undefined, {
+        count: deps.count,
+        abstract: deps.abstract,
+        text: deps.text
     });
+});
 ```
+This is how services relates each other:
+![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994527/0fac488c-aa38-11e5-9beb-0bf455ba97cd.png)
+
 Calling a service
 -----------------
 You can call a service using the method getService with the name and the configuration (the same one will be passed as argument to all services).
 ```js
-    registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
-        if (err){
-            console.log("Something went wrong!");
-        }
-        else {
-            console.log("This paragraph is " + p.count + " words long");
-            console.log("The abstract is: " + p.anstract);
-            console.log("This is the original text:");
-            console.log(p.text);            
-        }
-    });
+registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
+    if (err){
+        console.log("Something went wrong!");
+    }
+    else {
+        console.log("This paragraph is " + p.count + " words long");
+        console.log("The abstract is: " + p.anstract);
+        console.log("This is the original text:");
+        console.log(p.text);            
+    }
+});
 ```
 p will be the output of the paragraph service. If any services throws, or returns an error. This function will be executed anyway and the "err" argument will contain the exception.
 Diogenes calls all the services in order. You can get the ordering using:
 ```js
-    registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
+registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
 ```
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
 Diogenes does not follow that order exactly: "count", for example doesn't require to wait for abstract as it depends on tokens only.
@@ -139,29 +142,31 @@ A registry can have more than one service with the same name (and a different se
 The correct service will be chosen using the configuration and an [occamsrazor validator](https://github.com/sithmel/occamsrazor.js#tutorial).
 Diogenes.validator is a copy of occamsrazor.validator (for convenience). Let's say for example that you want to use a different way to get the abstract:
 ```js
-    var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
+var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
 
-    registry.add("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
-        var len = config.abstractLen;
-        var ellipsis = config.abstractEllipsis;
-        next(undefined, deps.text.slice(0, len) + ellipsis);
-    });
+registry.add("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
+    var len = config.abstractLen;
+    var ellipsis = config.abstractEllipsis;
+    next(undefined, deps.text.slice(0, len) + ellipsis);
+});
 ```
 You should notice that specifying a validator you are also able to use a different set of dependencies.
-```js
-    registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
+![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994528/0fade84a-aa38-11e5-92d2-4f4d8f60dc4d.png)
 
-    registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
-        if (err){
-            console.log("Something went wrong!");
-        }
-        else {
-            console.log("This paragraph is " + p.count + " words long");
-            console.log("The abstract is: " + p.anstract);
-            console.log("This is the original text:");
-            console.log(p.text);
-        }
-    });
+```js
+registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
+
+registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
+    if (err){
+        console.log("Something went wrong!");
+    }
+    else {
+        console.log("This paragraph is " + p.count + " words long");
+        console.log("The abstract is: " + p.anstract);
+        console.log("This is the original text:");
+        console.log(p.text);
+    }
+});
 ```
 The key point is that you just extended the system without changing the original code!
 
@@ -170,28 +175,28 @@ Add a value
 addValue is a short cut method you can use if a service returns always the same value (or a singleton object). And it doesn't need any configuration.
 For example the "text" service can become:
 ```js
-    registry.addValue("text", ["Diogenes became notorious for his philosophical ",
-          "stunts such as carrying a lamp in the daytime, claiming to ",
-          "be looking for an honest man."].join());
+registry.addValue("text", ["Diogenes became notorious for his philosophical ",
+        "stunts such as carrying a lamp in the daytime, claiming to ",
+        "be looking for an honest man."].join());
 ```
 Run service only once
 ---------------------
 Some time you may want to execute a service only once and then use a more generic one:
 ```js
-    registry.addOnce("paragraph", [], Diogenes.validator().important(), function (config, deps, next) {
-        next(undefined, "This runs only once");
-    });
+registry.addOnce("paragraph", [], Diogenes.validator().important(), function (config, deps, next) {
+    next(undefined, "This runs only once");
+});
 ```
 Cache a service
 ---------------
 If the result of a service depends on the configuration, or it is heavy to compute, you can cache it.
 You can enable the cache with cacheOn, empty the cache with cacheReset or disable with cacheOff:
 ```js
-    registry.service('count').cacheOn();
+registry.service('count').cacheOn();
 
-    registry.service('count').cacheReset();
+registry.service('count').cacheReset();
 
-    registry.service('count').cacheOff();
+registry.service('count').cacheOff();
 ```
 The cacheOn method takes an object as argument with 3 different arguments:
 
@@ -228,20 +233,20 @@ Diogenes.getRegistry
 --------------------
 Create a registry of services:
 ```js
-    var registry = Diogenes.getRegistry();
+var registry = Diogenes.getRegistry();
 ```
 or
 ```js
-    var registry = new Diogenes();
+var registry = new Diogenes();
 ```
 If you don't pass any argument this registry will be local. And you will need to reach the local variable "registry" to use its services.
 If you pass a string, the registry will use a global variable to store services:
 ```js
-    var registry = Diogenes.getRegistry("myregistry");
+var registry = Diogenes.getRegistry("myregistry");
 ```
 or
 ```js
-    var registry = new Diogenes("myregistry");
+var registry = new Diogenes("myregistry");
 ```
 This is convenient if you want any application register its services to a specific registry.
 
@@ -252,17 +257,17 @@ service
 -------
 Returns a single service. It creates the service if it doesn't exist.
 ```js
-    registry.service("name");
+registry.service("name");
 ```
 add
 ---
 It adds a service to a registry. It has different signatures:
 ```js
-    registry.add(name, func);   
+registry.add(name, func);   
 
-    registry.add(name, dependencies, func);   
+registry.add(name, dependencies, func);   
 
-    registry.add(name, dependencies, validator, func);   
+registry.add(name, dependencies, validator, func);   
 ```
 * The name (mandatory) is a string. It is the name of the service. A registry can have more than one service with the same name BUT they should validate alternatively (see the validator argument).
 * dependencies: it is an array of strings. Every string is the name of a service. This should be executed and its output should be pushed in the function
@@ -281,11 +286,11 @@ addValue
 --------
 It works the same as the add method but instead of adding a service It adds a value. This will be the dependency returned.
 ```js
-    registry.add(name, value);   
+registry.add(name, value);   
 
-    registry.add(name, dependencies, value);   
+registry.add(name, dependencies, value);   
 
-    registry.add(name, dependencies, validator, value);   
+registry.add(name, dependencies, validator, value);   
 ```
 Note: having a value you don't need dependencies. They are still part of the signature of the method for consistency.
 
@@ -293,27 +298,27 @@ addOnce
 -------
 It works the same as add but the service will be returned only one time.
 ```js
-    registry.addOnce(name, func);   
+registry.addOnce(name, func);   
 
-    registry.addOnce(name, dependencies, func);   
+registry.addOnce(name, dependencies, func);   
 
-    registry.addOnce(name, dependencies, validator, func);   
+registry.addOnce(name, dependencies, validator, func);   
 ```
 addValueOnce
 ------------
 It works the same as addValue but the service will be returned only one time.
 ```js
-    registry.addValueOnce(name, value);   
+registry.addValueOnce(name, value);   
 
-    registry.addValueOnce(name, dependencies, value);   
+registry.addValueOnce(name, dependencies, value);   
 
-    registry.addValueOnce(name, dependencies, validator, value);   
+registry.addValueOnce(name, dependencies, validator, value);   
 ```
 remove
 ------
 It remove a service from the registry:
 ```js
-    registry.remove(name);
+registry.remove(name);
 ```
 It returns the registry.
 
@@ -321,7 +326,7 @@ run
 ---
 It executes all the dependency tree required by the service and call the function. All the services are called using config:
 ```js
-    registry.run(name, config, func);
+registry.run(name, config, func);
 ```
 The function takes 2 arguments:
 * an error
@@ -334,21 +339,21 @@ getExecutionOrder
 Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
 Also it will take into consideration what plugins match and caching (a cached items as no dependency!):
 ```js
-    registry.getExecutionOrder(name, config);
+registry.getExecutionOrder(name, config);
 ```
 Chaining
 --------
 add (addValue, addValueOnce, addOnce), remove and run are chainable. So you can do for example:
 ```js
-    registry.add("service1", service1)
-    .add("service1", service2);
-    .add("myservice", ["service1", "service2"], myservice);
+registry.add("service1", service1)
+.add("service1", service2);
+.add("myservice", ["service1", "service2"], myservice);
 ```
 Service's methods
 ==================
 You can get a service with the "service" method.
 ```js
-    var service = registry.service("service1");
+var service = registry.service("service1");
 ```
 All the service methods returns a service instance so they can be chained.
 
@@ -356,59 +361,59 @@ add
 ---
 The same as the add registry method:
 ```js
-    service.add(func);   
+service.add(func);   
 
-    service.add(dependencies, func);   
+service.add(dependencies, func);   
 
-    service.add(dependencies, validator, func);   
+service.add(dependencies, validator, func);   
 ```
 addValue
 --------
 The same as the addValue registry method:
 ```js
-    service.addValue(value);   
+service.addValue(value);   
 
-    service.addValue(dependencies, value);   
+service.addValue(dependencies, value);   
 
-    service.addValue(dependencies, validator, value);   
+service.addValue(dependencies, validator, value);   
 ```
 addOnce
 -------
 The same as the addOnce registry method:
 ```js
-    service.addOnce(func);   
+service.addOnce(func);   
 
-    service.addOnce(dependencies, func);   
+service.addOnce(dependencies, func);   
 
-    service.addOnce(dependencies, validator, func);   
+service.addOnce(dependencies, validator, func);   
 ```
 addValueOnce
 ------------
 The same as the addValueOnce registry method:
 ```js
-    service.addValueOnce(value);   
+service.addValueOnce(value);   
 
-    service.addValueOnce(dependencies, value);   
+service.addValueOnce(dependencies, value);   
 
-    service.addValueOnce(dependencies, validator, value);   
+service.addValueOnce(dependencies, validator, value);   
 ```
 remove
 ------
 The same as the remove registry method:
 ```js
-    service.remove();   
+service.remove();   
 ```
 run
 ---
 The same as the run registry method:
 ```js
-    service.run(config, func);
+service.run(config, func);
 ```
 cacheOn
 -------
 Set the cache for this service on. It takes as argument the cache configuration:
 ```js
-    service.cacheOn(config);
+service.cacheOn(config);
 ```
 The configuration contains 3 parameters:
 
