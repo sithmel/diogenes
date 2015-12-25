@@ -325,6 +325,12 @@ Diogenes.getRegistry = function (regName){
   return new Diogenes(regName);
 };
 
+Diogenes.prototype.bootstrap = function bootstrap(funcs) {
+  for (var i=0; i < funcs.length; i++){
+    funcs[i].apply(this);
+  }
+};
+
 Diogenes.prototype.service = function service(name) {
   if (typeof name !== "string"){
     throw new Error('Diogenes: the name of the service should be a string');

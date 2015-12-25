@@ -3,27 +3,33 @@ Diogenes
 ![Registry as graph](https://upload.wikimedia.org/wikipedia/commons/b/b6/Diogenes_looking_for_a_man_-_attributed_to_JHW_Tischbein.jpg)
 > When asked why he went about with a lamp in broad daylight, Diogenes confessed, "I am looking for a [honest] man."
 
-Diogenes defines and executes functions with a common interface (services) configured in a directed acyclic graph. So it doesn't really searching for a man, just an [honest] service.
+Diogenes defines and executes functions with a common interface (services) configured in a directed acyclic graph.
 
 What is a service
 -----------------
-A service is a function that takes a configuration and a list of dependencies (other services).
-The configuration is common to all services.
+I define as a "service" a function with a specific interface. Its arguments are:
+
+* a configuration, common to all services
+* a list of dependencies (other services)
+* a callback (services are asynchronous by default)
+
+A service outputs a "dependency", this is identified with the a name.
+Services are organized inside registries. The common interface allows to automatise how the dependencies are resolved within the registry.
 
 From functions to services
 --------------------------
 Let's say that you have a function returning an html page. You usually need to execute a certain number of steps (already incapsulated into functions):
 ```js
 decodeURL(url, function (id){
-    getDB(config, function (db){
+  getDB(config, function (db){
     getDataFromDB(id, function (obj){
-        retrieveTemplate("template.html", function (template){
+      retrieveTemplate("template.html", function (template){
         renderTemplate(template, obj, function (html){
-            returnHTML(html)
+          returnHTML(html)
         });
-        });
+      });
     });
-    });
+  });
 });
 ```
 I am sure you have already seen something like this.
@@ -116,7 +122,7 @@ This is how services relates each other:
 
 Calling a service
 -----------------
-You can call a service using the method getService with the name and the configuration (the same one will be passed as argument to all services).
+You can call a service using the method "run" with the name and the configuration (the same one will be passed as argument to all services).
 ```js
 registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
     if (err){
@@ -130,13 +136,13 @@ registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (e
     }
 });
 ```
-p will be the output of the paragraph service. If any services throws, or returns an error. This function will be executed anyway and the "err" argument will contain the exception.
-Diogenes calls all the services in order. You can get the ordering using:
+p will be the output of the paragraph service. If any service throws, or returns an error, the "err" argument will contain the exception.
+Diogenes calls all services in order. You can get the ordering using:
 ```js
 registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
 ```
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
-Diogenes does not follow that order exactly: "count", for example doesn't require to wait for abstract as it depends on tokens only.
+Diogenes does not strictly follow that order: "count", for example doesn't require to wait for abstract as it depends on tokens only.
 
 Plugins
 -------
@@ -157,7 +163,10 @@ You should notice that specifying a validator you are also able to use a differe
 
 ```js
 registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
-
+```
+will output: ["text", "abstract", "tokens", "count", "paragraph"].
+You can run the service as usual:
+```js
 registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
     if (err){
         console.log("Something went wrong!");
@@ -343,6 +352,21 @@ Also it will take into consideration what plugins match and caching (a cached it
 ```js
 registry.getExecutionOrder(name, config);
 ```
+
+bootstrap
+---------
+Helper function. It runs a group of functions with the registry as "this". Useful for initializing the registry.
+```js
+/*module1 fir example*/
+module.exports = function (){
+  this.add('service1', ...);
+};
+/*main*/
+var module1 = require('module1');
+var module2 = require('module2');
+registry.bootstrap([module1, module2]);
+```
+
 Chaining
 --------
 add (addValue, addValueOnce, addOnce), remove and run are chainable. So you can do for example:

@@ -28,6 +28,14 @@ describe("diogenes", function () {
     isAnything = Diogenes.validator();
   });
 
+  describe("bootstrap", function () {
+    it("must run with right context", function () {
+      registry.bootstrap([function (){
+        assert.equal(registry, this);
+      }]);
+    });
+  });
+
   it("must return a service in a simple case (1 function)", function (done) {
     registry.service("hello").add(function (config, deps, next){
       assert.deepEqual(deps, {});
@@ -206,7 +214,6 @@ describe("diogenes", function () {
     registry.service("hello").addValue("hello");
 
     registry.run("hello", {}, function (err, dep){
-      console.log(err)
       assert.equal(dep, 'hello');
       done();
     });
