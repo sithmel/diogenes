@@ -617,5 +617,77 @@ describe("diogenes", function () {
     });
 
   });
+  describe("events", function (done) {
+
+    beforeEach(function (){
+    });
+
+    it("must listen/fire", function (done) {
+      registry.on("test", function (s){
+        assert.equal("test", s);
+        done();
+      });
+      registry.trigger("test");
+    });
+
+    it("must fire on deps", function (done) {
+      var called = false;
+
+      registry.on("world", function (name, dep, config){
+        assert.equal(name, "world");
+        assert.equal(dep, "hello world!");
+        assert.deepEqual(config, {test:1});
+        assert(called);
+        done();
+      });
+
+      registry.on("hello", function (name, dep, config){
+        assert.equal(name, "hello");
+        assert.equal(dep, "hello ");
+        assert.deepEqual(config, {test:1});
+        called = true;
+      });
+      
+      registry.service("hello").add(function (config, deps, next){
+        next(undefined, "hello ");
+      });
+  
+      registry.service("world").add(["hello"], function (config, deps, next){
+        next(undefined, deps.hello + "world!") ;
+      });
+  
+      registry.run("world", {test:1}, function (err, dep){});
+    });
+
+    it("must fire on deps (alternate syntax)", function (done) {
+      var called = false;
+
+      registry.service('world').on(function (name, dep, config){
+        assert.equal(name, "world");
+        assert.equal(dep, "hello world!");
+        assert.deepEqual(config, {test:1});
+        assert(called);
+        done();
+      });
+
+      registry.service('hello').on(function (name, dep, config){
+        assert.equal(name, "hello");
+        assert.equal(dep, "hello ");
+        assert.deepEqual(config, {test:1});
+        called = true;
+      });
+      
+      registry.service("hello").add(function (config, deps, next){
+        next(undefined, "hello ");
+      });
+  
+      registry.service("world").add(["hello"], function (config, deps, next){
+        next(undefined, deps.hello + "world!") ;
+      });
+  
+      registry.run("world", {test:1}, function (err, dep){});
+    });
+
+  });
 
 });

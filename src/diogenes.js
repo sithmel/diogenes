@@ -116,7 +116,8 @@ Service.prototype.get = function (config){
         service: function (config, deps, next){
           next(undefined, hit);
         },
-        deps: [] // no dependencies needed for cached values
+        deps: [], // no dependencies needed for cached values
+        cached: true
       };      
     }
   }
@@ -228,6 +229,27 @@ Service.prototype.cacheReset = function (){
   this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
 };
 
+// events
+Service.prototype.on = function on() {
+  var args = Array.prototype.slice.call(arguments);
+  args.unshift(this.name);
+  this.registry.on.apply(this.registry, args);
+  return this;
+};
+
+Service.prototype.one = function one() {
+  var args = Array.prototype.slice.call(arguments);
+  args.unshift(this.name);
+  this.registry.one.apply(this.registry, args);
+  return this;
+};
+
+Service.prototype.off = function off() {
+  var args = Array.prototype.slice.call(arguments);
+  this.registry.off.apply(this.registry, args);
+  return this;
+};
+
 /*
 
 Registry utilities
@@ -285,7 +307,7 @@ function getFunc(node, dependencies, globalConfig, ok, ko){
           return ko(err);
         }
         else {
-          return ok(node.name, dep);
+          return ok(node.name, dep, node.cached);
         }
       });
     }
@@ -300,6 +322,7 @@ var _registries = typeof window == "undefined" ? global : window;
 
 if(!_registries._diogenes_registries){
   _registries._diogenes_registries = {};
+  _registries._diogenes_event_handlers = {};
 }
 
 /*
@@ -314,14 +337,19 @@ function Diogenes (regName){
     if (!(regName in _registries._diogenes_registries)){
       _registries._diogenes_registries[regName] = {};
     }
+    if (!(regName in _registries._diogenes_event_handlers)){
+      _registries._diogenes_event_handlers[regName] = {};
+    }
     this.services = _registries._diogenes_registries[regName];
+    this.events = _registries._diogenes_event_handlers[regName];
   }
   else {
     this.services = {};
+    this.events = or();
   }
 }
 
-Diogenes.getRegistry = function (regName){
+Diogenes.getRegistry = function getRegistry (regName){
   return new Diogenes(regName);
 };
 
@@ -375,7 +403,7 @@ Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
   return adjlists;
 };
 
-Diogenes.prototype.remove = function removeService(name) {
+Diogenes.prototype.remove = function remove(name) {
   delete this.services[name];
   return this;
 };
@@ -389,8 +417,9 @@ Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalCo
 Diogenes.prototype.run = function run(name, globalConfig, done) {
   var adjlists, sorted_services;
   var deps = {}; // all dependencies already resolved
+  var that = this;
   var services = this.services;
-  
+    
   if (typeof globalConfig === "function"){
     done = globalConfig;
     globalConfig = {};
@@ -404,10 +433,15 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
     return done(e);
   }
 
-  (function resolve(name, dep){
+  (function resolve(name, dep, cached){
     var func, i = 0;
     if (name){
       deps[name] = dep;
+      if (!cached) {
+        setImmediate(function (){
+          that.trigger(name, dep, globalConfig);
+        });        
+      }
       services[name].cachePush(globalConfig, dep);
     }
 
@@ -427,6 +461,31 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
     }
   }());
 
+  return this;
+};
+
+// events
+Diogenes.prototype.on = function on() {
+  var args = Array.prototype.slice.call(arguments);
+  this.events.on.apply(this, args);
+  return this;
+};
+
+Diogenes.prototype.one = function one() {
+  var args = Array.prototype.slice.call(arguments);
+  this.events.one.apply(this, args);
+  return this;
+};
+
+Diogenes.prototype.off = function off() {
+  var args = Array.prototype.slice.call(arguments);
+  this.events.off.apply(this, args);
+  return this;
+};
+
+Diogenes.prototype.trigger = function trigger() {
+  var args = Array.prototype.slice.call(arguments);
+  this.events.trigger.apply(this, args);
   return this;
 };
 

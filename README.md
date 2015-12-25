@@ -217,6 +217,33 @@ The cacheOn method takes an object as argument with 3 different arguments:
 
 Note: a cache hit, will ever never return dependencies. After all if the service has a defined return value it doesn't need to relay on any other service.
     
+Events
+======
+The event system allows to do something when a service is executed.
+You can listen to a service in this way:
+```js
+registry.on('count', function (name, dep, config){
+  // name is "count"
+  // dep is the outout of the count service
+  // config is the one used for the "run" method
+});
+```
+The event system is implemented with occamsrazor (see the doc, especially the "mediator" example). So you can execute the function depending on the arguments (just pass as many validators you need).
+```js
+registry.on(function (name, dep, config){
+  // this is executed for any service
+});
+
+registry.on("count", isLessThan5, useAlternativeClamp, function (name, dep, config){
+  // this is executed for count service 
+  // only if count is less than 5 and
+  // the config passes the "useAlternativeClamp" validator
+});
+```
+Be aware that events are suppressed for cached values and their dependencies! 
+You can also handle the event once with "one" and remove the event handler with "off".
+
+
 Dependencies
 ============
 Diogenes depends on setimmediate and occamsrazor.
@@ -366,6 +393,30 @@ var module1 = require('module1');
 var module2 = require('module2');
 registry.bootstrap([module1, module2]);
 ```
+on
+--
+Attach an event handler. It triggers when an services gets a valid output. You can pass up to 3 validators and the function. The function takes 3 arguments:
+
+* the name of the service
+* the output of the service
+* the config (used for running this service)
+
+```js
+registry.on([validators], function (name, dep, config){
+  ...
+});
+```
+
+one
+---
+The same as "on". The function is executed only once.
+
+off
+---
+Remove an event handler. It takes the previously registered function.
+```js
+registry.off(func);
+```
 
 Chaining
 --------
@@ -454,6 +505,21 @@ It empties and disable the cache.
 cacheReset
 ----------
 It empties the cache.
+
+on/one/off
+----------
+Manage event handlers. It is a alternate syntax to the registry ones.
+```js
+registry.service(name).on([validators], function (name, dep, config){
+  ...
+});
+
+registry.service(name).one([validators], function (name, dep, config){
+  ...
+});
+
+registry.service(name).off(func);
+```
 
 Exceptions
 ==========
