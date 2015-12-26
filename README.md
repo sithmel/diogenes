@@ -7,13 +7,13 @@ Diogenes defines and executes functions with a common interface (services) confi
 
 What is a service
 -----------------
-I define as a "service" a function with a specific interface. Its arguments are:
+I define a "service" as a function with a specific interface. Its arguments are:
 
 * a configuration, common to all services
-* a list of dependencies (other services)
+* a list of dependencies (the output of other services)
 * a callback (services are asynchronous by default)
 
-A service outputs a "dependency", this is identified with the a name.
+A service outputs a "dependency", this is identified with a name.
 Services are organized inside registries. The common interface allows to automatise how the dependencies are resolved within the registry.
 
 From functions to services
@@ -34,8 +34,8 @@ decodeURL(url, function (id){
 ```
 I am sure you have already seen something like this.
 Well, I can see more than one issue here. The first one, the pyramid of doom, can be solved easily using promises (or other techniques).
-But there is a worst issue, you are designing the workflow, how the components interact between them in an imperative way.
-This is awkward as you'll either use the same patterns again and again, or you'll spend a lot of time refactoring the old code trying to  avoid repetition.
+But there is a worst issue, you are designing how the components interact between them, in an imperative way.
+This is awkward as you'll either use the same patterns again and again, or you'll spend a lot of time refactoring the old code trying to avoid repetition.
 
 With Diogenes you can describe the flow of informations in terms of services, describing the relations between them:
 ```js
@@ -52,7 +52,7 @@ and let the system do the job:
 ```js
 registry.run("html", configuration, returnHTML);
 ```
-Diogenes resolves all the dependency tree for you, executing the services in the right order (even in parallel when possible).
+Diogenes resolves the whole dependency tree for you, executing the services in the right order (even in parallel when possible).
 Then it serves you the result on a silver platter.
 
 A step by step example
@@ -88,7 +88,7 @@ registry.add("text", function (config, deps, next) {
     next(undefined, text);
 });
 ```
-if the service is successful I pass undefined as the first argument and the result as second:
+if the service is successful it passes undefined as the first argument and the result as second. The first argument will contain an exception if the service fails:
 ```js
 registry.add("tokens", ['text'], function (config, deps, next) {
     next(undefined, deps.text.split(' '));
@@ -107,7 +107,7 @@ registry.add("abstract", ['tokens'], function (config, deps, next) {
     next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
 });
 ```
-The "config" argument is passed to all services.
+The same "config" argument is passed to all services.
 ```js
 registry.add("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
     next(undefined, {
@@ -142,7 +142,7 @@ Diogenes calls all services in order. You can get the ordering using:
 registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
 ```
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
-Diogenes does not strictly follow that order: "count", for example doesn't require to wait for abstract as it depends on tokens only.
+Diogenes does not strictly follow that order: "count", for example doesn't require to wait for "abstract" as it depends on "tokens" only.
 
 Plugins
 -------
@@ -224,11 +224,11 @@ You can listen to a service in this way:
 ```js
 registry.on('count', function (name, dep, config){
   // name is "count"
-  // dep is the outout of the count service
-  // config is the one used for the "run" method
+  // dep is the outout of the "count" service
+  // config is the usual one used in the "run" method
 });
 ```
-The event system is implemented with occamsrazor (see the doc, especially the "mediator" example). So you can execute the function depending on the arguments (just pass as many validators you need).
+The event system is implemented with occamsrazor (see the doc, especially the "mediator" example https://github.com/sithmel/occamsrazor.js#implementing-a-mediator-with-occamsrazor). So you can execute the function depending on the arguments (just pass as many validators you need).
 ```js
 registry.on(function (name, dep, config){
   // this is executed for any service
@@ -239,6 +239,12 @@ registry.on("count", isLessThan5, useAlternativeClamp, function (name, dep, conf
   // only if count is less than 5 and
   // the config passes the "useAlternativeClamp" validator
 });
+
+registry.on(/count.*/, function (name, dep, config){
+  // this is executed for any service with the name that matches 
+  // that regular expression
+});
+
 ```
 Be aware that events are suppressed for cached values and their dependencies! 
 You can also handle the event once with "one" and remove the event handler with "off".
@@ -251,7 +257,7 @@ Diogenes depends on setimmediate and occamsrazor.
 How does it work
 ================
 A lot of the things going on requires a bit of knowedge of occamsrazor (https://github.com/sithmel/occamsrazor.js).
-Basically a service is a occamsrazor adapter's registry (identified with a name). When you add a function you are adding an adapter to the registry. This adapter will return the function and the dependencies when called with the configuration as argument.
+Basically a service is an occamsrazor adapter's registry (identified with a name). When you add a function you are adding an adapter to the registry. This adapter will return the function and the dependencies when called with the configuration as argument.
 When you try running a service the first thing that happen is that diogenes will try to unwrap all the services for discovering what function/dependencies use. This is what can happen:
 
 * the result is not defined because there is no function (or no function matching the configuration) attached to it. If this dependency is necessary it will generate an exception.

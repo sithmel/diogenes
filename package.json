@@ -1,6 +1,6 @@
 {
   "name": "diogenes",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Defines and executes functions with a common interface (services) configured in a directed acyclic graph",
   "main": "src/diogenes.js",
   "scripts": {
