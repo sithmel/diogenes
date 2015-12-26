@@ -688,6 +688,35 @@ describe("diogenes", function () {
       registry.run("world", {test:1}, function (err, dep){});
     });
 
+    it("mustn't fire for cached values", function (done) {
+      var called = 0;
+
+      registry.service('hello').on(function (name, dep, config){
+        assert.equal(name, "hello");
+        assert.equal(dep, "hello");
+        assert.deepEqual(config, {test:1});
+        called++;
+      });
+      
+      registry.service("hello").add(function (config, deps, next){
+        next(undefined, "hello");
+      })
+      .cacheOn();
+  
+      registry.run("hello", {test:1}, function (err, dep){
+        setTimeout(function (){
+          assert.equal(called, 1);
+          registry.run("hello", {test:1}, function (err, dep){
+            setTimeout(function (){
+              assert.equal(called, 1);
+              done();
+            }, 10);
+          });
+        }, 10);
+          
+      });
+    });
+
   });
 
 });

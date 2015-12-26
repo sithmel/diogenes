@@ -267,12 +267,12 @@ function dfs (adjlists, startingNode){
     node = stack[stack.length - 1];
     already_visited[node] = true;
 
-    if (!(node in adjlists)){
+    if (!adjlists(node)){
       throw new Error("Diogenes: missing dependency: " + node);
     }
 
-    if (adjlists[node].error) throw adjlists[node].error;
-    adjlist = adjlists[node].deps.filter(function (adj){
+    if (adjlists(node).error) throw adjlists(node).error;
+    adjlist = adjlists(node).deps.filter(function (adj){
       if (adj in already_visited && !(adj in already_backtracked)){
         throw new Error("Diogenes: circular dependency: " + adj);
       }
@@ -396,11 +396,15 @@ Diogenes.prototype.addValueOnce = function addValueOnce(name) {
 };
 
 Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
-  var n, adjlists = {}
-  for (n in this.services){
-    adjlists[n] = this.services[n].get(globalConfig);
-  }
-  return adjlists;
+  var cache = {};
+  var services = this.services;
+  return function (name){
+    if (!(name in cache)){
+      if (!(name in services)) return;
+      cache[name] = services[name].get(globalConfig)
+    }
+    return cache[name];
+  };
 };
 
 Diogenes.prototype.remove = function remove(name) {
@@ -450,7 +454,7 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
     }
 
     while (i < sorted_services.length){
-      func = getFunc(adjlists[sorted_services[i]], deps, globalConfig, resolve, done)
+      func = getFunc(adjlists(sorted_services[i]), deps, globalConfig, resolve, done)
       if (func){
         sorted_services.splice(i, 1);
         setImmediate(func);
