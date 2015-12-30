@@ -93,6 +93,37 @@ describe("diogenes", function () {
     });
   });
 
+  it("must stop resolving deps on error", function (done) {
+    var called = false;
+    registry.service("1").add(function (config, deps, next){
+      next(new Error('broken'));
+    });
+
+    registry.service("2").add(function (config, deps, next){
+      next(undefined, "2") ;
+    });
+
+    registry.service("3").add(["2"], function (config, deps, next){
+      called = true;
+      next(undefined, "3") ;
+    });
+
+    registry.service("4").add(["1", "3"], function (config, deps, next){
+      next(undefined, "4") ;
+    });
+
+    registry.run("4", {}, function (err, dep){
+      assert.instanceOf(err, Error);
+      assert.equal(err.message, 'broken');
+    });
+    
+    setTimeout(function (){
+      assert.equal(called, false);
+      done();      
+    }, 10);
+
+  });
+
   it("must return a service in a simple case (2 functions)", function (done) {
     registry.service("hello").add(function (config, deps, next){
       assert.deepEqual(deps, {});

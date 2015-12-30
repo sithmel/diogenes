@@ -319,9 +319,9 @@ registry.add(name, dependencies, validator, func);
 * The function (mandatory) is a function that returns a service.
 
 The function will have these arguments (config, deps, next):
-* config is a value passed to all services when getService is invoked
-* deps is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
-* next is the function called with the output of this service: next(undefined, output)
+* "config" is a value passed to all services when "run" is invoked
+* "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
+* "next" is the function called with the output of this service: next(undefined, output)
 * If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')). 
 
 It returns the registry.
@@ -536,8 +536,8 @@ The library is currently able to detect and throws exceptions in a few cases:
 * more than one plug-in matches (using a validator)
 * the service returns or throws an exception
 
-The first 3 exceptions can be thrown by getExecutionOrder and getService.
-The last one only using getService.
+The first 3 exceptions can be thrown by "getExecutionOrder" and "run".
+The last one only using "run".
 
 Tricks and tips
 ===============

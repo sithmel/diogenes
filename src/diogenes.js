@@ -291,7 +291,7 @@ function dfs (adjlists, startingNode){
   return out;
 }
 
-function getFunc(node, dependencies, globalConfig, ok, ko){
+function getFunc(node, dependencies, globalConfig, callback){
   var deps = {};
   for (var i = 0; i < node.deps.length; i++){
     if (!(node.deps[i] in dependencies)) {
@@ -304,15 +304,15 @@ function getFunc(node, dependencies, globalConfig, ok, ko){
     try {
       node.service(globalConfig, deps, function (err, dep){
         if (err){
-          return ko(err);
+          return callback(err);
         }
         else {
-          return ok(node.name, dep, node.cached);
+          return callback(undefined, node.name, dep, node.cached);
         }
       });
     }
     catch (e){
-      ko(e);
+      callback(e);
     }
   };
 }
@@ -420,6 +420,7 @@ Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalCo
 
 Diogenes.prototype.run = function run(name, globalConfig, done) {
   var adjlists, sorted_services;
+  var errored = false;
   var deps = {}; // all dependencies already resolved
   var that = this;
   var services = this.services;
@@ -437,8 +438,14 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
     return done(e);
   }
 
-  (function resolve(name, dep, cached){
+  (function resolve(err, name, dep, cached){
     var func, i = 0;
+    
+    if (err) {
+      errored = true;
+      return done(err);
+    }
+    
     if (name){
       deps[name] = dep;
       if (!cached) {
@@ -449,12 +456,16 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
       services[name].cachePush(globalConfig, dep);
     }
 
+    if (errored){
+      return; // if any service previously failed, I won't go on
+    }
+
     if (sorted_services.length === 0){
       return done(undefined, dep);
     }
 
     while (i < sorted_services.length){
-      func = getFunc(adjlists(sorted_services[i]), deps, globalConfig, resolve, done)
+      func = getFunc(adjlists(sorted_services[i]), deps, globalConfig, resolve)
       if (func){
         sorted_services.splice(i, 1);
         setImmediate(func);
