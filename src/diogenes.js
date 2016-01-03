@@ -34,7 +34,7 @@ function getArgs(args){
     out.validator = or.validator().match(args[1]);
   }
 
-  out.func = args[args.length - 1];  
+  out.func = args[args.length - 1];
   return out;
 }
 
@@ -57,14 +57,14 @@ Service.prototype._wrap = function (func, deps, isValue){
   if (!isValue && typeof func !== "function"){
     throw new Error('Diogenes: expecting a function as last argument');
   }
-  
+
   if(!isValue){
     service = func;
   }
   else {
     service = function (conf, deps, next){
       return next(undefined, func);
-    };    
+    };
   }
 
   return function (){
@@ -73,7 +73,7 @@ Service.prototype._wrap = function (func, deps, isValue){
       service: service,
       deps: deps
     };
-  };  
+  };
 };
 
 Service.prototype.add = function (){
@@ -118,7 +118,7 @@ Service.prototype.get = function (config){
         },
         deps: [], // no dependencies needed for cached values
         cached: true
-      };      
+      };
     }
   }
   try{
@@ -129,7 +129,7 @@ Service.prototype.get = function (config){
     // is part of the execution graph
     return {
       error: e
-    };      
+    };
   }
 };
 
@@ -148,7 +148,7 @@ Service.prototype.cacheOn = function (opts){
   else if (typeof key === "string"){
     this.key = function (config){
       if (typeof config[key] === "object"){
-        return JSON.stringify(config[key]);      
+        return JSON.stringify(config[key]);
       }
       else {
         return config[key];
@@ -162,7 +162,7 @@ Service.prototype.cacheOn = function (opts){
         value = value[key[i]];
       }
       if (typeof value === "object"){
-        return JSON.stringify(value);      
+        return JSON.stringify(value);
       }
       else {
         return value;
@@ -172,7 +172,7 @@ Service.prototype.cacheOn = function (opts){
   else {
     this.key = function (config){
       return '_default';
-    }    
+    }
   }
 
   this.cache = {}; // key, value
@@ -200,7 +200,7 @@ Service.prototype.cachePurge = function (){
   var maxAge = this.maxAge;
   var maxSize = this.maxSize;
   var cache = this.cache;
-  
+
   var now = Date.now();
   this.cacheKeys = this.cacheKeys.filter(function (item){
     if (item.ts + maxAge < now ){
@@ -209,7 +209,7 @@ Service.prototype.cachePurge = function (){
     }
     return true;
   });
-  
+
   // trim cache
   var keysToRemove = this.cacheKeys.slice(maxSize, Infinity);
   keysToRemove.forEach(function (item){
@@ -227,6 +227,21 @@ Service.prototype.cacheOff = function (){
 Service.prototype.cacheReset = function (){
   this.cache = {}; // key, value
   this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+};
+
+// on error
+Service.prototype.onErrorReturn = function (value){
+  this.onError = function (config) {
+    return value;
+  };
+};
+
+Service.prototype.onErrorExecute = function (func){
+  this.onError = func;
+};
+
+Service.prototype.onErrorThrow = function (){
+  this.onError = undefined;
 };
 
 // events
@@ -291,28 +306,38 @@ function dfs (adjlists, startingNode){
   return out;
 }
 
-function getFunc(node, dependencies, globalConfig, callback){
+function getFunc(node, onError, dependencies, globalConfig, callback){
   var deps = {};
+  var error = false;
   for (var i = 0; i < node.deps.length; i++){
     if (!(node.deps[i] in dependencies)) {
-      return;
+      return; // I can't execute this because a deps is missing
     }
     deps[node.deps[i]] = dependencies[node.deps[i]];
+    if (dependencies[node.deps[i]] instanceof Error){
+      error = dependencies[node.deps[i]]; // one of the deps is an error
+    }
+  }
+
+  if (error) {
+    return function(){
+      return callback(node.name, typeof onError !== "undefined" ? onError(globalConfig) : error, node.cached);
+    }
   }
 
   return function (){
     try {
       node.service(globalConfig, deps, function (err, dep){
         if (err){
-          return callback(err);
+          return callback(node.name, typeof onError !== "undefined" ? onError(globalConfig) : err, node.cached);
         }
         else {
-          return callback(undefined, node.name, dep, node.cached);
+          return callback(node.name, dep, node.cached);
         }
       });
     }
-    catch (e){
-      callback(e);
+    catch (err){
+      return callback(node.name, typeof onError !== "undefined" ? onError(globalConfig) : err, node.cached);
     }
   };
 }
@@ -395,6 +420,20 @@ Diogenes.prototype.addValueOnce = function addValueOnce(name) {
   return this;
 };
 
+Diogenes.prototype._forEachService = function _forEachService(method) {
+  for (var name in this.services){
+    this.services[name][method]();
+  }
+};
+
+Diogenes.prototype.cacheReset = function cacheReset() {
+  this._forEachService("cacheReset");
+};
+
+Diogenes.prototype.cacheOff = function cacheOff() {
+  this._forEachService("cacheOff");
+};
+
 Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
   var cache = {};
   var services = this.services;
@@ -420,11 +459,11 @@ Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalCo
 
 Diogenes.prototype.run = function run(name, globalConfig, done) {
   var adjlists, sorted_services;
-  var errored = false;
+  //var errored = false;
   var deps = {}; // all dependencies already resolved
   var that = this;
   var services = this.services;
-    
+
   if (typeof globalConfig === "function"){
     done = globalConfig;
     globalConfig = {};
@@ -438,34 +477,33 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
     return done(e);
   }
 
-  (function resolve(err, name, dep, cached){
+  (function resolve(name, dep, cached){
     var func, i = 0;
-    
-    if (err) {
-      errored = true;
-      return done(err);
-    }
-    
+
     if (name){
       deps[name] = dep;
-      if (!cached) {
-        setImmediate(function (){
-          that.trigger(name, dep, globalConfig);
-        });        
-      }
-      services[name].cachePush(globalConfig, dep);
-    }
+      if (!(dep instanceof Error)){
+        services[name].cachePush(globalConfig, dep);
 
-    if (errored){
-      return; // if any service previously failed, I won't go on
+        if (!cached) {
+          setImmediate(function (){
+            that.trigger(name, dep, globalConfig);
+          });
+        }
+      }
     }
 
     if (sorted_services.length === 0){
-      return done(undefined, dep);
+      if (dep instanceof Error){
+        return done(dep);
+      }
+      else {
+        return done(undefined, dep);
+      }
     }
 
     while (i < sorted_services.length){
-      func = getFunc(adjlists(sorted_services[i]), deps, globalConfig, resolve)
+      func = getFunc(adjlists(sorted_services[i]), services[sorted_services[i]].onError, deps, globalConfig, resolve)
       if (func){
         sorted_services.splice(i, 1);
         setImmediate(func);

@@ -44,7 +44,7 @@ var registry = Diogenes.getRegistry();
 
 registry.add("id", decodeURL);
 registry.add("db",  getDB);
-registry.add("data", ["db", "url"], getDataFromDB); // the array defines the dependencies
+registry.add("data", ["db", "url"], getDataFromDB);// arrays define dependencies
 registry.add("template", retrieveTemplate);
 registry.add("html", ["template", "data"], renderTemplate);
 ```
@@ -82,40 +82,41 @@ Defining services
 A service is defined by a name (a string), a list of dependencies (an optional list of strings) and a function with a specific interface:
 ```js
 registry.add("text", function (config, deps, next) {
-    var text = ["Diogenes became notorious for his philosophical ",
-        "stunts such as carrying a lamp in the daytime, claiming to ",
-        "be looking for an honest man."].join();
-    next(undefined, text);
+  var text = ["Diogenes became notorious for his philosophical ",
+      "stunts such as carrying a lamp in the daytime, claiming to ",
+      "be looking for an honest man."].join();
+  next(undefined, text);
 });
 ```
 if the service is successful it passes undefined as the first argument and the result as second. The first argument will contain an exception if the service fails:
 ```js
 registry.add("tokens", ['text'], function (config, deps, next) {
-    next(undefined, deps.text.split(' '));
+  next(undefined, deps.text.split(' '));
 });
 ```
 The array specifies a list of dependencies. This service depends on the "text" service. The deps argument will contain an attribute for every dependency
 in this example: deps.text.
 ```js
 registry.add("count", ['tokens'], function (config, deps, next) {
-    next(undefined, deps.tokens.length);
+  next(undefined, deps.tokens.length);
 });
 
 registry.add("abstract", ['tokens'], function (config, deps, next) {
-    var len = config.abstractLen;
-    var ellipsis = config.abstractEllipsis;
-    next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
+  var len = config.abstractLen;
+  var ellipsis = config.abstractEllipsis;
+  next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
 });
 ```
 The same "config" argument is passed to all services.
 ```js
-registry.add("paragraph", ['text', 'abstract', 'count'], function (config, deps, next) {
+registry.add("paragraph", ['text', 'abstract', 'count'],
+  function (config, deps, next) {
     next(undefined, {
         count: deps.count,
         abstract: deps.abstract,
         text: deps.text
     });
-});
+  });
 ```
 This is how services relates each other:
 ![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994527/0fac488c-aa38-11e5-9beb-0bf455ba97cd.png)
@@ -124,7 +125,8 @@ Calling a service
 -----------------
 You can call a service using the method "run" with the name and the configuration (the same one will be passed as argument to all services).
 ```js
-registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (err, p){
+registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."},
+  function (err, p){
     if (err){
         console.log("Something went wrong!");
     }
@@ -134,12 +136,13 @@ registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."}, function (e
         console.log("This is the original text:");
         console.log(p.text);            
     }
-});
+  });
 ```
 p will be the output of the paragraph service. If any service throws, or returns an error, the "err" argument will contain the exception.
 Diogenes calls all services in order. You can get the ordering using:
 ```js
-registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "..."});
+registry.getExecutionOrder("paragraph",
+  {abstractLen: 5, abstractEllipsis: "..."});
 ```
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
 Diogenes does not strictly follow that order: "count", for example doesn't require to wait for "abstract" as it depends on "tokens" only.
@@ -152,22 +155,26 @@ Diogenes.validator is a copy of occamsrazor.validator (for convenience). Let's s
 ```js
 var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
 
-registry.add("abstract", ['text'], useAlternativeClamp, function (config, deps, next) {
+registry.add("abstract", ['text'], useAlternativeClamp,
+  function (config, deps, next) {
     var len = config.abstractLen;
     var ellipsis = config.abstractEllipsis;
     next(undefined, deps.text.slice(0, len) + ellipsis);
-});
+  });
 ```
 You should notice that specifying a validator you are also able to use a different set of dependencies.
 ![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994528/0fade84a-aa38-11e5-92d2-4f4d8f60dc4d.png)
 
 ```js
-registry.getExecutionOrder("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
+registry.getExecutionOrder("paragraph",
+  {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
 ```
 will output: ["text", "abstract", "tokens", "count", "paragraph"].
 You can run the service as usual:
 ```js
-registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"}, function (err, p){
+registry.run("paragraph",
+  {abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"},
+  function (err, p){
     if (err){
         console.log("Something went wrong!");
     }
@@ -177,7 +184,7 @@ registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "...", abstractClam
         console.log("This is the original text:");
         console.log(p.text);
     }
-});
+  });
 ```
 The key point is that you just extended the system without changing the original code!
 
@@ -187,16 +194,17 @@ addValue is a short cut method you can use if a service returns always the same 
 For example the "text" service can become:
 ```js
 registry.addValue("text", ["Diogenes became notorious for his philosophical ",
-        "stunts such as carrying a lamp in the daytime, claiming to ",
-        "be looking for an honest man."].join());
+  "stunts such as carrying a lamp in the daytime, claiming to ",
+  "be looking for an honest man."].join());
 ```
 Run service only once
 ---------------------
 Some time you may want to execute a service only once and then use a more generic one:
 ```js
-registry.addOnce("paragraph", [], Diogenes.validator().important(), function (config, deps, next) {
+registry.addOnce("paragraph", [], Diogenes.validator().important(),
+  function (config, deps, next) {
     next(undefined, "This runs only once");
-});
+  });
 ```
 Cache a service
 ---------------
@@ -216,7 +224,24 @@ The cacheOn method takes an object as argument with 3 different arguments:
 * maxSize: the length of the cache. Default to infinity
 
 Note: a cache hit, will ever never return dependencies. After all if the service has a defined return value it doesn't need to relay on any other service.
-    
+
+Errors and fallback
+===================
+If a service returns or throws an exception, this is propagated along the execution graph. Services depending on those are not executed. They are considered failed. While this is the default behaviour, it is also possible to configure a service to fallback on a default value:
+```js
+registry.service('count').onErrorReturn(42);
+```
+Or on a function (the usual config is the only argument)
+```js
+registry.service('count').onErrorExecute(function (config){
+  return config.defaultCount;
+});
+```
+This function is called in these cases:
+* the "count" service thrown an exception
+* the "count" service returned an exception
+* one of the dependencies of the "count" service propagated an exception
+
 Events
 ======
 The event system allows to do something when a service is executed.
@@ -235,18 +260,18 @@ registry.on(function (name, dep, config){
 });
 
 registry.on("count", isLessThan5, useAlternativeClamp, function (name, dep, config){
-  // this is executed for count service 
+  // this is executed for count service
   // only if count is less than 5 and
   // the config passes the "useAlternativeClamp" validator
 });
 
 registry.on(/count.*/, function (name, dep, config){
-  // this is executed for any service with the name that matches 
+  // this is executed for any service with the name that matches
   // that regular expression
 });
 
 ```
-Be aware that events are suppressed for cached values and their dependencies! 
+Be aware that events are suppressed for cached values, their dependencies!
 You can also handle the event once with "one" and remove the event handler with "off".
 
 
@@ -256,7 +281,7 @@ Diogenes depends on setimmediate and occamsrazor.
 
 How does it work
 ================
-A lot of the things going on requires a bit of knowedge of occamsrazor (https://github.com/sithmel/occamsrazor.js).
+A lot of the things going on requires a bit of knowledge of occamsrazor (https://github.com/sithmel/occamsrazor.js).
 Basically a service is an occamsrazor adapter's registry (identified with a name). When you add a function you are adding an adapter to the registry. This adapter will return the function and the dependencies when called with the configuration as argument.
 When you try running a service the first thing that happen is that diogenes will try to unwrap all the services for discovering what function/dependencies use. This is what can happen:
 
@@ -322,7 +347,7 @@ The function will have these arguments (config, deps, next):
 * "config" is a value passed to all services when "run" is invoked
 * "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
 * "next" is the function called with the output of this service: next(undefined, output)
-* If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')). 
+* If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')).
 
 It returns the registry.
 
@@ -377,6 +402,14 @@ The function takes 2 arguments:
 * the value of the service required
 
 It returns the registry.
+
+cacheOff
+--------
+It empties and disable the cache of all services.
+
+cacheReset
+----------
+It empties the cache of all services.
 
 getExecutionOrder
 -----------------
@@ -492,6 +525,26 @@ The same as the run registry method:
 ```js
 service.run(config, func);
 ```
+onErrorReturn
+-------------
+If the service or one of the dependencies fails (thrown an exception) it returns "value" as fallback.
+```js
+service.onErrorReturn(value);
+```
+onErrorExecute
+--------------
+If the service or one of the dependencies fails (thrown an exception) it uses the function to calculate a fallback.
+```js
+service.onErrorExecute(function (config){
+  return ...;
+});
+```
+onErrorThrown
+-------------
+It reverts to the default behaviour: on error it propagates the error.
+```js
+service.onErrorThrown();
+```
 cacheOn
 -------
 Set the cache for this service on. It takes as argument the cache configuration:
@@ -527,17 +580,15 @@ registry.service(name).one([validators], function (name, dep, config){
 registry.service(name).off(func);
 ```
 
-Exceptions
-==========
+Errors in the services graph
+============================
 The library is currently able to detect and throws exceptions in a few cases:
 
 * circular dependencies
 * missing dependencies (or incompatible plugin)
-* more than one plug-in matches (using a validator)
-* the service returns or throws an exception
+* more than one plug-in matches
 
-The first 3 exceptions can be thrown by "getExecutionOrder" and "run".
-The last one only using "run".
+These 3 exceptions are thrown by "getExecutionOrder". So it is very useful using this method to check if something is wrong in the graph configuration.
 
 Tricks and tips
 ===============
@@ -545,4 +596,3 @@ Tricks and tips
 Avoid mutations
 ---------------
 Do not mutate the config and deps arguments! It will lead to unpredictable bugs. Clone the object instead.
-

@@ -93,37 +93,6 @@ describe("diogenes", function () {
     });
   });
 
-  it("must stop resolving deps on error", function (done) {
-    var called = false;
-    registry.service("1").add(function (config, deps, next){
-      next(new Error('broken'));
-    });
-
-    registry.service("2").add(function (config, deps, next){
-      next(undefined, "2") ;
-    });
-
-    registry.service("3").add(["2"], function (config, deps, next){
-      called = true;
-      next(undefined, "3") ;
-    });
-
-    registry.service("4").add(["1", "3"], function (config, deps, next){
-      next(undefined, "4") ;
-    });
-
-    registry.run("4", {}, function (err, dep){
-      assert.instanceOf(err, Error);
-      assert.equal(err.message, 'broken');
-    });
-    
-    setTimeout(function (){
-      assert.equal(called, false);
-      done();      
-    }, 10);
-
-  });
-
   it("must return a service in a simple case (2 functions)", function (done) {
     registry.service("hello").add(function (config, deps, next){
       assert.deepEqual(deps, {});
@@ -375,7 +344,7 @@ describe("diogenes", function () {
       .add(["world"], isReversed, function (config, deps, next){
         next(undefined, deps.world + "hello!");
       })
-      
+
       registry.service("world")
       .add(["hello"], isAnything, function (config, deps, next){
         next(undefined, deps.hello + "world!") ;
@@ -534,17 +503,17 @@ describe("diogenes", function () {
     });
 
   });
-  
+
   describe("cache", function () {
     var cached;
-    
+
     beforeEach(function (){
       var c = 0;
       cached = registry.service("cached").add(function (config, deps, next) {
         next(undefined, 'hello ' + c++);
       });
     });
-    
+
     it("must configure cache: default key", function () {
       cached.cacheOn();
       cached.cachePush({}, "result");
@@ -560,7 +529,7 @@ describe("diogenes", function () {
       assert.deepEqual(cached.cache, {'1': 'result1', '2': 'result2'});
       assert.equal(cached.cacheKeys.length, 2);
     });
-    
+
     it("must configure cache: string key/object", function () {
       cached.cacheOn({key: "test"});
       cached.cachePush({test: [1, 2]}, "result1");
@@ -619,13 +588,13 @@ describe("diogenes", function () {
           assert.deepEqual(cached.cache, {'2': 'result2', '3': 'result3'});
           assert.equal(cached.cacheKeys.length, 2);
           done();
-        }, 15);        
+        }, 15);
       }, 10);
     });
 
     it("must reset/switch off cache", function () {
       cached.cacheOn({key: "test"});
-      cached.cachePush({test: 1}, "result1");      
+      cached.cachePush({test: 1}, "result1");
       cached.cachePush({test: 2}, "result2");
       assert.deepEqual(cached.cache, {'1': 'result1', '2': 'result2'});
       cached.cacheReset();
@@ -645,6 +614,19 @@ describe("diogenes", function () {
           done();
         });
       });
+    });
+
+    it("must reset all caches", function () {
+      cached.cacheOn({key: "test"});
+      cached.cachePush({test: 1}, "result1");
+      cached.cachePush({test: 2}, "result2");
+      assert.deepEqual(cached.cache, {'1': 'result1', '2': 'result2'});
+      registry.cacheReset();
+      assert.equal(cached.cacheKeys.length, 0);
+      assert.deepEqual(cached.cache, {});
+      registry.cacheOff();
+      assert.isUndefined(cached.cacheKeys);
+      assert.isUndefined(cached.cache);
     });
 
   });
@@ -678,15 +660,15 @@ describe("diogenes", function () {
         assert.deepEqual(config, {test:1});
         called = true;
       });
-      
+
       registry.service("hello").add(function (config, deps, next){
         next(undefined, "hello ");
       });
-  
+
       registry.service("world").add(["hello"], function (config, deps, next){
         next(undefined, deps.hello + "world!") ;
       });
-  
+
       registry.run("world", {test:1}, function (err, dep){});
     });
 
@@ -707,15 +689,15 @@ describe("diogenes", function () {
         assert.deepEqual(config, {test:1});
         called = true;
       });
-      
+
       registry.service("hello").add(function (config, deps, next){
         next(undefined, "hello ");
       });
-  
+
       registry.service("world").add(["hello"], function (config, deps, next){
         next(undefined, deps.hello + "world!") ;
       });
-  
+
       registry.run("world", {test:1}, function (err, dep){});
     });
 
@@ -728,12 +710,12 @@ describe("diogenes", function () {
         assert.deepEqual(config, {test:1});
         called++;
       });
-      
+
       registry.service("hello").add(function (config, deps, next){
         next(undefined, "hello");
       })
       .cacheOn();
-  
+
       registry.run("hello", {test:1}, function (err, dep){
         setTimeout(function (){
           assert.equal(called, 1);
@@ -744,7 +726,67 @@ describe("diogenes", function () {
             }, 10);
           });
         }, 10);
-          
+
+      });
+    });
+
+  });
+
+  describe("onError", function (done) {
+
+    it("must fallback on error", function (done) {
+      registry.service("hello").add(function (config, deps, next){
+        next(new Error('error'));
+      })
+      .onErrorReturn(42);
+
+      registry.run("hello", {test:1}, function (err, dep){
+        assert.isUndefined(err);
+        assert.equal(dep, 42);
+        done();
+      });
+    });
+
+    it("must fallback on error (undefined)", function (done) {
+      registry.service("hello").add(function (config, deps, next){
+        next(new Error('error'));
+      })
+      .onErrorReturn(undefined);
+
+      registry.run("hello", {test:1}, function (err, dep){
+        assert.isUndefined(err);
+        assert.isUndefined(dep);
+        done();
+      });
+    });
+
+    it("must fallback on error (func)", function (done) {
+      registry.service("hello").add(function (config, deps, next){
+        next(new Error('error'));
+      })
+      .onErrorExecute(function (config){return config.test;});
+
+      registry.run("hello", {test:1}, function (err, dep){
+        assert.isUndefined(err);
+        assert.equal(dep, 1);
+        done();
+      });
+    });
+
+    it("must fallback on propagated error", function (done) {
+      registry.service("hello").add(function (config, deps, next){
+        next(new Error('error'));
+      });
+
+      registry.service("world").add(function (config, deps, next){
+        next(undefined, "world");
+      })
+      .onErrorReturn(42);
+
+      registry.run("world", {test:1}, function (err, dep){
+        assert.isUndefined(err);
+        assert.equal(dep, 42);
+        done();
       });
     });
 
