@@ -19,6 +19,34 @@ describe("diogenes local/global registry", function () {
 
 });
 
+describe("diogenes merge registries", function () {
+
+  var registry1, registry2, registry3;
+
+  beforeEach(function (){
+    registry1 = Diogenes.getRegistry();
+    registry2 = Diogenes.getRegistry();
+    registry1.addValue("answer", 42);
+    registry2.addValue("question", "the answer to life the universe and everything");
+    registry1.on(function (){});
+    registry2.on(function (){});
+    registry3 = registry1.merge(registry2);
+  });
+
+  it("must be different from previous registries", function () {
+    assert.notEqual(registry1, registry3);
+    assert.notEqual(registry2, registry3);
+  });
+
+  it("must copy the events", function () {
+    assert.equal(registry3.events.size(), 2);
+  });
+
+  it("must copy the services", function () {
+    assert.equal(Object.keys(registry3.services).length, 2);
+  });
+});
+
 describe("diogenes", function () {
   var registry,
       isAnything;
@@ -28,9 +56,9 @@ describe("diogenes", function () {
     isAnything = Diogenes.validator();
   });
 
-  describe("bootstrap", function () {
+  describe("init", function () {
     it("must run with right context", function () {
-      registry.bootstrap([function (){
+      registry.init([function (){
         assert.equal(registry, this);
       }]);
     });
@@ -38,11 +66,13 @@ describe("diogenes", function () {
 
   it("must return a service in a simple case (1 function)", function (done) {
     registry.service("hello").add(function (config, deps, next){
+      assert.equal(registry, this);
       assert.deepEqual(deps, {});
       next(undefined, "hello");
     });
 
     registry.run("hello", {}, function (err, dep){
+      assert.equal(registry, this);
       assert.deepEqual(dep, "hello");
       done();
     });
@@ -74,6 +104,7 @@ describe("diogenes", function () {
 
   it("must return undefined (1 function)", function (done) {
     registry.run("hello", {}, function (err, dep){
+      assert.equal(registry, this);
       assert.equal(err.message, 'Diogenes: missing dependency: hello');
       assert.instanceOf(err, Error);
       done();
@@ -87,6 +118,7 @@ describe("diogenes", function () {
     });
 
     registry.run("hello", {}, function (err, dep){
+      assert.equal(registry, this);
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'broken');
       done();
@@ -102,6 +134,23 @@ describe("diogenes", function () {
     registry.service("world").add(["hello"], function (config, deps, next){
       assert.deepEqual(deps, {hello: "hello "});
       next(undefined, deps.hello + "world!") ;
+    });
+
+    registry.run("world", {}, function (err, dep){
+      assert.deepEqual(dep, "hello world!");
+      done();
+    });
+  });
+
+  it("must return a service in a simple case (2 functions) not using next", function (done) {
+    registry.service("hello").add(function (config, deps){
+      assert.deepEqual(deps, {});
+      return "hello ";
+    });
+
+    registry.service("world").add(["hello"], function (config, deps){
+      assert.deepEqual(deps, {hello: "hello "});
+      return deps.hello + "world!" ;
     });
 
     registry.run("world", {}, function (err, dep){
@@ -329,6 +378,42 @@ describe("diogenes", function () {
       assert.deepEqual(list, [ 'A', 'D' ]);
     });
 
+    it("must run without config", function (done) {
+      registry.run("D", function (err, dep){
+        assert.deepEqual(dep, "ABAABCD");
+        done();
+      });
+    });
+
+    it("must run without config and callback", function (done) {
+      registry.run("D");
+      setTimeout(function (){
+        done();
+      }, 20);
+    });
+
+    it("must run more than one service", function (done) {
+      registry.runAll(["A", "D"], {}, function (err, deps){
+        assert.deepEqual(deps.A, "A");
+        assert.deepEqual(deps.D, "ABAABCD");
+        done();
+      });
+    });
+
+    it("must run more than one service, no config", function (done) {
+      registry.runAll(["A", "D"], function (err, deps){
+        assert.deepEqual(deps.A, "A");
+        assert.deepEqual(deps.D, "ABAABCD");
+        done();
+      });
+    });
+
+    it("must run more than one service, no config, no callback", function (done) {
+      registry.runAll(["A", "D"]);
+      setTimeout(function (){
+        done();
+      }, 20);
+    });
   });
 
   describe("correct services in the correct order (using the config/plugin)", function () {
@@ -616,6 +701,25 @@ describe("diogenes", function () {
       });
     });
 
+    it("must pause the cache", function (done) {
+      cached.cacheOn();
+      cached.run({}, function (err, dep){
+        assert.equal(dep, "hello 0");
+        cached.run({}, function (err, dep){
+          assert.equal(dep, "hello 0");
+          cached.cachePause();
+          cached.run({}, function (err, dep){
+            assert.equal(dep, "hello 1");
+            cached.cacheResume();
+            cached.run({}, function (err, dep){
+              assert.equal(dep, "hello 0");
+              done();
+            });
+          });
+        });
+      });
+    });
+
     it("must reset all caches", function () {
       cached.cacheOn({key: "test"});
       cached.cachePush({test: 1}, "result1");
@@ -630,6 +734,7 @@ describe("diogenes", function () {
     });
 
   });
+
   describe("events", function (done) {
 
     beforeEach(function (){

@@ -88,6 +88,14 @@ registry.add("text", function (config, deps, next) {
   next(undefined, text);
 });
 ```
+As an alternative it is also possible to return a value instead of using a callback. It will work anyway:
+```js
+registry.add("text", function (config, deps) {
+  return ["Diogenes became notorious for his philosophical ",
+      "stunts such as carrying a lamp in the daytime, claiming to ",
+      "be looking for an honest man."].join();
+});
+```
 if the service is successful it passes undefined as the first argument and the result as second. The first argument will contain an exception if the service fails:
 ```js
 registry.add("tokens", ['text'], function (config, deps, next) {
@@ -346,7 +354,7 @@ registry.add(name, dependencies, validator, func);
 The function will have these arguments (config, deps, next):
 * "config" is a value passed to all services when "run" is invoked
 * "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
-* "next" is the function called with the output of this service: next(undefined, output)
+* "next" is the function called with the output of this service: next(undefined, output). It is also possible to use a return value instead of next.
 * If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')).
 
 It returns the registry.
@@ -401,6 +409,22 @@ The function takes 2 arguments:
 * an error
 * the value of the service required
 
+The context (this) of this function is the registry itself.
+
+It returns the registry.
+
+runAll
+------
+It is like run but it returns more than one dependency:
+```js
+registry.runAll(names, config, func);
+```
+The function takes 2 arguments:
+* an error
+* the values of the services required in an object
+
+The context (this) of this function is the registry itself.
+
 It returns the registry.
 
 cacheOff
@@ -411,6 +435,14 @@ cacheReset
 ----------
 It empties the cache of all services.
 
+cachePause
+----------
+It pauses the cache of all services.
+
+cacheResume
+-----------
+Resume the cache of all services.
+
 getExecutionOrder
 -----------------
 Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
@@ -419,8 +451,8 @@ Also it will take into consideration what plugins match and caching (a cached it
 registry.getExecutionOrder(name, config);
 ```
 
-bootstrap
----------
+init
+----
 Helper function. It runs a group of functions with the registry as "this". Useful for initializing the registry.
 ```js
 /*module1 fir example*/
@@ -430,7 +462,15 @@ module.exports = function (){
 /*main*/
 var module1 = require('module1');
 var module2 = require('module2');
-registry.bootstrap([module1, module2]);
+registry.init([module1, module2]);
+```
+forEach
+-------
+It runs a callback for any service registered.
+```js
+registry.forEach(function (service, name){
+  // the service is also "this"
+});
 ```
 on
 --
@@ -457,14 +497,53 @@ Remove an event handler. It takes the previously registered function.
 registry.off(func);
 ```
 
+trigger
+-------
+Trigger an event. You can use trigger with a bunch of arguments and, all handlers registered with "on" and "one" compatible with those will be called.
+
 Chaining
 --------
 add (addValue, addValueOnce, addOnce), remove and run are chainable. So you can do for example:
 ```js
 registry.add("service1", service1)
 .add("service1", service2);
-.add("myservice", ["service1", "service2"], myservice);
+.add("service3", ["service1", "service2"], myservice);
 ```
+
+"this" binding
+--------------
+In the "add", "run" and "runAll" callback the "this" is the registry itself. This simplify the case in which you want:
+
+* manipulate the cache of a service (reset for example)
+* communicate between services using the event system
+* run another service
+
+Example:
+```js
+var c = 0;
+registry.add('counter-button', function (config, deps, next){
+  var registry = this;
+  document.getElementById('inc').addEventListener("click", function (){
+    c++;
+    console.log(c);
+  });
+  registry.on("reset-event", function (){
+    c = 0;
+  });
+  next();
+});
+
+registry.add('reset-button', function (config, deps, next){
+  var registry = this;
+  document.getElementById('reset').addEventListener("click", function (){
+    registry.trigger("reset-event");
+  });
+  next();
+});
+
+registry.runAll(['counter-button', 'reset-button']);
+```
+
 Service's methods
 ==================
 You can get a service with the "service" method.
@@ -565,6 +644,14 @@ cacheReset
 ----------
 It empties the cache.
 
+cachePause
+----------
+It pauses the cache. The cache will work as usual but the cached result won't be used
+
+cacheResume
+-----------
+Resume the cache.
+
 on/one/off
 ----------
 Manage event handlers. It is a alternate syntax to the registry ones.
@@ -593,6 +680,52 @@ These 3 exceptions are thrown by "getExecutionOrder". So it is very useful using
 Tricks and tips
 ===============
 
-Avoid mutations
----------------
-Do not mutate the config and deps arguments! It will lead to unpredictable bugs. Clone the object instead.
+Where to apply side effects
+---------------------------
+Do not mutate the configuration argument! It is not meant to be changed during the execution. Instead you can apply side effects through a dependency. See the example of the expressjs middleware below.
+
+Run a service defined in a closure
+----------------------------------
+If you need to run a service that depends on some variable defined in a closure you can use this trick: define a local registry containing the "local" dependencies, merge together the main and the local registry (a new merged registry will be generated), run the service. This is an example using an expressjs middleware:
+```js
+var express = require('express');
+var app = express();
+var Diogenes = require('diogenes');
+var registry = new Diogenes();
+
+registry.add('hello', ['req', 'res'], function (config, deps, next){
+  var username = deps.req.query.username;
+  deps.res.send('hello ' + username);
+  next();
+});
+
+app.get('/', function(req, res){
+  var localReg = new Diogenes();
+  localReg.addValue('req', req);
+  localReg.addValue('res', res);
+  registry.merge(localReg).run('hello');
+});
+
+app.listen(3000);
+```
+
+Using events for disposing/cleaning up
+--------------------------------------
+A service can return a dependency that need to be disposed. In this case you can leverage the event system:
+```js
+var registry = new Diogenes();
+...
+registry.add('database-connection', function (config, deps){
+  var connection = ..... I get the connection here
+
+  this.on('done', function (){
+    connection.dispose();
+  });
+  next();
+});
+
+registry.run('main-service', function (err, dep){
+  ...
+  this.trigger('done');
+});
+```
