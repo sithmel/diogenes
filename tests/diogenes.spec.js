@@ -303,6 +303,36 @@ describe("diogenes", function () {
     });
   });
 
+  it("must read write metadata", function () {
+    registry.addValue("hello", "hello");
+    registry.service("hello").metadata("metadata");
+    assert.equal(registry.service("hello").metadata(), "metadata");
+  });
+
+  describe("documentation", function () {
+    beforeEach(function (){
+      registry.addValue("hello", "hello");
+
+      registry.addValue("world", ["hello"], "world");
+      registry.service("hello").metadata("Metadata");
+      registry.service("hello").description("returns the string hello");
+      registry.service("world").description("returns the string world");
+    });
+
+    it("must read write description", function () {
+      assert.equal(registry.service("hello").description(), "returns the string hello");
+      assert.equal(registry.service("world").description(), "returns the string world");
+    });
+
+    it("must create doc", function () {
+      var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n\n  \n```';
+      var doc2 = 'world\n=====\nreturns the string world\n\nDependencies:\n* hello';
+      assert.equal(registry.service("hello").info(), doc1);
+      assert.equal(registry.service("world").info(),  doc2);
+      assert.equal(registry.info(), doc1 + '\n\n' + doc2);
+    });
+  });
+
   describe("dfs: 4 functions", function (done) {
 
     beforeEach(function (){
@@ -393,7 +423,7 @@ describe("diogenes", function () {
     });
 
     it("must run more than one service", function (done) {
-      registry.runAll(["A", "D"], {}, function (err, deps){
+      registry.run(["A", "D"], {}, function (err, deps){
         assert.deepEqual(deps.A, "A");
         assert.deepEqual(deps.D, "ABAABCD");
         done();
@@ -401,7 +431,7 @@ describe("diogenes", function () {
     });
 
     it("must run more than one service, no config", function (done) {
-      registry.runAll(["A", "D"], function (err, deps){
+      registry.run(["A", "D"], function (err, deps){
         assert.deepEqual(deps.A, "A");
         assert.deepEqual(deps.D, "ABAABCD");
         done();
@@ -409,7 +439,7 @@ describe("diogenes", function () {
     });
 
     it("must run more than one service, no config, no callback", function (done) {
-      registry.runAll(["A", "D"]);
+      registry.run(["A", "D"]);
       setTimeout(function (){
         done();
       }, 20);

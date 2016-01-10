@@ -279,9 +279,50 @@ registry.on(/count.*/, function (name, dep, config){
 });
 
 ```
-Be aware that events are suppressed for cached values, their dependencies!
+Be aware that events are suppressed for cached values and their dependencies!
 You can also handle the event once with "one" and remove the event handler with "off".
+If you need you can also emit your own custom events:
+```js
+registry.on("my custom event", function (name, data1, data2){
+  //
+});
 
+registry.trigger("my custom event", data1, data2);
+```
+
+metadata
+========
+You can store any data related to a service with the metadata:
+```js
+var service = registry.service("abstract")
+
+service.metadata({abstractLen: 10});
+
+registry.add("abstract", ['tokens'], function (config, deps, next) {
+  var len = this.service('abstract').metadata().abstractLen;
+  var ellipsis = config.abstractEllipsis;
+  next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
+});
+```
+This can be practical if you want to save informations that are "service" specific.
+
+Documentation
+=============
+You can attach a a description to a service. This will be used by the method "info" for giving an outline of the services available.
+```js
+var service = registry.service("abstract")
+
+service.description("This service returns the abstract of a paragraph.");
+service.info({}); // I pass the configuration
+
+abstract
+========
+This service returns the abstract of a paragraph.
+Dependencies:
+* text
+* tokens
+```
+You can also use the method "info" of the registry to get all the services.
 
 Dependencies
 ============
@@ -409,19 +450,12 @@ The function takes 2 arguments:
 * an error
 * the value of the service required
 
-The context (this) of this function is the registry itself.
-
-It returns the registry.
-
-runAll
-------
-It is like run but it returns more than one dependency:
+You can also use the alternative syntax:
 ```js
-registry.runAll(names, config, func);
+registry.run(names, config, func);
 ```
-The function takes 2 arguments:
-* an error
-* the values of the services required in an object
+In this case "names" is an array of strings (the dependency you want to be returned).
+The callback will get as second argument an object with a property for any dependency returned.
 
 The context (this) of this function is the registry itself.
 
@@ -501,6 +535,13 @@ trigger
 -------
 Trigger an event. You can use trigger with a bunch of arguments and, all handlers registered with "on" and "one" compatible with those will be called.
 
+info
+----
+It returns a documentation of all services. It requires a configuration to resolve the dependencies.
+```js
+registry.info(config);
+```
+
 Chaining
 --------
 add (addValue, addValueOnce, addOnce), remove and run are chainable. So you can do for example:
@@ -512,7 +553,7 @@ registry.add("service1", service1)
 
 "this" binding
 --------------
-In the "add", "run" and "runAll" callback the "this" is the registry itself. This simplify the case in which you want:
+In the "add" and "run" callback the "this" is the registry itself. This simplify the case in which you want:
 
 * manipulate the cache of a service (reset for example)
 * communicate between services using the event system
@@ -541,7 +582,7 @@ registry.add('reset-button', function (config, deps, next){
   next();
 });
 
-registry.runAll(['counter-button', 'reset-button']);
+registry.run(['counter-button', 'reset-button']);
 ```
 
 Service's methods
@@ -665,6 +706,26 @@ registry.service(name).one([validators], function (name, dep, config){
 });
 
 registry.service(name).off(func);
+```
+metadata
+--------
+Get/set metadata on the service.
+```js
+registry.service(name).metadata(metadata); // set
+registry.service(name).metadata(); // get
+```
+description
+-----------
+Get/set a service description.
+```js
+registry.service(name).description(metadata); // set
+registry.service(name).description(); // get
+```
+info
+----
+It returns a documentation of the service. It requires a configuration to resolve the dependencies.
+```js
+registry.service(name).info(config);
 ```
 
 Errors in the services graph

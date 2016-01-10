@@ -79,7 +79,7 @@ function Service(name, registry){
   this.service = or();
 }
 
-Service.prototype.description = function description(desc){
+Service.prototype.description = function service_description(desc){
   if (typeof desc === 'undefined'){
     return this.desc;
   }
@@ -87,7 +87,7 @@ Service.prototype.description = function description(desc){
   return this;
 };
 
-Service.prototype.metadata = function metadata(meta){
+Service.prototype.metadata = function service_metadata(meta){
   if (typeof meta === 'undefined'){
     return this.meta;
   }
@@ -95,7 +95,33 @@ Service.prototype.metadata = function metadata(meta){
   return this;
 };
 
-Service.prototype._wrap = function (func, deps, isValue){
+Service.prototype.info = function service_info(config){
+  var rows = [this.name];
+  rows.push(this.name.split('').map(function (){return "=";}).join(''));
+  rows.push(this.description());
+
+  var dependencies = this.registry
+  .getExecutionOrder(this.name, config, true)
+  .map(function (d){
+    return "* " + d;
+  });
+
+  if (dependencies.length > 1){
+    rows.push('');
+    rows.push('Dependencies:');
+    rows = rows.concat(dependencies.slice(0, -1));
+  }
+  if (this.metadata()){
+    rows.push('');
+    rows.push('Metadata:');
+    rows.push('```js');
+    rows.push(JSON.stringify(this.metadata()), null, '  ');
+    rows.push('```');
+  }
+  return rows.join('\n');
+};
+
+Service.prototype._wrap = function service__wrap(func, deps, isValue){
   var name = this.name;
   var service;
 
@@ -121,37 +147,37 @@ Service.prototype._wrap = function (func, deps, isValue){
   };
 };
 
-Service.prototype.add = function (){
+Service.prototype.add = function service_add (){
   var args = getArgs(arguments);
   this.service.add(args.validator, this._wrap(args.func, args.deps));
   return this;
 };
 
-Service.prototype.addValue = function (){
+Service.prototype.addValue = function service_addValue (){
   var args = getArgs(arguments);
   this.service.add(args.validator, this._wrap(args.func, args.deps, true));
   return this;
 };
 
-Service.prototype.addOnce = function (){
+Service.prototype.addOnce = function service_addOnce(){
   var args = getArgs(arguments);
   this.service.one(args.validator, this._wrap(args.func, args.deps));
   return this;
 };
 
-Service.prototype.addValueOnce = function (){
+Service.prototype.addValueOnce = function service_addValueOnce(){
   var args = getArgs(arguments);
   this.service.one(args.validator, this._wrap(args.func, args.deps, true));
   return this;
 };
 
-Service.prototype.remove = function (){
+Service.prototype.remove = function service_remove(){
   this.registry.remove(this.name);
 };
 
-Service.prototype.get = function (config){
+Service.prototype.get = function service_get(config, noCache){
   var key, hit;
-  if (this.cache && !this.pauseCache){ // cache check here !!!
+  if (this.cache && !this.pauseCache && !noCache){ // cache check here !!!
     this.cachePurge(); // purge stale cache entries
     key = this.key(config);
     if (key in this.cache){
@@ -178,12 +204,12 @@ Service.prototype.get = function (config){
   }
 };
 
-Service.prototype.run = function (globalConfig, done){
+Service.prototype.run = function service_run(globalConfig, done){
   this.registry.run(this.name, globalConfig, done);
   return this;
 };
 
-Service.prototype.cacheOn = function (opts){
+Service.prototype.cacheOn = function service_cacheOn(opts){
   opts = opts || {};
   var key = opts.key;
 
@@ -227,7 +253,7 @@ Service.prototype.cacheOn = function (opts){
   this.maxSize = opts.maxSize || Infinity;
 };
 
-Service.prototype.cachePush = function (config, output){
+Service.prototype.cachePush = function service_cachePush(config, output){
   if (!this.cache) return;
   var k = this.key(config);
   if (k in this.cache) return;
@@ -239,7 +265,7 @@ Service.prototype.cachePush = function (config, output){
   this.cachePurge();
 };
 
-Service.prototype.cachePurge = function (){
+Service.prototype.cachePurge = function service_cachePurge(){
   if (!this.cache) return;
   // remove old entries
   var maxAge = this.maxAge;
@@ -264,55 +290,55 @@ Service.prototype.cachePurge = function (){
   this.cacheKeys = this.cacheKeys.slice(0, maxSize);
 };
 
-Service.prototype.cacheOff = function (){
+Service.prototype.cacheOff = function service_cacheOff(){
   this.cache = undefined;
   this.cacheKeys = undefined;
 };
 
-Service.prototype.cachePause = function (){
+Service.prototype.cachePause = function service_cachePause(){
   this.pauseCache = true;
 };
 
-Service.prototype.cacheResume = function (){
+Service.prototype.cacheResume = function service_cacheResume(){
   this.pauseCache = undefined;
 };
 
-Service.prototype.cacheReset = function (){
+Service.prototype.cacheReset = function service_cacheReset(){
   this.cache = {}; // key, value
   this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
 };
 
 // on error
-Service.prototype.onErrorReturn = function (value){
+Service.prototype.onErrorReturn = function service_onErrorReturn(value){
   this.onError = function (config) {
     return value;
   };
 };
 
-Service.prototype.onErrorExecute = function (func){
+Service.prototype.onErrorExecute = function service_onErrorExecute(func){
   this.onError = func;
 };
 
-Service.prototype.onErrorThrow = function (){
+Service.prototype.onErrorThrow = function service_onErrorThrow(){
   this.onError = undefined;
 };
 
 // events
-Service.prototype.on = function on() {
+Service.prototype.on = function service_on() {
   var args = Array.prototype.slice.call(arguments);
   args.unshift(this.name);
   this.registry.on.apply(this.registry, args);
   return this;
 };
 
-Service.prototype.one = function one() {
+Service.prototype.one = function service_one() {
   var args = Array.prototype.slice.call(arguments);
   args.unshift(this.name);
   this.registry.one.apply(this.registry, args);
   return this;
 };
 
-Service.prototype.off = function off() {
+Service.prototype.off = function service_off() {
   var args = Array.prototype.slice.call(arguments);
   this.registry.off.apply(this.registry, args);
   return this;
@@ -436,23 +462,31 @@ function Diogenes (regName){
   }
 }
 
-Diogenes.getRegistry = function getRegistry (regName){
+Diogenes.getRegistry = function registry_getRegistry (regName){
   return new Diogenes(regName);
 };
 
-Diogenes.prototype.init = function init(funcs) {
+Diogenes.prototype.init = function registry_init(funcs) {
   for (var i = 0; i < funcs.length; i++){
     funcs[i].apply(this);
   }
 };
 
-Diogenes.prototype.forEach = function forEach(callback) {
+Diogenes.prototype.forEach = function registry_forEach(callback) {
   for (var name in this.services){
     callback.apply(this.services[name], this.services[name], name);
   }
 };
 
-Diogenes.prototype.merge = function merge() {
+Diogenes.prototype.info = function registry_info(config) {
+  var out = [];
+  this.forEach(function (service){
+    out.push(this.info(config));
+  })
+  return out.join('\n\n');
+};
+
+Diogenes.prototype.merge = function registry_merge() {
   var registry = new Diogenes();
 
   var events = Array.prototype.map.call(arguments, function (reg){
@@ -471,7 +505,7 @@ Diogenes.prototype.merge = function merge() {
   return registry;
 };
 
-Diogenes.prototype.service = function service(name) {
+Diogenes.prototype.service = function registry_service(name) {
   if (typeof name !== "string"){
     throw new Error('Diogenes: the name of the service should be a string');
   }
@@ -483,76 +517,76 @@ Diogenes.prototype.service = function service(name) {
   return this.services[name];
 };
 
-Diogenes.prototype.add = function add(name) {
+Diogenes.prototype.add = function registry_add(name) {
   var s = this.service(name);
   s.add.apply(s, Array.prototype.slice.call(arguments, 1));
   return this;
 };
 
-Diogenes.prototype.addValue = function addValue(name) {
+Diogenes.prototype.addValue = function registry_addValue(name) {
   var s = this.service(name);
   s.addValue.apply(s, Array.prototype.slice.call(arguments, 1));
   return this;
 };
 
-Diogenes.prototype.addOnce = function addOnce(name) {
+Diogenes.prototype.addOnce = function registry_addOnce(name) {
   var s = this.service(name);
   s.addOnce.apply(s, Array.prototype.slice.call(arguments, 1));
   return this;
 };
 
-Diogenes.prototype.addValueOnce = function addValueOnce(name) {
+Diogenes.prototype.addValueOnce = function registry_addValueOnce(name) {
   var s = this.service(name);
   s.addValueOnce.apply(s, Array.prototype.slice.call(arguments, 1));
   return this;
 };
 
-Diogenes.prototype._forEachService = function _forEachService(method) {
+Diogenes.prototype._forEachService = function registry__forEachService(method) {
   this.forEach(function (){
     this[method]();
   })
 };
 
-Diogenes.prototype.cacheReset = function cacheReset() {
+Diogenes.prototype.cacheReset = function registry_cacheReset() {
   this._forEachService("cacheReset");
 };
 
-Diogenes.prototype.cacheOff = function cacheOff() {
+Diogenes.prototype.cacheOff = function registry_cacheOff() {
   this._forEachService("cacheOff");
 };
 
-Diogenes.prototype.cachePause = function cachePause() {
+Diogenes.prototype.cachePause = function registry_cachePause() {
   this._forEachService("cachePause");
 };
 
-Diogenes.prototype.cacheResume = function cacheResume() {
+Diogenes.prototype.cacheResume = function registry_cacheResume() {
   this._forEachService("cacheResume");
 };
 
-Diogenes.prototype._filterByConfig = function _filterByConfig(globalConfig) {
+Diogenes.prototype._filterByConfig = function registry__filterByConfig(globalConfig, noCache) {
   var cache = {};
   var services = this.services;
   return function (name){
     if (!(name in cache)){
       if (!(name in services)) return;
-      cache[name] = services[name].get(globalConfig);
+      cache[name] = services[name].get(globalConfig, noCache);
     }
     return cache[name];
   };
 };
 
-Diogenes.prototype.remove = function remove(name) {
+Diogenes.prototype.remove = function registry_remove(name) {
   delete this.services[name];
   return this;
 };
 
-Diogenes.prototype.getExecutionOrder = function getExecutionOrder(name, globalConfig) {
-  var adjlists = this._filterByConfig(globalConfig);
+Diogenes.prototype.getExecutionOrder = function registry_getExecutionOrder(name, globalConfig, noCache) {
+  var adjlists = this._filterByConfig(globalConfig, noCache);
   var sorted_services = dfs(adjlists, name);
   return sorted_services;
 };
 
-Diogenes.prototype.run = function run(name, globalConfig, done) {
+Diogenes.prototype._run = function registry__run(name, globalConfig, done) {
   var adjlists, sorted_services;
   var deps = {}; // all dependencies already resolved
   var that = this;
@@ -616,10 +650,12 @@ Diogenes.prototype.run = function run(name, globalConfig, done) {
   return this;
 };
 
-Diogenes.prototype.runAll = function run(name, globalConfig, done) {
+Diogenes.prototype.run = function registry_run(name, globalConfig, done) {
   var newreg = new Diogenes();
 
   if (typeof name === "string"){
+    this._run(name, globalConfig, done);
+    return this;
     name = [name];
   }
 
@@ -633,25 +669,25 @@ Diogenes.prototype.runAll = function run(name, globalConfig, done) {
 };
 
 // events
-Diogenes.prototype.on = function on() {
+Diogenes.prototype.on = function registry_on() {
   var args = Array.prototype.slice.call(arguments);
   this.events.on.apply(this, args);
   return this;
 };
 
-Diogenes.prototype.one = function one() {
+Diogenes.prototype.one = function registry_one() {
   var args = Array.prototype.slice.call(arguments);
   this.events.one.apply(this, args);
   return this;
 };
 
-Diogenes.prototype.off = function off() {
+Diogenes.prototype.off = function registry_off() {
   var args = Array.prototype.slice.call(arguments);
   this.events.off.apply(this, args);
   return this;
 };
 
-Diogenes.prototype.trigger = function trigger() {
+Diogenes.prototype.trigger = function registry_trigger() {
   var args = Array.prototype.slice.call(arguments);
   this.events.trigger.apply(this, args);
   return this;
