@@ -14,7 +14,7 @@ I define a "service" as a function with a specific interface. Its arguments are:
 * a callback (services are asynchronous by default)
 
 A service outputs a "dependency", this is identified with a name.
-Services are organized inside registries. The common interface allows to automatise how the dependencies are resolved within the registry.
+Services are organized inside registries. The common interface allows to automate how the dependencies are resolved within the registry.
 
 From functions to services
 --------------------------
@@ -33,7 +33,7 @@ decodeURL(url, function (id){
 });
 ```
 I am sure you have already seen something like this.
-Well, I can see more than one issue here. The first one, the pyramid of doom, can be solved easily using promises (or other techniques).
+Well, I can see more than one issue here. The first one, usually called "the pyramid of doom", can be solved easily using promises (or other techniques).
 But there is a worst issue, you are designing how the components interact between them, in an imperative way.
 This is awkward as you'll either use the same patterns again and again, or you'll spend a lot of time refactoring the old code trying to avoid repetition.
 
@@ -88,6 +88,7 @@ registry.add("text", function (config, deps, next) {
   next(undefined, text);
 });
 ```
+If the service is successful it passes undefined as the first argument and the result as second. The first argument will contain an exception if the service fails
 As an alternative it is also possible to return a value instead of using a callback. It will work anyway:
 ```js
 registry.add("text", function (config, deps) {
@@ -96,7 +97,8 @@ registry.add("text", function (config, deps) {
       "be looking for an honest man."].join();
 });
 ```
-if the service is successful it passes undefined as the first argument and the result as second. The first argument will contain an exception if the service fails:
+In this case you can throw an exception in case of errors.
+Let's add another service:
 ```js
 registry.add("tokens", ['text'], function (config, deps, next) {
   next(undefined, deps.text.split(' '));
@@ -115,7 +117,7 @@ registry.add("abstract", ['tokens'], function (config, deps, next) {
   next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
 });
 ```
-The same "config" argument is passed to all services.
+The "config" argument the same for all services. It is passed with the run method below.
 ```js
 registry.add("paragraph", ['text', 'abstract', 'count'],
   function (config, deps, next) {
@@ -147,7 +149,15 @@ registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."},
   });
 ```
 p will be the output of the paragraph service. If any service throws, or returns an error, the "err" argument will contain the exception.
-Diogenes calls all services in order. You can get the ordering using:
+If you need more than one service, you can pass a list of services:
+```js
+registry.run(["count", "abstract"], {abstractLen: 5, abstractEllipsis: "..."},
+  function (err, deps){
+    ...
+  });
+```
+In this case the second argument will contain an object with an attribute for any dependency (deps.count, deps.abstract).
+Using "run", Diogenes calls all services required to satisfy the dependencies tree. You can get the ordering using:
 ```js
 registry.getExecutionOrder("paragraph",
   {abstractLen: 5, abstractEllipsis: "..."});
@@ -157,8 +167,8 @@ Diogenes does not strictly follow that order: "count", for example doesn't requi
 
 Plugins
 -------
-A registry can have more than one service with the same name (and a different set of dependencies).
-The correct service will be chosen using the configuration and an [occamsrazor validator](https://github.com/sithmel/occamsrazor.js#tutorial).
+A service can contain more than one function.
+The correct function will be chosen using the configuration and an [occamsrazor validator](https://github.com/sithmel/occamsrazor.js#tutorial).
 Diogenes.validator is a copy of occamsrazor.validator (for convenience). Let's say for example that you want to use a different way to get the abstract:
 ```js
 var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
@@ -205,26 +215,10 @@ registry.addValue("text", ["Diogenes became notorious for his philosophical ",
   "stunts such as carrying a lamp in the daytime, claiming to ",
   "be looking for an honest man."].join());
 ```
-Run service only once
----------------------
-Some time you may want to execute a service only once and then use a more generic one:
-```js
-registry.addOnce("paragraph", [], Diogenes.validator().important(),
-  function (config, deps, next) {
-    next(undefined, "This runs only once");
-  });
-```
 Cache a service
 ---------------
 If the result of a service depends on the configuration, or it is heavy to compute, you can cache it.
-You can enable the cache with cacheOn, empty the cache with cacheReset or disable with cacheOff:
-```js
-registry.service('count').cacheOn();
-
-registry.service('count').cacheReset();
-
-registry.service('count').cacheOff();
-```
+You can enable the cache with cacheOn, empty the cache with cacheReset or disable with cacheOff.
 The cacheOn method takes an object as argument with 3 different arguments:
 
 * key: (a string/an array or a function) it generates the key to use as cache key. You can specify an attribute of the configuration (string), an nested property (array) or use a custom function running on the configuration. It default to a single key (it will store a single value)
@@ -232,6 +226,10 @@ The cacheOn method takes an object as argument with 3 different arguments:
 * maxSize: the length of the cache. Default to infinity
 
 Note: a cache hit, will ever never return dependencies. After all if the service has a defined return value it doesn't need to relay on any other service.
+So for example:
+```js
+registry.service('count').cacheOn({key: "abstractLen", maxAge: 1000});
+```
 
 Errors and fallback
 ===================
@@ -255,9 +253,9 @@ Events
 The event system allows to do something when a service is executed.
 You can listen to a service in this way:
 ```js
-registry.on('count', function (name, dep, config){
-  // name is "count"
-  // dep is the outout of the "count" service
+registry.on('paragraph', function (name, dep, config){
+  // name is "paragraph"
+  // dep is the output of the "count" service
   // config is the usual one used in the "run" method
 });
 ```
@@ -267,7 +265,7 @@ registry.on(function (name, dep, config){
   // this is executed for any service
 });
 
-registry.on("count", isLessThan5, useAlternativeClamp, function (name, dep, config){
+registry.on("paragraph", isLessThan5, useAlternativeClamp, function (name, dep, config){
   // this is executed for count service
   // only if count is less than 5 and
   // the config passes the "useAlternativeClamp" validator
@@ -332,16 +330,15 @@ How does it work
 ================
 A lot of the things going on requires a bit of knowledge of occamsrazor (https://github.com/sithmel/occamsrazor.js).
 Basically a service is an occamsrazor adapter's registry (identified with a name). When you add a function you are adding an adapter to the registry. This adapter will return the function and the dependencies when called with the configuration as argument.
-When you try running a service the first thing that happen is that diogenes will try to unwrap all the services for discovering what function/dependencies use. This is what can happen:
+When you try running a service the first thing that happen is that diogenes will perform a dfs within the services. The configuration will be used to unwrap a service when its adjancency is required. Doing this operation you have this cases:
 
 * the result is not defined because there is no function (or no function matching the configuration) attached to it. If this dependency is necessary it will generate an exception.
-* the result is ambiguous as more than one function matches the configuration with the same validator's score. If this dependency is necessary it will generate an exception.
-* the result matches a cache entry. The resulting function will return the cached value. There will be no dependencies.
+* the result is ambiguous as more than one adapter matches the configuration with the same validator's score. If this dependency is necessary it will generate an exception.
+* the result matches a cache entry. The resulting adapter will return the cached value. There will be no dependencies.
 * the result matches a function/dependencies
 
-With all the services unwrapped, a dfs (depth first search) will be performed. The result will be a sorted list of services.
-There will be included only a subset of the services.
-At this point the system will start executing all the functions without dependencies. Every time one of these function's callback returns a value I push this in an dependency map and try to execute all the functions that see their dependencies fulfilled.
+The result will be a sorted list of adapters.
+At this point the system will start executing all the functions. Every time one of these function's callback returns a value I push this in an dependency map and try to execute all the functions that see their dependencies fulfilled.
 The last function should be the one I requested.
 
 Syntax
