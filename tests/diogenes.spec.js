@@ -186,6 +186,26 @@ describe("diogenes", function () {
     });
   });
 
+  it("must unwrap promises automatically", function (done) {
+    var getPromise = function (ret){
+      return p = new Promise(function(resolve, reject) {
+        setTimeout(function () {
+          resolve(ret);
+        }, 10);
+      });
+    };
+
+    registry.service("hello").add(function (config, deps){
+      assert.deepEqual(deps, {});
+      return getPromise(getPromise('hello'));
+    });
+
+    registry.run("hello", {}, function (err, dep){
+      assert.deepEqual(dep, "hello");
+      done();
+    });
+  });
+
   it("must propagate an error using promises", function (done) {
     registry.service("hello").add(function (config, deps){
       assert.deepEqual(deps, {});
