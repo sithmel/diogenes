@@ -384,6 +384,9 @@ function dfs (adjlists, startingNode){
   }
   return out;
 }
+function isPromise(obj){
+  return 'then' in obj;
+}
 
 function getFunc(registry, node, onError, dependencies, globalConfig, callback){
   var deps = {};
@@ -418,7 +421,17 @@ function getFunc(registry, node, onError, dependencies, globalConfig, callback){
     try {
       if (node.service.length < 3){ // no callback
         result = node.service.call(registry, globalConfig, deps);
-        wrapped_func(undefined, result);
+        if (typeof result == "object" && isPromise(result)) {
+          result.then(function (res){ // onfulfilled
+            wrapped_func(undefined, res);
+          },
+          function (error){ // onrejected
+            wrapped_func(error);
+          });
+        }
+        else {
+          wrapped_func(undefined, result);
+        }
       }
       else { // callback
         node.service.call(registry, globalConfig, deps, wrapped_func);

@@ -159,6 +159,61 @@ describe("diogenes", function () {
     });
   });
 
+  it("must return a service in a simple case (2 functions) using promises", function (done) {
+    registry.service("hello").add(function (config, deps){
+      assert.deepEqual(deps, {});
+      var p = new Promise(function(resolve, reject) {
+        setTimeout(function () {
+          resolve("hello ");
+        }, 10);
+      });
+      return p;
+    });
+
+    registry.service("world").add(["hello"], function (config, deps){
+      assert.deepEqual(deps, {hello: "hello "});
+      var p = new Promise(function(resolve, reject) {
+        setTimeout(function () {
+          resolve(deps.hello + "world!");
+        }, 10);
+      });
+      return p;
+    });
+
+    registry.run("world", {}, function (err, dep){
+      assert.deepEqual(dep, "hello world!");
+      done();
+    });
+  });
+
+  it("must propagate an error using promises", function (done) {
+    registry.service("hello").add(function (config, deps){
+      assert.deepEqual(deps, {});
+      var p = new Promise(function(resolve, reject) {
+        setTimeout(function () {
+          reject(new Error('broken'));
+        }, 10);
+      });
+      return p;
+    });
+
+    registry.service("world").add(["hello"], function (config, deps){
+      assert.deepEqual(deps, {hello: "hello "});
+      var p = new Promise(function(resolve, reject) {
+        setTimeout(function () {
+          resolve(deps.hello + "world!");
+        }, 10);
+      });
+      return p;
+    });
+
+    registry.run("world", {}, function (err, dep){
+      assert.instanceOf(err, Error);
+      assert.equal(err.message, 'broken');
+      done();
+    });
+  });
+
   it("must return a service only once", function (done) {
     registry.service("hello").addOnce([], isAnything.match(['special']), function (config, deps, next){
       next(undefined, "hello special");

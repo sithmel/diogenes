@@ -387,13 +387,26 @@ registry.add(name, dependencies, validator, func);
 * The name (mandatory) is a string. It is the name of the service. A registry can have more than one service with the same name BUT they should validate alternatively (see the validator argument).
 * dependencies: it is an array of strings. Every string is the name of a service. This should be executed and its output should be pushed in the function
 * validator: it is an occamsrazor validator. (https://github.com/sithmel/occamsrazor.js). You can also pass a different value as explained in the "match" validator (https://github.com/sithmel/occamsrazor.js#occamsrazorvalidatormatch);
-* The function (mandatory) is a function that returns a service.
+* The function (mandatory) is a function returning a service.
 
-The function will have these arguments (config, deps, next):
+The function can have 2 different signatures: with callback (config, deps, next) or without (config, deps):
 * "config" is a value passed to all services when "run" is invoked
 * "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
-* "next" is the function called with the output of this service: next(undefined, output). It is also possible to use a return value instead of next.
+* "next" is the function called with the output of this service: next(undefined, output).
 * If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')).
+
+If you use the signature without "next" you can return the value using return, or throw an exception in case of errors. If you return a promise (A or A+) this will be automatically used:
+```js
+registry.add("promise", function (config, deps) {
+  return new Promise(function (resolve, reject){
+    resolve("resolved!");
+  });
+});
+registry.run("promise", function (err, dep){
+  console.log(dep); // resolved!
+})
+```
+
 
 It returns the registry.
 
