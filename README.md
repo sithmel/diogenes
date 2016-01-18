@@ -107,7 +107,7 @@ registry.add("text", function (config, deps, next) {
 });
 ```
 If the service is successful it passes undefined as the first argument and the result as second. The first argument will contain an exception if the service fails
-As an alternative it is also possible to return a value instead of using a callback. It will work anyway:
+As an alternative it is also possible to return a value instead of using a callback or returning a promise. It will work anyway:
 ```js
 registry.add("text", function (config, deps) {
   return ["Diogenes became notorious for his philosophical ",
@@ -135,7 +135,7 @@ registry.add("abstract", ['tokens'], function (config, deps, next) {
   next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
 });
 ```
-The "config" argument the same for all services. It is passed with the run method below.
+The "config" argument is the same for all services. It is passed with the run method below.
 ```js
 registry.add("paragraph", ['text', 'abstract', 'count'],
   function (config, deps, next) {
@@ -358,6 +358,24 @@ When you try running a service the first thing that happen is that diogenes will
 The result will be a sorted list of adapters.
 At this point the system will start executing all the functions. Every time one of these function's callback returns a value I push this in an dependency map and try to execute all the functions that see their dependencies fulfilled.
 The last function should be the one I requested.
+
+Diogenes is ES6 friendly!
+=========================
+Using Diogenes with ES6 helps a lot if you want a concise syntax. But pay attention! you can't use "this" with arrow functions!
+```js
+// using arrow function
+service.add("textfile",
+  (config, deps, next) => fs.readFile(config.path, 'utf8', next));
+
+// destructuring and promises
+service.add("user", (config, deps, next) => {
+  const {id, firstName, lastName} = config;
+  return axios.put('/user/' + id, {
+    firstName: 'Fred',
+    lastName: 'Flintstone'
+  });
+});
+```
 
 Syntax
 ======

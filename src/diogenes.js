@@ -100,11 +100,17 @@
     rows.push(this.name.split('').map(function () {return '=';}).join(''));
     rows.push(this.description());
 
-    var dependencies = this.registry
-    .getExecutionOrder(this.name, config, true)
-    .map(function (d) {
-      return '* ' + d;
-    });
+    try {
+      var dependencies = this.registry
+      .getExecutionOrder(this.name, config, true)
+      .map(function (d) {
+        return '* ' + d;
+      });
+    }
+    catch (e) {
+      rows.push('Not available with this configuration.');
+      return rows.join('\n');
+    }
 
     if (dependencies.length > 1) {
       rows.push('');
