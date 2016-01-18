@@ -4,14 +4,23 @@
   "description": "Defines and executes functions with a common interface (services) configured in a directed acyclic graph",
   "main": "src/diogenes.js",
   "scripts": {
-    "test": "mocha tests/*.js"
+    "test": "mocha tests/*.js",
+    "lint": "./node_modules/.bin/eslint --ext .js ./src ./tests",
+    "precommit": "npm run lint",
+    "prepush": "npm run test"
   },
-  "keywords": ["plugins", "dependency injection", "services"],
+  "keywords": [
+    "plugins",
+    "dependency injection",
+    "services"
+  ],
   "repository": "git@github.com:sithmel/diogenes.git",
   "author": "Maurizio Lupo <maurizio.lupo@gmail.com>",
   "license": "MIT",
   "devDependencies": {
     "chai": "^1.10.0",
+    "eslint": "^1.10.3",
+    "husky": "^0.10.2",
     "mocha": "^2.1.0"
   },
   "dependencies": {

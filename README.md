@@ -20,11 +20,26 @@ From functions to services
 --------------------------
 Let's say that you have a function returning an html page. You usually need to execute a certain number of steps (already incapsulated into functions):
 ```js
-decodeURL(url, function (id){
-  getDB(config, function (db){
-    getDataFromDB(id, function (obj){
-      retrieveTemplate("template.html", function (template){
-        renderTemplate(template, obj, function (html){
+decodeURL(url, function (err, id){
+  if (err) {
+    returnHTML('Error');
+  }
+  getDB(config, function (err, db){
+    if (err) {
+      returnHTML('Error');
+    }
+    getDataFromDB(id, function (err, obj){
+      if (err) {
+        returnHTML('Error');
+      }
+      retrieveTemplate("template.html", function (err, template){
+        if (err) {
+          returnHTML('Error');
+        }
+        renderTemplate(template, obj, function (err, html){
+          if (err) {
+            returnHTML('Error');
+          }
           returnHTML(html)
         });
       });
@@ -414,11 +429,11 @@ addValue
 --------
 It works the same as the add method but instead of adding a service It adds a value. This will be the dependency returned.
 ```js
-registry.add(name, value);   
+registry.addValue(name, value);   
 
-registry.add(name, dependencies, value);   
+registry.addValue(name, dependencies, value);   
 
-registry.add(name, dependencies, validator, value);   
+registry.addValue(name, dependencies, validator, value);   
 ```
 Note: having a value you don't need dependencies. They are still part of the signature of the method for consistency.
 
