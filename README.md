@@ -1,6 +1,7 @@
 Diogenes
 ========
 [![Build Status](https://travis-ci.org/sithmel/diogenes.svg?branch=master)](https://travis-ci.org/sithmel/diogenes)
+
 ![Registry as graph](https://upload.wikimedia.org/wikipedia/commons/b/b6/Diogenes_looking_for_a_man_-_attributed_to_JHW_Tischbein.jpg)
 > When asked why he went about with a lamp in broad daylight, Diogenes confessed, "I am looking for a [honest] man."
 
