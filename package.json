@@ -6,6 +6,9 @@
   "scripts": {
     "test": "mocha tests/*.js",
     "lint": "./node_modules/.bin/eslint --ext .js ./src ./tests",
+    "release:major": "./node_modules/.bin/npm-release major",
+    "release:minor": "./node_modules/.bin/npm-release minor",
+    "release:patch": "./node_modules/.bin/npm-release patch",
     "precommit": "npm run lint",
     "prepush": "npm run test"
   },
@@ -21,7 +24,8 @@
     "chai": "^1.10.0",
     "eslint": "^1.10.3",
     "husky": "^0.10.2",
-    "mocha": "^2.1.0"
+    "mocha": "^2.1.0",
+    "npm-release": "^1.0.0"
   },
   "dependencies": {
     "occamsrazor": "^4.4.0",
