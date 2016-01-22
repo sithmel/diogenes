@@ -605,6 +605,17 @@
     return sorted_services;
   };
 
+  Diogenes.prototype.getAdjacencyList = function registry_getAdjacencyList(globalConfig, noCache) {
+    var adjlists = this._filterByConfig(globalConfig, noCache);
+    return Object.keys(this.services).map(function (name) {
+      return adjlists(name);
+    })
+    .reduce(function (obj, item) {
+      obj[item.name] = item.deps;
+      return obj;
+    }, {});
+  };
+
   Diogenes.prototype._run = function registry__run(name, globalConfig, done) {
     var adjlists, sorted_services;
     var deps = {}; // all dependencies already resolved

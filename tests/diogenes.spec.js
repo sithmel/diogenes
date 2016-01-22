@@ -473,6 +473,11 @@ describe('diogenes', function () {
       assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
     });
 
+    it('must return adjacency list', function () {
+      var list = registry.getAdjacencyList({});
+      assert.deepEqual(list, {'A':[],'B':['A'],'C':['A','B'],'D':['B','C']});
+    });
+
     it('must replace node', function () {
       registry.remove('D');
       registry.service('D').add(['A'], function (config, deps, next) {
