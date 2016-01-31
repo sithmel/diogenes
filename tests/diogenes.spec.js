@@ -400,8 +400,8 @@ describe('diogenes', function () {
     });
 
     it('must create doc', function () {
-      var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n\n  \n```';
-      var doc2 = 'world\n=====\nreturns the string world\n\nDependencies:\n* hello';
+      var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n```\n';
+      var doc2 = 'world\n=====\nreturns the string world\n\nDependencies:\n* hello\n';
       assert.equal(registry.service('hello').info(), doc1);
       assert.equal(registry.service('world').info(),  doc2);
       assert.equal(registry.info(), doc1 + '\n\n' + doc2);
@@ -623,6 +623,23 @@ describe('diogenes', function () {
       registry.run('C', {}, function (err, dep) {
         assert.equal(str, 'BAC');
         assert.equal(dep, 'ABC');
+        done();
+      });
+    });
+
+    it('must profile the execution', function (done) {
+      registry.run('C', {}, function (err, dep, deps, profile) {
+        assert.equal(str, 'BAC');
+        assert.equal(dep, 'ABC');
+        assert(profile.A.delta > 48 && profile.A.delta < 52 );
+        assert(profile.B.delta > 18 && profile.B.delta < 22 );
+        assert(profile.C.delta >= 0 && profile.C.delta < 2 );
+
+        assert.equal(deps.A, 'A');
+        assert.equal(deps.B, 'B');
+        assert.equal(deps.C, 'ABC');
+
+        assert(profile.__all__.delta > 48 && profile.A.delta < 52 );
         done();
       });
     });

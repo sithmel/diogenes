@@ -266,6 +266,21 @@ This function is called in these cases:
 * the "count" service returned an exception
 * one of the dependencies of the "count" service propagated an exception
 
+Debugging and profiling
+=======================
+Using the "run" method you can get some profiling and debugging information. You can get them using the extra arguments "deps" and "profile".
+```js
+registry.run("a service",
+  function (err, dep, deps, profile){
+    // ...
+  });
+```
+deps is an object containing all the dependencies used. Profile contains, for each of these dependencies:
+* start: when the service started executing, (timestamp since the epoch)
+* end: when the service finished executing, (timestamp since the epoch)
+* delta: end - start
+There is a special dependency "__all__" containing the same informations related to the whole run.
+
 Events
 ======
 The event system allows to do something when a service is executed.

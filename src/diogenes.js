@@ -95,35 +95,62 @@
     return this;
   };
 
-  Service.prototype.info = function service_info(config) {
-    var rows = [this.name];
-    rows.push(this.name.split('').map(function () {return '=';}).join(''));
-    rows.push(this.description());
+  Service.prototype.infoObj = function service_infoObj(config) {
+    var out = {};
+    out.name = this.name;
+    out.description = this.description();
 
     try {
-      var dependencies = this.registry
+      out.dependencies = this.registry
       .getExecutionOrder(this.name, config, true)
-      .map(function (d) {
-        return '* ' + d;
-      });
+      .slice(0, -1);
     }
     catch (e) {
-      rows.push('Not available with this configuration.');
-      return rows.join('\n');
+      out.inactive = true;
+      out.dependencies = [];
     }
 
-    if (dependencies.length > 1) {
+    out.cached = !!this.cache;
+    out.manageError = !!this.onError;
+
+    out.metadata = this.metadata();
+    return out;
+  };
+
+  Service.prototype.info = function service_info(config) {
+    var infoObj = this.infoObj(config);
+    var rows = [infoObj.name];
+    rows.push(infoObj.name.split('').map(function () {return '=';}).join(''));
+    rows.push(infoObj.description);
+
+    if (infoObj.inactive) {
+      rows.push('Not available with this configuration.');
+    }
+
+    if (infoObj.dependencies.length > 0) {
       rows.push('');
       rows.push('Dependencies:');
-      rows = rows.concat(dependencies.slice(0, -1));
+      infoObj.dependencies.forEach(function (d) {
+        rows.push('* ' + d);
+      });
     }
-    if (this.metadata()) {
+
+    if (infoObj.metadata) {
       rows.push('');
       rows.push('Metadata:');
       rows.push('```js');
-      rows.push(JSON.stringify(this.metadata()), null, '  ');
+      rows.push(JSON.stringify(infoObj.metadata, null, '  '));
       rows.push('```');
     }
+
+    rows.push('');
+    if (infoObj.cached) {
+      rows.push('* Cached');
+    }
+    if (infoObj.manageError) {
+      rows.push('* it doesn\'t throw exceptions');
+    }
+
     return rows.join('\n');
   };
 
@@ -390,6 +417,7 @@
     }
     return out;
   }
+
   function isPromise(obj) {
     return 'then' in obj;
   }
@@ -449,6 +477,22 @@
     };
   }
 
+  function debugStart(name, debugInfo) {
+    if (!(name in debugInfo)) {
+      debugInfo[name] = {};
+    }
+    debugInfo[name].start = Date.now();
+  }
+
+  function debugEnd(name, debugInfo) {
+    if (!(name in debugInfo)) {
+      debugInfo[name] = {};
+    }
+
+    debugInfo[name].end = Date.now();
+    debugInfo[name].delta = debugInfo[name].end - debugInfo[name].start;
+  }
+
   // initialize global registries
   var _registries = typeof window == 'undefined' ? global : window;
 
@@ -493,8 +537,16 @@
 
   Diogenes.prototype.forEach = function registry_forEach(callback) {
     for (var name in this.services) {
-      callback.apply(this.services[name], this.services[name], name);
+      callback.call(this.services[name], this.services[name], name);
     }
+  };
+
+  Diogenes.prototype.infoObj = function registry_infoObj(config) {
+    var out = {};
+    this.forEach(function (service, name) {
+      out[name] = this.infoObj(config);
+    });
+    return out;
   };
 
   Diogenes.prototype.info = function registry_info(config) {
@@ -619,18 +671,9 @@
   Diogenes.prototype._run = function registry__run(name, globalConfig, done) {
     var adjlists, sorted_services;
     var deps = {}; // all dependencies already resolved
+    var debugInfo = {}; // profiling
     var that = this;
     var services = this.services;
-
-    if (typeof globalConfig === 'function') {
-      done = globalConfig;
-      globalConfig = {};
-    }
-
-    if (typeof globalConfig === 'undefined') {
-      done = function () {};
-      globalConfig = {};
-    }
 
     try {
       adjlists = this._filterByConfig(globalConfig);
@@ -640,11 +683,13 @@
       return done.call(that, e);
     }
 
+    debugStart('__all__', debugInfo);
     (function resolve(name, dep, cached) {
       var func, i = 0;
 
       if (name) {
         deps[name] = dep;
+        debugEnd(name, debugInfo);
         if (!(dep instanceof Error)) {
           services[name].cachePush(globalConfig, dep);
 
@@ -657,17 +702,19 @@
       }
 
       if (sorted_services.length === 0) {
+        debugEnd('__all__', debugInfo);
         if (dep instanceof Error) {
-          return done.call(that, dep);
+          return done.call(that, dep, deps, debugInfo);
         }
         else {
-          return done.call(that, undefined, dep);
+          return done.call(that, undefined, dep, deps, debugInfo);
         }
       }
 
       while (i < sorted_services.length) {
         func = getFunc(that, adjlists(sorted_services[i]), services[sorted_services[i]].onError, deps, globalConfig, resolve);
         if (func) {
+          debugStart(sorted_services[i], debugInfo);
           sorted_services.splice(i, 1);
           setImmediate(func);
         }
@@ -683,10 +730,19 @@
   Diogenes.prototype.run = function registry_run(name, globalConfig, done) {
     var newreg = new Diogenes();
 
+    if (typeof globalConfig === 'function') {
+      done = globalConfig;
+      globalConfig = {};
+    }
+
+    if (typeof globalConfig === 'undefined') {
+      done = function () {};
+      globalConfig = {};
+    }
+
     if (typeof name === 'string') {
       this._run(name, globalConfig, done);
       return this;
-      name = [name];
     }
 
     newreg.add('__main__', name, function (config, deps, next) {
@@ -697,6 +753,21 @@
     tempreg.run('__main__', globalConfig, done);
     return this;
   };
+
+  // Diogenes.prototype.profile = function registry_run(name, globalConfig, done) {
+  //   if (typeof globalConfig === 'function') {
+  //     done = globalConfig;
+  //     globalConfig = {};
+  //   }
+  //
+  //   if (typeof globalConfig === 'undefined') {
+  //     done = function () {};
+  //     globalConfig = {};
+  //   }
+  //
+  //   this._run(name, globalConfig, true, done);
+  //   return this;
+  // };
 
   // events
   Diogenes.prototype.on = function registry_on() {
