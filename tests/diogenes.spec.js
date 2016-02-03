@@ -392,6 +392,7 @@ describe('diogenes', function () {
       registry.service('hello').metadata('Metadata');
       registry.service('hello').description('returns the string hello');
       registry.service('world').description('returns the string world');
+      registry.service('world');
     });
 
     it('must read write description', function () {
@@ -399,9 +400,37 @@ describe('diogenes', function () {
       assert.equal(registry.service('world').description(), 'returns the string world');
     });
 
+    it('must create doc object', function () {
+      var obj1 = {
+        'cached': false,
+        'dependencies': [],
+        'description': 'returns the string hello',
+        'executionOrder': [],
+        'manageError': false,
+        'metadata': 'Metadata',
+        'name': 'hello'
+      };
+      var obj2 = {
+        'cached': false,
+        'dependencies': [
+          'hello'
+        ],
+        'description': 'returns the string world',
+        'executionOrder': [
+          'hello'
+        ],
+        'manageError': false,
+        'metadata': undefined,
+        'name': 'world'
+      };
+      assert.deepEqual(registry.service('hello').infoObj(), obj1);
+      assert.deepEqual(registry.service('world').infoObj(),  obj2);
+      assert.deepEqual(registry.infoObj(), {hello: obj1, world: obj2});
+    });
+
     it('must create doc', function () {
       var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n```\n';
-      var doc2 = 'world\n=====\nreturns the string world\n\nDependencies:\n* hello\n';
+      var doc2 = 'world\n=====\nreturns the string world\n\nExecution order:\n* hello\n\nDependencies:\n* hello\n';
       assert.equal(registry.service('hello').info(), doc1);
       assert.equal(registry.service('world').info(),  doc2);
       assert.equal(registry.info(), doc1 + '\n\n' + doc2);
@@ -471,11 +500,6 @@ describe('diogenes', function () {
     it('must return execution order', function () {
       var list = registry.getExecutionOrder('D', {});
       assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
-    });
-
-    it('must return adjacency list', function () {
-      var list = registry.getAdjacencyList({});
-      assert.deepEqual(list, {'A':[],'B':['A'],'C':['A','B'],'D':['B','C']});
     });
 
     it('must replace node', function () {
@@ -961,7 +985,6 @@ describe('diogenes', function () {
 
       });
     });
-
   });
 
   describe('onError', function (done) {

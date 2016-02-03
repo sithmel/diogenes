@@ -99,9 +99,10 @@
     var out = {};
     out.name = this.name;
     out.description = this.description();
+    out.dependencies = this.get(config, true).deps;
 
     try {
-      out.dependencies = this.registry
+      out.executionOrder = this.registry
       .getExecutionOrder(this.name, config, true)
       .slice(0, -1);
     }
@@ -125,6 +126,14 @@
 
     if (infoObj.inactive) {
       rows.push('Not available with this configuration.');
+    }
+
+    if (infoObj.executionOrder.length > 0) {
+      rows.push('');
+      rows.push('Execution order:');
+      infoObj.executionOrder.forEach(function (d) {
+        rows.push('* ' + d);
+      });
     }
 
     if (infoObj.dependencies.length > 0) {
@@ -657,17 +666,6 @@
     return sorted_services;
   };
 
-  Diogenes.prototype.getAdjacencyList = function registry_getAdjacencyList(globalConfig, noCache) {
-    var adjlists = this._filterByConfig(globalConfig, noCache);
-    return Object.keys(this.services).map(function (name) {
-      return adjlists(name);
-    })
-    .reduce(function (obj, item) {
-      obj[item.name] = item.deps;
-      return obj;
-    }, {});
-  };
-
   Diogenes.prototype._run = function registry__run(name, globalConfig, done) {
     var adjlists, sorted_services;
     var deps = {}; // all dependencies already resolved
@@ -753,21 +751,6 @@
     tempreg.run('__main__', globalConfig, done);
     return this;
   };
-
-  // Diogenes.prototype.profile = function registry_run(name, globalConfig, done) {
-  //   if (typeof globalConfig === 'function') {
-  //     done = globalConfig;
-  //     globalConfig = {};
-  //   }
-  //
-  //   if (typeof globalConfig === 'undefined') {
-  //     done = function () {};
-  //     globalConfig = {};
-  //   }
-  //
-  //   this._run(name, globalConfig, true, done);
-  //   return this;
-  // };
 
   // events
   Diogenes.prototype.on = function registry_on() {
