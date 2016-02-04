@@ -26,8 +26,8 @@ describe('diogenes merge registries', function () {
   beforeEach(function () {
     registry1 = Diogenes.getRegistry();
     registry2 = Diogenes.getRegistry();
-    registry1.addValue('answer', 42);
-    registry2.addValue('question', 'the answer to life the universe and everything');
+    registry1.service('answer').returnsValue(42);
+    registry2.service('question').returnsValue('the answer to life the universe and everything');
     registry1.on(function () {});
     registry2.on(function () {});
     registry3 = registry1.merge(registry2);
@@ -65,7 +65,7 @@ describe('diogenes', function () {
   });
 
   it('must return a service in a simple case (1 function)', function (done) {
-    registry.service('hello').add(function (config, deps, next) {
+    registry.service('hello').returns(function (config, deps, next) {
       assert.equal(registry, this);
       assert.deepEqual(deps, {});
       next(undefined, 'hello');
@@ -73,30 +73,6 @@ describe('diogenes', function () {
 
     registry.run('hello', {}, function (err, dep) {
       assert.equal(registry, this);
-      assert.deepEqual(dep, 'hello');
-      done();
-    });
-  });
-
-  it('must return a service in a simple case (1 function) with shortcut', function (done) {
-    registry.add('hello', function (config, deps, next) {
-      assert.deepEqual(deps, {});
-      next(undefined, 'hello');
-    });
-
-    registry.run('hello', {}, function (err, dep) {
-      assert.deepEqual(dep, 'hello');
-      done();
-    });
-  });
-
-  it('must return a service in a simple case (1 function) from service', function (done) {
-    registry.service('hello').add(function (config, deps, next) {
-      assert.deepEqual(deps, {});
-      next(undefined, 'hello');
-    });
-
-    registry.service('hello').run({}, function (err, dep) {
       assert.deepEqual(dep, 'hello');
       done();
     });
@@ -112,7 +88,7 @@ describe('diogenes', function () {
   });
 
   it('must return an exception if the function fails', function (done) {
-    registry.service('hello').add(function (config, deps, next) {
+    registry.service('hello').returns(function (config, deps, next) {
       throw new Error('broken');
       next(undefined, 'hello');
     });
@@ -126,12 +102,12 @@ describe('diogenes', function () {
   });
 
   it('must return a service in a simple case (2 functions)', function (done) {
-    registry.service('hello').add(function (config, deps, next) {
+    registry.service('hello').returns(function (config, deps, next) {
       assert.deepEqual(deps, {});
       next(undefined, 'hello ');
     });
 
-    registry.service('world').add(['hello'], function (config, deps, next) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps, next) {
       assert.deepEqual(deps, {hello: 'hello '});
       next(undefined, deps.hello + 'world!');
     });
@@ -143,12 +119,12 @@ describe('diogenes', function () {
   });
 
   it('must return a service in a simple case (2 functions) not using next', function (done) {
-    registry.service('hello').add(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       return 'hello ';
     });
 
-    registry.service('world').add(['hello'], function (config, deps) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       return deps.hello + 'world!';
     });
@@ -160,7 +136,7 @@ describe('diogenes', function () {
   });
 
   it('must return a service in a simple case (2 functions) using promises', function (done) {
-    registry.service('hello').add(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -170,7 +146,7 @@ describe('diogenes', function () {
       return p;
     });
 
-    registry.service('world').add(['hello'], function (config, deps) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -195,7 +171,7 @@ describe('diogenes', function () {
       });
     };
 
-    registry.service('hello').add(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       return getPromise(getPromise('hello'));
     });
@@ -207,7 +183,7 @@ describe('diogenes', function () {
   });
 
   it('must propagate an error using promises', function (done) {
-    registry.service('hello').add(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -217,7 +193,7 @@ describe('diogenes', function () {
       return p;
     });
 
-    registry.service('world').add(['hello'], function (config, deps) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -235,29 +211,11 @@ describe('diogenes', function () {
   });
 
   it('must return a service only once', function (done) {
-    registry.service('hello').addOnce([], isAnything.match(['special']), function (config, deps, next) {
+    registry.service('hello').returnsOnce(['special'], function (config, deps, next) {
       next(undefined, 'hello special');
     });
 
-    registry.service('hello').add([], isAnything, function (config, deps, next) {
-      next(undefined, 'hello');
-    });
-
-    registry.run('hello', {special: 1}, function (err, dep) {
-      assert.deepEqual(dep, 'hello special');
-      registry.run('hello', {special: 1}, function (err, dep) {
-        assert.deepEqual(dep, 'hello');
-        done();
-      });
-    });
-  });
-
-  it('must return a service only once (short form)', function (done) {
-    registry.addOnce('hello', [], isAnything.match(['special']), function (config, deps, next) {
-      next(undefined, 'hello special');
-    });
-
-    registry.add('hello', [], isAnything, function (config, deps, next) {
+    registry.service('hello').returnsOnce(function (config, deps, next) {
       next(undefined, 'hello');
     });
 
@@ -271,11 +229,11 @@ describe('diogenes', function () {
   });
 
   it('must recognize a circular dependency', function (done) {
-    registry.service('hello').add(['world'], function (config, deps, next) {
+    registry.service('hello').dependsOn(['world']).returns(function (config, deps, next) {
       next(undefined, 'hello ');
     });
 
-    registry.service('world').add(['hello'], function (config, deps, next) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps, next) {
       next(undefined, 'world!');
     });
 
@@ -287,15 +245,15 @@ describe('diogenes', function () {
   });
 
   it('must recognize a circular dependency (3 services)', function (done) {
-    registry.service('A').add(['C'], function (config, deps, next) {
+    registry.service('A').dependsOn(['C']).returns(function (config, deps, next) {
       next(undefined, undefined);
     });
 
-    registry.service('B').add(['A'], function (config, deps, next) {
+    registry.service('B').dependsOn(['A']).returns(function (config, deps, next) {
       next(undefined, undefined);
     });
 
-    registry.service('C').add(['B'], function (config, deps, next) {
+    registry.service('C').dependsOn(['B']).returns(function (config, deps, next) {
       next(undefined, undefined);
     });
 
@@ -307,7 +265,7 @@ describe('diogenes', function () {
   });
 
   it('must throw an exception when missing dependency', function (done) {
-    registry.service('hello').add(['world'], function (config, deps, next) {
+    registry.service('hello').dependsOn(['world']).returns(function (config, deps, next) {
       next(undefined, 'hello ');
     });
 
@@ -319,11 +277,11 @@ describe('diogenes', function () {
   });
 
   it('must throw an exception when more than one plugin matches', function (done) {
-    registry.service('hello').add(function (config, deps, next) {
+    registry.service('hello').returns(function (config, deps, next) {
       next(undefined, 'hello1');
     });
 
-    registry.service('hello').add(function (config, deps, next) {
+    registry.service('hello').returns(function (config, deps, next) {
       next(undefined, 'hello2');
     });
 
@@ -335,16 +293,7 @@ describe('diogenes', function () {
   });
 
   it('must add a value', function (done) {
-    registry.service('hello').addValue('hello');
-
-    registry.run('hello', {}, function (err, dep) {
-      assert.equal(dep, 'hello');
-      done();
-    });
-  });
-
-  it('must add a value (short form)', function (done) {
-    registry.addValue('hello', 'hello');
+    registry.service('hello').returnsValue('hello');
 
     registry.run('hello', {}, function (err, dep) {
       assert.equal(dep, 'hello');
@@ -353,20 +302,7 @@ describe('diogenes', function () {
   });
 
   it('must add a value (only once)', function (done) {
-    registry.service('hello').addValueOnce('hello');
-
-    registry.run('hello', {}, function (err, dep) {
-      assert.equal(dep, 'hello');
-      registry.run('hello', {}, function (err, dep) {
-        assert.equal(err.message, 'Occamsrazor (get): Function not found');
-        assert.instanceOf(err, Error);
-        done();
-      });
-    });
-  });
-
-  it('must add a value (short form)', function (done) {
-    registry.addValueOnce('hello', 'hello');
+    registry.service('hello').returnsValueOnce('hello');
 
     registry.run('hello', {}, function (err, dep) {
       assert.equal(dep, 'hello');
@@ -379,16 +315,16 @@ describe('diogenes', function () {
   });
 
   it('must read write metadata', function () {
-    registry.addValue('hello', 'hello');
+    registry.service('hello').returnsValue('hello', 'hello');
     registry.service('hello').metadata('metadata');
     assert.equal(registry.service('hello').metadata(), 'metadata');
   });
 
   describe('documentation', function () {
     beforeEach(function () {
-      registry.addValue('hello', 'hello');
+      registry.service('hello').returnsValue('hello');
 
-      registry.addValue('world', ['hello'], 'world');
+      registry.service('world').dependsOn(['hello']).returnsValue('world');
       registry.service('hello').metadata('Metadata');
       registry.service('hello').description('returns the string hello');
       registry.service('world').description('returns the string world');
@@ -452,19 +388,19 @@ describe('diogenes', function () {
       C ----> D
 
       */
-      registry.service('A').add(function (config, deps, next) {
+      registry.service('A').returns(function (config, deps, next) {
         next(undefined, 'A');
       });
 
-      registry.service('B').add(['A'], function (config, deps, next) {
+      registry.service('B').dependsOn(['A']).returns(function (config, deps, next) {
         next(undefined, deps['A'] + 'B');
       });
 
-      registry.service('C').add(['A', 'B'], function (config, deps, next) {
+      registry.service('C').dependsOn(['A', 'B']).returns(function (config, deps, next) {
         next(undefined, deps['A'] + deps['B'] + 'C');
       });
 
-      registry.service('D').add(['B', 'C'], function (config, deps, next) {
+      registry.service('D').dependsOn(['B', 'C']).returns(function (config, deps, next) {
         next(undefined, deps['B'] + deps['C'] + 'D');
       });
     });
@@ -504,7 +440,7 @@ describe('diogenes', function () {
 
     it('must replace node', function () {
       registry.remove('D');
-      registry.service('D').add(['A'], function (config, deps, next) {
+      registry.service('D').dependsOn(['A']).returns(function (config, deps, next) {
         next(undefined, deps['A'] + 'D');
       });
 
@@ -557,18 +493,21 @@ describe('diogenes', function () {
       isReversed = isAnything.match(['reverse']);
 
       registry.service('hello')
-      .add([], isAnything, function (config, deps, next) {
+      .returns(function (config, deps, next) {
         next(undefined, 'hello ');
       })
-      .add(['world'], isReversed, function (config, deps, next) {
+      .dependsOn(isReversed, ['world'])
+      .returns(isReversed, function (config, deps, next) {
         next(undefined, deps.world + 'hello!');
       });
 
       registry.service('world')
-      .add(['hello'], isAnything, function (config, deps, next) {
+      .dependsOn(['hello'])
+      .returns(function (config, deps, next) {
         next(undefined, deps.hello + 'world!');
       })
-      .add([], isReversed, function (config, deps, next) {
+      .dependsOn(isReversed, [])
+      .returns(isReversed, function (config, deps, next) {
         next(undefined, 'world ');
       });
     });
@@ -622,21 +561,21 @@ describe('diogenes', function () {
 
       str = '';
 
-      registry.service('A').add(function (config, deps, next) {
+      registry.service('A').returns(function (config, deps, next) {
         setTimeout(function () {
           str += 'A';
           next(undefined, 'A');
         }, 50);
       });
 
-      registry.service('B').add(function (config, deps, next) {
+      registry.service('B').returns(function (config, deps, next) {
         setTimeout(function () {
           str += 'B';
           next(undefined, 'B');
         }, 20);
       });
 
-      registry.service('C').add(['A', 'B'], function (config, deps, next) {
+      registry.service('C').dependsOn(['A', 'B']).returns(function (config, deps, next) {
         str += 'C';
         next(undefined, deps.A + deps.B + 'C');
       });
@@ -676,23 +615,24 @@ describe('diogenes', function () {
     'be looking for an honest man.'].join();
 
     beforeEach(function () {
-      registry.service('text').addValue(text);
+      registry.service('text').returnsValue(text);
 
-      registry.service('tokens').add(['text'], function (config, deps, next) {
+      registry.service('tokens').dependsOn(['text']).returns(function (config, deps, next) {
         next(undefined, deps.text.split(' '));
       });
 
-      registry.service('count').add(['tokens'], function (config, deps, next) {
+      registry.service('count').dependsOn(['tokens']).returns(function (config, deps, next) {
         next(undefined, deps.tokens.length);
       });
 
-      registry.service('abstract').add(['tokens'], function (config, deps, next) {
+      registry.service('abstract').dependsOn(['tokens']).returns(function (config, deps, next) {
         var len = config.abstractLen;
         var ellipsis = config.abstractEllipsis;
         next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
       });
 
-      registry.service('paragraph').add(['text', 'abstract', 'count'], function (config, deps, next) {
+      registry.service('paragraph').dependsOn(['text', 'abstract', 'count'])
+      .returns(function (config, deps, next) {
         next(undefined, {
           count: deps.count,
           abstract: deps.abstract,
@@ -702,7 +642,9 @@ describe('diogenes', function () {
 
       var useAlternativeClamp = Diogenes.validator().match({abstractClamp: 'chars'});
 
-      registry.service('abstract').add(['text'], useAlternativeClamp, function (config, deps, next) {
+      registry.service('abstract')
+      .dependsOn(useAlternativeClamp, ['text'])
+      .returns(useAlternativeClamp, function (config, deps, next) {
         var len = config.abstractLen;
         var ellipsis = config.abstractEllipsis;
         next(undefined, deps.text.slice(0, len) + ellipsis);
@@ -745,7 +687,7 @@ describe('diogenes', function () {
 
     beforeEach(function () {
       var c = 0;
-      cached = registry.service('cached').add(function (config, deps, next) {
+      cached = registry.service('cached').returns(function (config, deps, next) {
         next(undefined, 'hello ' + c++);
       });
     });
@@ -917,11 +859,11 @@ describe('diogenes', function () {
         called = true;
       });
 
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(undefined, 'hello ');
       });
 
-      registry.service('world').add(['hello'], function (config, deps, next) {
+      registry.service('world').dependsOn(['hello']).returns(function (config, deps, next) {
         next(undefined, deps.hello + 'world!');
       });
 
@@ -946,11 +888,11 @@ describe('diogenes', function () {
         called = true;
       });
 
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(undefined, 'hello ');
       });
 
-      registry.service('world').add(['hello'], function (config, deps, next) {
+      registry.service('world').dependsOn(['hello']).returns(function (config, deps, next) {
         next(undefined, deps.hello + 'world!');
       });
 
@@ -967,7 +909,7 @@ describe('diogenes', function () {
         called++;
       });
 
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(undefined, 'hello');
       })
       .cacheOn();
@@ -990,7 +932,7 @@ describe('diogenes', function () {
   describe('onError', function (done) {
 
     it('must fallback on error', function (done) {
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(new Error('error'));
       })
       .onErrorReturn(42);
@@ -1003,7 +945,7 @@ describe('diogenes', function () {
     });
 
     it('must fallback on error (undefined)', function (done) {
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(new Error('error'));
       })
       .onErrorReturn(undefined);
@@ -1016,7 +958,7 @@ describe('diogenes', function () {
     });
 
     it('must fallback on error (func)', function (done) {
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(new Error('error'));
       })
       .onErrorExecute(function (config) {return config.test;});
@@ -1029,11 +971,11 @@ describe('diogenes', function () {
     });
 
     it('must fallback on propagated error', function (done) {
-      registry.service('hello').add(function (config, deps, next) {
+      registry.service('hello').returns(function (config, deps, next) {
         next(new Error('error'));
       });
 
-      registry.service('world').add(function (config, deps, next) {
+      registry.service('world').dependsOn(['hello']).returns(function (config, deps, next) {
         next(undefined, 'world');
       })
       .onErrorReturn(42);

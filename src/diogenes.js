@@ -41,30 +41,6 @@
       };
     })();
   }
-  /*
-
-  Service utilities
-
-  */
-
-  function getArgs(args) {
-    var out = {};
-
-    out.deps = args.length > 1 ? args[0] : [];
-
-    if (args.length <= 2 || typeof args[1] === 'undefined') {
-      out.validator = or.validator();
-    }
-    else if (args[1].toString() === 'validator') {
-      out.validator = args[1];
-    }
-    else {
-      out.validator = or.validator().match(args[1]);
-    }
-
-    out.func = args[args.length - 1];
-    return out;
-  }
 
   /*
 
@@ -74,16 +50,23 @@
 
   function Service(name, registry) {
     this.name = name;
-    this.desc = '';
-    this.registry = registry; // backreference
-    this.service = or();
+    this._desc = '';
+    this._registry = registry; // backreference
+    this._funcs = or();
+    this._deps = or().notFound(function () {
+      return [];
+    });
   }
+
+  Service.prototype.registry = function service_registry() {
+    return this._registry;
+  };
 
   Service.prototype.description = function service_description(desc) {
     if (typeof desc === 'undefined') {
-      return this.desc;
+      return this._desc;
     }
-    this.desc = desc;
+    this._desc = desc;
     return this;
   };
 
@@ -102,7 +85,7 @@
     out.dependencies = this.get(config, true).deps;
 
     try {
-      out.executionOrder = this.registry
+      out.executionOrder = this._registry
       .getExecutionOrder(this.name, config, true)
       .slice(0, -1);
     }
@@ -163,58 +146,75 @@
     return rows.join('\n');
   };
 
-  Service.prototype._wrap = function service__wrap(func, deps, isValue) {
-    var name = this.name;
-    var service;
-
-    if (!isValue && typeof func !== 'function') {
-      throw new Error('Diogenes: expecting a function as last argument');
-    }
-
-    if (!isValue) {
-      service = func;
+  Service.prototype.dependsOn = function service_dependsOn() {
+    var deps = arguments[arguments.length - 1];
+    var depsFunc = typeof deps === 'function' ? deps : function () {return deps;};
+    if (arguments.length > 1) {
+      this._deps.add(or.validator().match(arguments[0]), depsFunc);
     }
     else {
-      service = function (conf, deps, next) {
-        return next(undefined, func);
-      };
+      this._deps.add(or.validator(), depsFunc);
     }
+    return this;
+  };
 
-    return function () {
-      return {
-        name: name,
-        service: service,
-        deps: deps
-      };
+  Service.prototype._returns = function service__returns() {
+    var method = arguments[arguments.length - 1];
+    var func = arguments[arguments.length - 2];
+    var arity = func.length;
+    var adapter = function () {
+      return {func: func, arity: arity};
     };
-  };
 
-  Service.prototype.add = function service_add() {
-    var args = getArgs(arguments);
-    this.service.add(args.validator, this._wrap(args.func, args.deps));
+    if (arguments.length > 3) {
+      this._funcs[method](or.validator().match(arguments[0]),
+                      or.validator().match(arguments[1]), adapter);
+    }
+    else if (arguments.length > 2) {
+      this._funcs[method](or.validator().match(arguments[0]), adapter);
+    }
+    else {
+      this._funcs[method](or.validator(), adapter);
+    }
     return this;
   };
 
-  Service.prototype.addValue = function service_addValue() {
-    var args = getArgs(arguments);
-    this.service.add(args.validator, this._wrap(args.func, args.deps, true));
-    return this;
+
+  Service.prototype.returns = function service_returns() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    args.push('add');
+    return this._returns.apply(this, args);
   };
 
-  Service.prototype.addOnce = function service_addOnce() {
-    var args = getArgs(arguments);
-    this.service.one(args.validator, this._wrap(args.func, args.deps));
-    return this;
+  Service.prototype.returnsValue = function service_returnsValue() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    var value = args[args.length - 1];
+    args[args.length - 1] = function (conf, deps) {
+      return value;
+    };
+    args.push('add');
+    return this._returns.apply(this, args);
   };
 
-  Service.prototype.addValueOnce = function service_addValueOnce() {
-    var args = getArgs(arguments);
-    this.service.one(args.validator, this._wrap(args.func, args.deps, true));
-    return this;
+  Service.prototype.returnsOnce = function service_returnsOnce() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    args.push('one');
+    return this._returns.apply(this, args);
   };
+
+  Service.prototype.returnsValueOnce = function service_returnsOnceValue() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    var value = args[args.length - 1];
+    args[args.length - 1] = function (conf, deps) {
+      return value;
+    };
+    args.push('one');
+    return this._returns.apply(this, args);
+  };
+
 
   Service.prototype.remove = function service_remove() {
-    this.registry.remove(this.name);
+    this._registry.remove(this.name);
   };
 
   Service.prototype.get = function service_get(config, noCache) {
@@ -226,8 +226,11 @@
         hit = this.cache[key]; // cache hit!
         return {
           name: this.name,
-          service: function (config, deps, next) {
-            next(undefined, hit);
+          service: {
+            arity: 3,
+            func: function (config, deps, next) {
+              next(undefined, hit);
+            }
           },
           deps: [], // no dependencies needed for cached values
           cached: true
@@ -235,7 +238,11 @@
       }
     }
     try {
-      return this.service(config);
+      return {
+        name: this.name,
+        service: this._funcs(config),
+        deps: this._deps(config)
+      };
     }
     catch (e) {
       // this should throw only if this service
@@ -247,7 +254,7 @@
   };
 
   Service.prototype.run = function service_run(globalConfig, done) {
-    this.registry.run(this.name, globalConfig, done);
+    this._registry.run(this.name, globalConfig, done);
     return this;
   };
 
@@ -369,20 +376,20 @@
   Service.prototype.on = function service_on() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift(this.name);
-    this.registry.on.apply(this.registry, args);
+    this._registry.on.apply(this._registry, args);
     return this;
   };
 
   Service.prototype.one = function service_one() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift(this.name);
-    this.registry.one.apply(this.registry, args);
+    this._registry.one.apply(this._registry, args);
     return this;
   };
 
   Service.prototype.off = function service_off() {
     var args = Array.prototype.slice.call(arguments);
-    this.registry.off.apply(this.registry, args);
+    this._registry.off.apply(this._registry, args);
     return this;
   };
 
@@ -431,6 +438,72 @@
     return 'then' in obj;
   }
 
+  function getDependencies(currentDeps, requiredDeps) {
+    var deps = {};
+    for (var i = 0; i < requiredDeps.length; i++) {
+      if (!(requiredDeps[i] in currentDeps)) {
+        return; // I can't execute this because a deps is missing
+      }
+      deps[requiredDeps[i]] = currentDeps[requiredDeps[i]];
+    }
+    return deps;
+  }
+
+  function depsHasError(currentDeps, requiredDeps) {
+    for (var i = 0; i < requiredDeps.length; i++) {
+      if (currentDeps[requiredDeps[i]] instanceof Error) {
+        return currentDeps[requiredDeps[i]]; // one of the deps is an error
+      }
+    }
+    return false;
+  }
+
+  function getFunc2(registry, service, node, error, deps, globalConfig, callback) {
+    if (error) { // propagated error
+      return function () {
+        return callback(service.name, typeof service.onError !== 'undefined' ? service.onError(globalConfig) : error, node.cached);
+      };
+    }
+
+    var wrapped_func = function (err, dep) {
+      var d;
+      if (err) {
+        d = typeof service.onError !== 'undefined' ? service.onError(globalConfig) : err;
+      }
+      else {
+        d = dep;
+      }
+      return callback(service.name, d, node.cached);
+    };
+
+    return function () {
+      var result;
+      try {
+        if (node.service.length < 3) { // no callback
+          result = node.service.call(registry, globalConfig, deps);
+          if (typeof result == 'object' && isPromise(result)) {
+            result.then(function (res) { // onfulfilled
+              wrapped_func(undefined, res);
+            },
+            function (error) { // onrejected
+              wrapped_func(error);
+            });
+          }
+          else {
+            wrapped_func(undefined, result);
+          }
+        }
+        else { // callback
+          node.service.call(registry, globalConfig, deps, wrapped_func);
+        }
+      }
+      catch (err) {
+        return callback(node.name, typeof service.onError !== 'undefined' ? service.onError(globalConfig) : err, node.cached);
+      }
+    };
+  }
+
+
   function getFunc(registry, node, onError, dependencies, globalConfig, callback) {
     var deps = {};
     var error = false;
@@ -462,8 +535,11 @@
       };
 
       try {
-        if (node.service.length < 3) { // no callback
-          result = node.service.call(registry, globalConfig, deps);
+        if (node.service.arity < 3) { // no callback
+
+//        if (node.service.length < 3) { // no callback
+//        if (false) { // no callback
+          result = node.service.func.call(registry, globalConfig, deps);
           if (typeof result == 'object' && isPromise(result)) {
             result.then(function (res) { // onfulfilled
               wrapped_func(undefined, res);
@@ -477,7 +553,7 @@
           }
         }
         else { // callback
-          node.service.call(registry, globalConfig, deps, wrapped_func);
+          node.service.func.call(registry, globalConfig, deps, wrapped_func);
         }
       }
       catch (err) {
@@ -595,30 +671,6 @@
     }
 
     return this.services[name];
-  };
-
-  Diogenes.prototype.add = function registry_add(name) {
-    var s = this.service(name);
-    s.add.apply(s, Array.prototype.slice.call(arguments, 1));
-    return this;
-  };
-
-  Diogenes.prototype.addValue = function registry_addValue(name) {
-    var s = this.service(name);
-    s.addValue.apply(s, Array.prototype.slice.call(arguments, 1));
-    return this;
-  };
-
-  Diogenes.prototype.addOnce = function registry_addOnce(name) {
-    var s = this.service(name);
-    s.addOnce.apply(s, Array.prototype.slice.call(arguments, 1));
-    return this;
-  };
-
-  Diogenes.prototype.addValueOnce = function registry_addValueOnce(name) {
-    var s = this.service(name);
-    s.addValueOnce.apply(s, Array.prototype.slice.call(arguments, 1));
-    return this;
   };
 
   Diogenes.prototype._forEachService = function registry__forEachService(method) {
@@ -743,7 +795,7 @@
       return this;
     }
 
-    newreg.add('__main__', name, function (config, deps, next) {
+    newreg.service('__main__').dependsOn(name).returns(function (config, deps, next) {
       next(undefined, deps);
     });
 

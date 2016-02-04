@@ -5,6 +5,7 @@
   "main": "src/diogenes.js",
   "scripts": {
     "test": "mocha tests/*.js",
+    "watch": "npm run test -- -w",
     "lint": "./node_modules/.bin/eslint --ext .js ./src ./tests",
     "release:major": "./node_modules/.bin/npm-release major",
     "release:minor": "./node_modules/.bin/npm-release minor",
