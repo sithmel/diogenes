@@ -679,7 +679,6 @@ describe('diogenes', function () {
         done();
       });
     });
-
   });
 
   describe('cache', function () {

@@ -82,7 +82,7 @@
     var out = {};
     out.name = this.name;
     out.description = this.description();
-    out.dependencies = this.get(config, true).deps;
+    out.dependencies = this._getDeps(config, true).deps;
 
     try {
       out.executionOrder = this._registry
@@ -179,7 +179,6 @@
     return this;
   };
 
-
   Service.prototype.returns = function service_returns() {
     var args = Array.prototype.slice.call(arguments, 0);
     args.push('add');
@@ -212,12 +211,68 @@
     return this._returns.apply(this, args);
   };
 
-
   Service.prototype.remove = function service_remove() {
     this._registry.remove(this.name);
   };
 
-  Service.prototype.get = function service_get(config, noCache) {
+  Service.prototype._manageError = function service__manageError(err, config, callback) {
+    return callback(this.name, typeof this.onError !== 'undefined' ? this.onError(config) : err);
+  };
+
+  Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
+    var obj = this._funcs(config, deps);
+    var func = obj.func;
+    var arity = obj.arity;
+    var service = this;
+    var registry = this._registry;
+    var error = depsHasError(deps);
+
+    if (error) {
+      return function () {
+        service._manageError(error, config, callback);
+      };
+    }
+
+    var wrapped_func = function (err, dep) {
+      var d;
+      if (err) {
+        d = typeof service.onError !== 'undefined' ? service.onError(config) : err;
+      }
+      else {
+        d = dep;
+      }
+      return callback(service.name, d);
+    };
+
+    return function () {
+      var result;
+      try {
+        if (arity < 3) { // no callback
+          result = func.call(registry, config, deps);
+          if (typeof result == 'object' && isPromise(result)) {
+            result.then(function (res) { // onfulfilled
+              wrapped_func(undefined, res);
+            },
+            function (error) { // onrejected
+              wrapped_func(error);
+            });
+          }
+          else {
+            wrapped_func(undefined, result);
+          }
+        }
+        else { // callback
+          func.call(registry, config, deps, wrapped_func);
+        }
+      }
+      catch (err) {
+        service._manageError(err, config, callback);
+      }
+    };
+
+  };
+
+  Service.prototype._getDeps = function service__getDeps(config, noCache) {
     var key, hit;
     if (this.cache && !this.pauseCache && !noCache) { // cache check here !!!
       this.cachePurge(); // purge stale cache entries
@@ -226,21 +281,14 @@
         hit = this.cache[key]; // cache hit!
         return {
           name: this.name,
-          service: {
-            arity: 3,
-            func: function (config, deps, next) {
-              next(undefined, hit);
-            }
-          },
           deps: [], // no dependencies needed for cached values
-          cached: true
+          cached: hit
         };
       }
     }
     try {
       return {
         name: this.name,
-        service: this._funcs(config),
         deps: this._deps(config)
       };
     }
@@ -449,117 +497,14 @@
     return deps;
   }
 
-  function depsHasError(currentDeps, requiredDeps) {
-    for (var i = 0; i < requiredDeps.length; i++) {
-      if (currentDeps[requiredDeps[i]] instanceof Error) {
-        return currentDeps[requiredDeps[i]]; // one of the deps is an error
+  function depsHasError(deps) {
+    var depsList = Object.keys(deps);
+    for (var i = 0; i < depsList.length; i++) {
+      if (deps[depsList[i]] instanceof Error) {
+        return deps[depsList[i]]; // one of the deps is an error
       }
     }
     return false;
-  }
-
-  function getFunc2(registry, service, node, error, deps, globalConfig, callback) {
-    if (error) { // propagated error
-      return function () {
-        return callback(service.name, typeof service.onError !== 'undefined' ? service.onError(globalConfig) : error, node.cached);
-      };
-    }
-
-    var wrapped_func = function (err, dep) {
-      var d;
-      if (err) {
-        d = typeof service.onError !== 'undefined' ? service.onError(globalConfig) : err;
-      }
-      else {
-        d = dep;
-      }
-      return callback(service.name, d, node.cached);
-    };
-
-    return function () {
-      var result;
-      try {
-        if (node.service.length < 3) { // no callback
-          result = node.service.call(registry, globalConfig, deps);
-          if (typeof result == 'object' && isPromise(result)) {
-            result.then(function (res) { // onfulfilled
-              wrapped_func(undefined, res);
-            },
-            function (error) { // onrejected
-              wrapped_func(error);
-            });
-          }
-          else {
-            wrapped_func(undefined, result);
-          }
-        }
-        else { // callback
-          node.service.call(registry, globalConfig, deps, wrapped_func);
-        }
-      }
-      catch (err) {
-        return callback(node.name, typeof service.onError !== 'undefined' ? service.onError(globalConfig) : err, node.cached);
-      }
-    };
-  }
-
-
-  function getFunc(registry, node, onError, dependencies, globalConfig, callback) {
-    var deps = {};
-    var error = false;
-    for (var i = 0; i < node.deps.length; i++) {
-      if (!(node.deps[i] in dependencies)) {
-        return; // I can't execute this because a deps is missing
-      }
-      deps[node.deps[i]] = dependencies[node.deps[i]];
-      if (dependencies[node.deps[i]] instanceof Error) {
-        error = dependencies[node.deps[i]]; // one of the deps is an error
-      }
-    }
-
-    if (error) {
-      return function () {
-        return callback(node.name, typeof onError !== 'undefined' ? onError(globalConfig) : error, node.cached);
-      };
-    }
-
-    return function () {
-      var result;
-      var wrapped_func = function (err, dep) {
-        if (err) {
-          return callback(node.name, typeof onError !== 'undefined' ? onError(globalConfig) : err, node.cached);
-        }
-        else {
-          return callback(node.name, dep, node.cached);
-        }
-      };
-
-      try {
-        if (node.service.arity < 3) { // no callback
-
-//        if (node.service.length < 3) { // no callback
-//        if (false) { // no callback
-          result = node.service.func.call(registry, globalConfig, deps);
-          if (typeof result == 'object' && isPromise(result)) {
-            result.then(function (res) { // onfulfilled
-              wrapped_func(undefined, res);
-            },
-            function (error) { // onrejected
-              wrapped_func(error);
-            });
-          }
-          else {
-            wrapped_func(undefined, result);
-          }
-        }
-        else { // callback
-          node.service.func.call(registry, globalConfig, deps, wrapped_func);
-        }
-      }
-      catch (err) {
-        return callback(node.name, typeof onError !== 'undefined' ? onError(globalConfig) : err, node.cached);
-      }
-    };
   }
 
   function debugStart(name, debugInfo) {
@@ -701,7 +646,7 @@
     return function (name) {
       if (!(name in cache)) {
         if (!(name in services)) return;
-        cache[name] = services[name].get(globalConfig, noCache);
+        cache[name] = services[name]._getDeps(globalConfig, noCache);
       }
       return cache[name];
     };
@@ -735,6 +680,7 @@
 
     debugStart('__all__', debugInfo);
     (function resolve(name, dep, cached) {
+      var currentService, adj, currentServiceDeps;
       var func, i = 0;
 
       if (name) {
@@ -762,14 +708,30 @@
       }
 
       while (i < sorted_services.length) {
-        func = getFunc(that, adjlists(sorted_services[i]), services[sorted_services[i]].onError, deps, globalConfig, resolve);
-        if (func) {
-          debugStart(sorted_services[i], debugInfo);
+        currentService = services[sorted_services[i]];
+        adj = adjlists(currentService.name);
+        if ('cached' in adj) {
+          setImmediate(function () {
+            resolve(currentService.name, adj.cached, true);
+          });
           sorted_services.splice(i, 1);
-          setImmediate(func);
         }
         else {
-          i++;
+          currentServiceDeps = getDependencies(deps, adj.deps);
+          if (currentServiceDeps) {
+            try {
+              func = currentService._getFunc(globalConfig, currentServiceDeps, resolve);
+            }
+            catch (e) {
+              return done.call(that, e, deps, debugInfo);
+            }
+            debugStart(currentService.name, debugInfo);
+            sorted_services.splice(i, 1);
+            setImmediate(func);
+          }
+          else {
+            i++;
+          }
         }
       }
     }());
