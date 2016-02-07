@@ -71,7 +71,7 @@ describe('diogenes', function () {
       next(undefined, 'hello');
     });
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.equal(registry, this);
       assert.deepEqual(dep, 'hello');
       done();
@@ -79,7 +79,7 @@ describe('diogenes', function () {
   });
 
   it('must return undefined (1 function)', function (done) {
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.equal(registry, this);
       assert.equal(err.message, 'Diogenes: missing dependency: hello');
       assert.instanceOf(err, Error);
@@ -93,7 +93,7 @@ describe('diogenes', function () {
       next(undefined, 'hello');
     });
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.equal(registry, this);
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'broken');
@@ -112,7 +112,7 @@ describe('diogenes', function () {
       next(undefined, deps.hello + 'world!');
     });
 
-    registry.run('world', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('world', function (err, dep) {
       assert.deepEqual(dep, 'hello world!');
       done();
     });
@@ -129,7 +129,7 @@ describe('diogenes', function () {
       return deps.hello + 'world!';
     });
 
-    registry.run('world', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('world', function (err, dep) {
       assert.deepEqual(dep, 'hello world!');
       done();
     });
@@ -156,7 +156,7 @@ describe('diogenes', function () {
       return p;
     });
 
-    registry.run('world', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('world', function (err, dep) {
       assert.deepEqual(dep, 'hello world!');
       done();
     });
@@ -176,7 +176,7 @@ describe('diogenes', function () {
       return getPromise(getPromise('hello'));
     });
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.deepEqual(dep, 'hello');
       done();
     });
@@ -203,7 +203,7 @@ describe('diogenes', function () {
       return p;
     });
 
-    registry.run('world', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('world', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'broken');
       done();
@@ -219,9 +219,9 @@ describe('diogenes', function () {
       next(undefined, 'hello');
     });
 
-    registry.run('hello', {special: 1}, function (err, dep) {
+    registry.getFunctionGraph({special: 1}).run('hello', function (err, dep) {
       assert.deepEqual(dep, 'hello special');
-      registry.run('hello', {special: 1}, function (err, dep) {
+      registry.getFunctionGraph({special: 1}).run('hello', function (err, dep) {
         assert.deepEqual(dep, 'hello');
         done();
       });
@@ -237,7 +237,7 @@ describe('diogenes', function () {
       next(undefined, 'world!');
     });
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Diogenes: circular dependency: hello');
       done();
@@ -257,7 +257,7 @@ describe('diogenes', function () {
       next(undefined, undefined);
     });
 
-    registry.run('C', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('C', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Diogenes: circular dependency: C');
       done();
@@ -269,7 +269,7 @@ describe('diogenes', function () {
       next(undefined, 'hello ');
     });
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Diogenes: missing dependency: world');
       done();
@@ -285,7 +285,7 @@ describe('diogenes', function () {
       next(undefined, 'hello2');
     });
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'Occamsrazor (get): More than one adapter fits');
       done();
@@ -295,7 +295,7 @@ describe('diogenes', function () {
   it('must add a value', function (done) {
     registry.service('hello').returnsValue('hello');
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.equal(dep, 'hello');
       done();
     });
@@ -304,9 +304,9 @@ describe('diogenes', function () {
   it('must add a value (only once)', function (done) {
     registry.service('hello').returnsValueOnce('hello');
 
-    registry.run('hello', {}, function (err, dep) {
+    registry.getFunctionGraph({}).run('hello', function (err, dep) {
       assert.equal(dep, 'hello');
-      registry.run('hello', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('hello', function (err, dep) {
         assert.equal(err.message, 'Occamsrazor (get): Function not found');
         assert.instanceOf(err, Error);
         done();
@@ -361,7 +361,7 @@ describe('diogenes', function () {
       };
       assert.deepEqual(registry.service('hello').infoObj(), obj1);
       assert.deepEqual(registry.service('world').infoObj(),  obj2);
-      assert.deepEqual(registry.infoObj(), {hello: obj1, world: obj2});
+      assert.deepEqual(registry.getFunctionGraph().infoObj(), {hello: obj1, world: obj2});
     });
 
     it('must create doc', function () {
@@ -369,7 +369,7 @@ describe('diogenes', function () {
       var doc2 = 'world\n=====\nreturns the string world\n\nExecution order:\n* hello\n\nDependencies:\n* hello\n';
       assert.equal(registry.service('hello').info(), doc1);
       assert.equal(registry.service('world').info(),  doc2);
-      assert.equal(registry.info(), doc1 + '\n\n' + doc2);
+      assert.equal(registry.getFunctionGraph().info(), doc1 + '\n\n' + doc2);
     });
   });
 
@@ -406,35 +406,35 @@ describe('diogenes', function () {
     });
 
     it('must return leftmost service', function (done) {
-      registry.run('A', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('A', function (err, dep) {
         assert.deepEqual(dep, 'A');
         done();
       });
     });
 
     it('must return middle service (1)', function (done) {
-      registry.run('B', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('B', function (err, dep) {
         assert.deepEqual(dep, 'AB');
         done();
       });
     });
 
     it('must return middle service (2)', function (done) {
-      registry.run('C', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('C', function (err, dep) {
         assert.deepEqual(dep, 'AABC');
         done();
       });
     });
 
     it('must return rightmost service', function (done) {
-      registry.run('D', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('D', function (err, dep) {
         assert.deepEqual(dep, 'ABAABCD');
         done();
       });
     });
 
     it('must return execution order', function () {
-      var list = registry.getExecutionOrder('D', {});
+      var list = registry.getFunctionGraph({}).getExecutionOrder('D');
       assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
     });
 
@@ -444,26 +444,26 @@ describe('diogenes', function () {
         next(undefined, deps['A'] + 'D');
       });
 
-      var list = registry.getExecutionOrder('D', {});
+      var list = registry.getFunctionGraph({}).getExecutionOrder('D');
       assert.deepEqual(list, [ 'A', 'D' ]);
     });
 
     it('must run without config', function (done) {
-      registry.run('D', function (err, dep) {
+      registry.getFunctionGraph().run('D', function (err, dep) {
         assert.deepEqual(dep, 'ABAABCD');
         done();
       });
     });
 
     it('must run without config and callback', function (done) {
-      registry.run('D');
+      registry.getFunctionGraph().run('D');
       setTimeout(function () {
         done();
       }, 20);
     });
 
     it('must run more than one service', function (done) {
-      registry.run(['A', 'D'], {}, function (err, deps) {
+      registry.getFunctionGraph({}).run(['A', 'D'], function (err, deps) {
         assert.deepEqual(deps.A, 'A');
         assert.deepEqual(deps.D, 'ABAABCD');
         done();
@@ -471,7 +471,7 @@ describe('diogenes', function () {
     });
 
     it('must run more than one service, no config', function (done) {
-      registry.run(['A', 'D'], function (err, deps) {
+      registry.getFunctionGraph().run(['A', 'D'], function (err, deps) {
         assert.deepEqual(deps.A, 'A');
         assert.deepEqual(deps.D, 'ABAABCD');
         done();
@@ -479,7 +479,7 @@ describe('diogenes', function () {
     });
 
     it('must run more than one service, no config, no callback', function (done) {
-      registry.run(['A', 'D']);
+      registry.getFunctionGraph().run(['A', 'D']);
       setTimeout(function () {
         done();
       }, 20);
@@ -513,28 +513,28 @@ describe('diogenes', function () {
     });
 
     it('must extract the rightmost service', function (done) {
-      registry.run('world', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('world', function (err, dep) {
         assert.deepEqual(dep, 'hello world!');
         done();
       });
     });
 
     it('must extract the leftmost service', function (done) {
-      registry.run('hello', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('hello', function (err, dep) {
         assert.deepEqual(dep, 'hello ');
         done();
       });
     });
 
     it('must extract the rightmost inverted service', function (done) {
-      registry.run('hello', {reverse: true}, function (err, dep) {
+      registry.getFunctionGraph({reverse: true}).run('hello', function (err, dep) {
         assert.deepEqual(dep, 'world hello!');
         done();
       });
     });
 
     it('must extract the leftmost inverted service', function (done) {
-      registry.run('world', {reverse: true}, function (err, dep) {
+      registry.getFunctionGraph({reverse: true}).run('world', function (err, dep) {
         assert.deepEqual(dep, 'world ');
         done();
       });
@@ -583,7 +583,7 @@ describe('diogenes', function () {
     });
 
     it('must run service asynchronously', function (done) {
-      registry.run('C', {}, function (err, dep) {
+      registry.getFunctionGraph({}).run('C', function (err, dep) {
         assert.equal(str, 'BAC');
         assert.equal(dep, 'ABC');
         done();
@@ -591,7 +591,7 @@ describe('diogenes', function () {
     });
 
     it('must profile the execution', function (done) {
-      registry.run('C', {}, function (err, dep, deps, profile) {
+      registry.getFunctionGraph({}).run('C', function (err, dep, deps, profile) {
         assert.equal(str, 'BAC');
         assert.equal(dep, 'ABC');
         assert(profile.A.delta > 48 && profile.A.delta < 52 );
@@ -653,12 +653,12 @@ describe('diogenes', function () {
     });
 
     it('must return a correct order (readme example)', function () {
-      var a = registry.getExecutionOrder('paragraph', {abstractLen: 5, abstractEllipsis: '...'});
+      var a = registry.getFunctionGraph({abstractLen: 5, abstractEllipsis: '...'}).getExecutionOrder('paragraph');
       assert.deepEqual(a, ['text', 'tokens', 'abstract', 'count', 'paragraph']);
     });
 
     it('must work (readme example)', function (done) {
-      registry.run('paragraph', {abstractLen: 5, abstractEllipsis: '...'}, function (err, p) {
+      registry.getFunctionGraph({abstractLen: 5, abstractEllipsis: '...'}).run('paragraph', function (err, p) {
         assert.equal(p.count, 23);
         assert.equal(p.abstract, 'Diogenes became notorious for his...');
         assert.equal(p.text, text);
@@ -667,12 +667,12 @@ describe('diogenes', function () {
     });
 
     it('must return a correct order (readme example) - alternate version', function () {
-      var a = registry.getExecutionOrder('paragraph', {abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'});
+      var a = registry.getFunctionGraph({abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'}).getExecutionOrder('paragraph');
       assert.deepEqual(a, ['text', 'abstract', 'tokens', 'count', 'paragraph']);
     });
 
     it('must work (readme example) - alternate version', function (done) {
-      registry.run('paragraph', {abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'}, function (err, p) {
+      registry.getFunctionGraph({abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'}).run('paragraph', function (err, p) {
         assert.equal(p.count, 23);
         assert.equal(p.abstract, 'Dioge...');
         assert.equal(p.text, text);
@@ -784,9 +784,9 @@ describe('diogenes', function () {
 
     it('must run only once', function (done) {
       cached.cacheOn();
-      cached.run({}, function (err, dep) {
+      cached.registry().getFunctionGraph({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
-        cached.run({}, function (err, dep) {
+        cached.registry().getFunctionGraph({}).run('cached', function (err, dep) {
           assert.equal(dep, 'hello 0');
           done();
         });
@@ -795,15 +795,15 @@ describe('diogenes', function () {
 
     it('must pause the cache', function (done) {
       cached.cacheOn();
-      cached.run({}, function (err, dep) {
+      cached.registry().getFunctionGraph({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
-        cached.run({}, function (err, dep) {
+        cached.registry().getFunctionGraph({}).run('cached', function (err, dep) {
           assert.equal(dep, 'hello 0');
           cached.cachePause();
-          cached.run({}, function (err, dep) {
+          cached.registry().getFunctionGraph({}).run('cached', function (err, dep) {
             assert.equal(dep, 'hello 1');
             cached.cacheResume();
-            cached.run({}, function (err, dep) {
+            cached.registry().getFunctionGraph({}).run('cached', function (err, dep) {
               assert.equal(dep, 'hello 0');
               done();
             });
@@ -866,7 +866,7 @@ describe('diogenes', function () {
         next(undefined, deps.hello + 'world!');
       });
 
-      registry.run('world', {test:1}, function (err, dep) {});
+      registry.getFunctionGraph({test: 1}).run('world', function (err, dep) {});
     });
 
     it('must fire on deps (alternate syntax)', function (done) {
@@ -895,7 +895,7 @@ describe('diogenes', function () {
         next(undefined, deps.hello + 'world!');
       });
 
-      registry.run('world', {test:1}, function (err, dep) {});
+      registry.getFunctionGraph({test: 1}).run('world', function (err, dep) {});
     });
 
     it('mustn\'t fire for cached values', function (done) {
@@ -913,10 +913,10 @@ describe('diogenes', function () {
       })
       .cacheOn();
 
-      registry.run('hello', {test:1}, function (err, dep) {
+      registry.getFunctionGraph({test: 1}).run('hello', function (err, dep) {
         setTimeout(function () {
           assert.equal(called, 1);
-          registry.run('hello', {test:1}, function (err, dep) {
+          registry.getFunctionGraph({test: 1}).run('hello', function (err, dep) {
             setTimeout(function () {
               assert.equal(called, 1);
               done();
@@ -936,7 +936,7 @@ describe('diogenes', function () {
       })
       .onErrorReturn(42);
 
-      registry.run('hello', {test:1}, function (err, dep) {
+      registry.getFunctionGraph({test: 1}).run('hello', function (err, dep) {
         assert.isUndefined(err);
         assert.equal(dep, 42);
         done();
@@ -949,7 +949,7 @@ describe('diogenes', function () {
       })
       .onErrorReturn(undefined);
 
-      registry.run('hello', {test:1}, function (err, dep) {
+      registry.getFunctionGraph({test: 1}).run('hello', function (err, dep) {
         assert.isUndefined(err);
         assert.isUndefined(dep);
         done();
@@ -962,7 +962,7 @@ describe('diogenes', function () {
       })
       .onErrorExecute(function (config) {return config.test;});
 
-      registry.run('hello', {test:1}, function (err, dep) {
+      registry.getFunctionGraph({test: 1}).run('hello', function (err, dep) {
         assert.isUndefined(err);
         assert.equal(dep, 1);
         done();
@@ -979,7 +979,7 @@ describe('diogenes', function () {
       })
       .onErrorReturn(42);
 
-      registry.run('world', {test:1}, function (err, dep) {
+      registry.getFunctionGraph({test: 1}).run('world', function (err, dep) {
         assert.isUndefined(err);
         assert.equal(dep, 42);
         done();

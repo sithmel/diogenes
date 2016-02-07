@@ -86,7 +86,8 @@
 
     try {
       out.executionOrder = this._registry
-      .getExecutionOrder(this.name, config, true)
+      .getFunctionGraph(config)
+      .getExecutionOrder(this.name, true)
       .slice(0, -1);
     }
     catch (e) {
@@ -441,13 +442,148 @@
     return this;
   };
 
+  // initialize global registries
+  var _registries = typeof window == 'undefined' ? global : window;
+
+  if (!_registries._diogenes_registries) {
+    _registries._diogenes_registries = {};
+    _registries._diogenes_event_handlers = {};
+  }
+
   /*
 
-  Registry utilities
+  Registry object
 
   */
-  // depth first search
-  function dfs(adjlists, startingNode) {
+
+  function Diogenes(regName) {
+    // if regName exists I'll use a global registry
+    if (regName) {
+      if (!(regName in _registries._diogenes_registries)) {
+        _registries._diogenes_registries[regName] = {};
+      }
+      if (!(regName in _registries._diogenes_event_handlers)) {
+        _registries._diogenes_event_handlers[regName] = {};
+      }
+      this.services = _registries._diogenes_registries[regName];
+      this.events = _registries._diogenes_event_handlers[regName];
+    }
+    else {
+      this.services = {};
+      this.events = or();
+    }
+  }
+
+  Diogenes.getRegistry = function registry_getRegistry(regName) {
+    return new Diogenes(regName);
+  };
+
+  Diogenes.prototype.init = function registry_init(funcs) {
+    for (var i = 0; i < funcs.length; i++) {
+      funcs[i].apply(this);
+    }
+  };
+
+  Diogenes.prototype.forEach = function registry_forEach(callback) {
+    for (var name in this.services) {
+      callback.call(this.services[name], this.services[name], name);
+    }
+  };
+
+  Diogenes.prototype.merge = function registry_merge() {
+    var registry = new Diogenes();
+
+    var events = Array.prototype.map.call(arguments, function (reg) {
+      return reg.events;
+    });
+
+    var services = Array.prototype.map.call(arguments, function (reg) {
+      return reg.services;
+    });
+
+    services.unshift(this.services);
+    services.unshift({});
+
+    registry.events = this.events.merge.apply(null, events);
+    registry.services = Object.assign.apply(null, services);
+    return registry;
+  };
+
+  Diogenes.prototype.service = function registry_service(name) {
+    if (typeof name !== 'string') {
+      throw new Error('Diogenes: the name of the service should be a string');
+    }
+
+    if (!(name in this.services)) {
+      this.services[name] = new Service(name, this);
+    }
+
+    return this.services[name];
+  };
+
+  Diogenes.prototype._forEachService = function registry__forEachService(method) {
+    this.forEach(function () {
+      this[method]();
+    });
+  };
+
+  Diogenes.prototype.cacheReset = function registry_cacheReset() {
+    this._forEachService('cacheReset');
+  };
+
+  Diogenes.prototype.cacheOff = function registry_cacheOff() {
+    this._forEachService('cacheOff');
+  };
+
+  Diogenes.prototype.cachePause = function registry_cachePause() {
+    this._forEachService('cachePause');
+  };
+
+  Diogenes.prototype.cacheResume = function registry_cacheResume() {
+    this._forEachService('cacheResume');
+  };
+
+  Diogenes.prototype.remove = function registry_remove(name) {
+    delete this.services[name];
+    return this;
+  };
+
+  Diogenes.prototype.getFunctionGraph = function registry_getFunctionGraph(config) {
+    return new FunctionGraph(this, config);
+  };
+
+  // events
+  Diogenes.prototype.on = function registry_on() {
+    var args = Array.prototype.slice.call(arguments);
+    this.events.on.apply(this, args);
+    return this;
+  };
+
+  Diogenes.prototype.one = function registry_one() {
+    var args = Array.prototype.slice.call(arguments);
+    this.events.one.apply(this, args);
+    return this;
+  };
+
+  Diogenes.prototype.off = function registry_off() {
+    var args = Array.prototype.slice.call(arguments);
+    this.events.off.apply(this, args);
+    return this;
+  };
+
+  Diogenes.prototype.trigger = function registry_trigger() {
+    var args = Array.prototype.slice.call(arguments);
+    this.events.trigger.apply(this, args);
+    return this;
+  };
+
+  /*
+
+  FunctionGraph utilities
+
+  */
+
+  function dfs(adjlists, startingNode) { // depth first search
     var already_visited = {};
     var already_backtracked = {};
     var adjlist, node;
@@ -523,159 +659,77 @@
     debugInfo[name].delta = debugInfo[name].end - debugInfo[name].start;
   }
 
-  // initialize global registries
-  var _registries = typeof window == 'undefined' ? global : window;
-
-  if (!_registries._diogenes_registries) {
-    _registries._diogenes_registries = {};
-    _registries._diogenes_event_handlers = {};
-  }
-
   /*
 
-  Registry object
+  function graph
 
   */
 
-  function Diogenes(regName) {
-    // if regName exists I'll use a global registry
-    if (regName) {
-      if (!(regName in _registries._diogenes_registries)) {
-        _registries._diogenes_registries[regName] = {};
-      }
-      if (!(regName in _registries._diogenes_event_handlers)) {
-        _registries._diogenes_event_handlers[regName] = {};
-      }
-      this.services = _registries._diogenes_registries[regName];
-      this.events = _registries._diogenes_event_handlers[regName];
-    }
-    else {
-      this.services = {};
-      this.events = or();
-    }
+  function FunctionGraph(registry, config) {
+    this._registry = registry; // backreference
+    this._config = config;
   }
 
-  Diogenes.getRegistry = function registry_getRegistry(regName) {
-    return new Diogenes(regName);
-  };
 
-  Diogenes.prototype.init = function registry_init(funcs) {
-    for (var i = 0; i < funcs.length; i++) {
-      funcs[i].apply(this);
-    }
-  };
+  FunctionGraph.prototype.infoObj = function graph_infoObj() {
+    var config = this._config;
+    var registry = this._registry;
 
-  Diogenes.prototype.forEach = function registry_forEach(callback) {
-    for (var name in this.services) {
-      callback.call(this.services[name], this.services[name], name);
-    }
-  };
-
-  Diogenes.prototype.infoObj = function registry_infoObj(config) {
     var out = {};
-    this.forEach(function (service, name) {
+    registry.forEach(function (service, name) {
       out[name] = this.infoObj(config);
     });
     return out;
   };
 
-  Diogenes.prototype.info = function registry_info(config) {
+  FunctionGraph.prototype.info = function graph_info() {
+    var config = this._config;
+    var registry = this._registry;
     var out = [];
-    this.forEach(function (service) {
+    registry.forEach(function (service) {
       out.push(this.info(config));
     });
     return out.join('\n\n');
   };
 
-  Diogenes.prototype.merge = function registry_merge() {
-    var registry = new Diogenes();
-
-    var events = Array.prototype.map.call(arguments, function (reg) {
-      return reg.events;
-    });
-
-    var services = Array.prototype.map.call(arguments, function (reg) {
-      return reg.services;
-    });
-
-    services.unshift(this.services);
-    services.unshift({});
-
-    registry.events = this.events.merge.apply(null, events);
-    registry.services = Object.assign.apply(null, services);
-    return registry;
-  };
-
-  Diogenes.prototype.service = function registry_service(name) {
-    if (typeof name !== 'string') {
-      throw new Error('Diogenes: the name of the service should be a string');
-    }
-
-    if (!(name in this.services)) {
-      this.services[name] = new Service(name, this);
-    }
-
-    return this.services[name];
-  };
-
-  Diogenes.prototype._forEachService = function registry__forEachService(method) {
-    this.forEach(function () {
-      this[method]();
-    });
-  };
-
-  Diogenes.prototype.cacheReset = function registry_cacheReset() {
-    this._forEachService('cacheReset');
-  };
-
-  Diogenes.prototype.cacheOff = function registry_cacheOff() {
-    this._forEachService('cacheOff');
-  };
-
-  Diogenes.prototype.cachePause = function registry_cachePause() {
-    this._forEachService('cachePause');
-  };
-
-  Diogenes.prototype.cacheResume = function registry_cacheResume() {
-    this._forEachService('cacheResume');
-  };
-
-  Diogenes.prototype._filterByConfig = function registry__filterByConfig(globalConfig, noCache) {
+  FunctionGraph.prototype._filterByConfig = function graph__filterByConfig(noCache) {
+    var config = this._config;
+    var registry = this._registry;
     var cache = {};
-    var services = this.services;
+    var services = registry.services;
     return function (name) {
       if (!(name in cache)) {
         if (!(name in services)) return;
-        cache[name] = services[name]._getDeps(globalConfig, noCache);
+        cache[name] = services[name]._getDeps(config, noCache);
       }
       return cache[name];
     };
   };
 
-  Diogenes.prototype.remove = function registry_remove(name) {
-    delete this.services[name];
-    return this;
-  };
-
-  Diogenes.prototype.getExecutionOrder = function registry_getExecutionOrder(name, globalConfig, noCache) {
-    var adjlists = this._filterByConfig(globalConfig, noCache);
+  FunctionGraph.prototype.getExecutionOrder = function graph_getExecutionOrder(name, noCache) {
+    var adjlists = this._filterByConfig(noCache);
     var sorted_services = dfs(adjlists, name);
     return sorted_services;
   };
 
-  Diogenes.prototype._run = function registry__run(name, globalConfig, done) {
+  FunctionGraph.prototype._run = function graph__run(name, done) {
     var adjlists, sorted_services;
+    var config = this._config;
     var deps = {}; // all dependencies already resolved
     var debugInfo = {}; // profiling
-    var that = this;
-    var services = this.services;
+    var registry = this._registry;
+    var services = registry.services;
+
+    if (!done) {
+      done = function () {};
+    }
 
     try {
-      adjlists = this._filterByConfig(globalConfig);
+      adjlists = this._filterByConfig();
       sorted_services = dfs(adjlists, name);
     }
     catch (e) {
-      return done.call(that, e);
+      return done.call(registry, e);
     }
 
     debugStart('__all__', debugInfo);
@@ -687,11 +741,11 @@
         deps[name] = dep;
         debugEnd(name, debugInfo);
         if (!(dep instanceof Error)) {
-          services[name].cachePush(globalConfig, dep);
+          services[name].cachePush(config, dep);
 
           if (!cached) {
             setImmediate(function () {
-              that.trigger(name, dep, globalConfig);
+              registry.trigger(name, dep, config);
             });
           }
         }
@@ -700,10 +754,10 @@
       if (sorted_services.length === 0) {
         debugEnd('__all__', debugInfo);
         if (dep instanceof Error) {
-          return done.call(that, dep, deps, debugInfo);
+          return done.call(registry, dep, deps, debugInfo);
         }
         else {
-          return done.call(that, undefined, dep, deps, debugInfo);
+          return done.call(registry, undefined, dep, deps, debugInfo);
         }
       }
 
@@ -720,10 +774,10 @@
           currentServiceDeps = getDependencies(deps, adj.deps);
           if (currentServiceDeps) {
             try {
-              func = currentService._getFunc(globalConfig, currentServiceDeps, resolve);
+              func = currentService._getFunc(config, currentServiceDeps, resolve);
             }
             catch (e) {
-              return done.call(that, e, deps, debugInfo);
+              return done.call(registry, e, deps, debugInfo);
             }
             debugStart(currentService.name, debugInfo);
             sorted_services.splice(i, 1);
@@ -739,21 +793,11 @@
     return this;
   };
 
-  Diogenes.prototype.run = function registry_run(name, globalConfig, done) {
+  FunctionGraph.prototype.run = function graph_run(name, done) {
     var newreg = new Diogenes();
 
-    if (typeof globalConfig === 'function') {
-      done = globalConfig;
-      globalConfig = {};
-    }
-
-    if (typeof globalConfig === 'undefined') {
-      done = function () {};
-      globalConfig = {};
-    }
-
     if (typeof name === 'string') {
-      this._run(name, globalConfig, done);
+      this._run(name, done);
       return this;
     }
 
@@ -761,33 +805,8 @@
       next(undefined, deps);
     });
 
-    var tempreg = newreg.merge(this);
-    tempreg.run('__main__', globalConfig, done);
-    return this;
-  };
-
-  // events
-  Diogenes.prototype.on = function registry_on() {
-    var args = Array.prototype.slice.call(arguments);
-    this.events.on.apply(this, args);
-    return this;
-  };
-
-  Diogenes.prototype.one = function registry_one() {
-    var args = Array.prototype.slice.call(arguments);
-    this.events.one.apply(this, args);
-    return this;
-  };
-
-  Diogenes.prototype.off = function registry_off() {
-    var args = Array.prototype.slice.call(arguments);
-    this.events.off.apply(this, args);
-    return this;
-  };
-
-  Diogenes.prototype.trigger = function registry_trigger() {
-    var args = Array.prototype.slice.call(arguments);
-    this.events.trigger.apply(this, args);
+    var tempreg = newreg.merge(this._registry);
+    tempreg.getFunctionGraph(this._config).run('__main__', done);
     return this;
   };
 
