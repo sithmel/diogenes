@@ -86,7 +86,7 @@
 
     try {
       out.executionOrder = this._registry
-      .getFunctionGraph(config)
+      .graph(config)
       .getExecutionOrder(this.name, true)
       .slice(0, -1);
     }
@@ -548,7 +548,7 @@
     return this;
   };
 
-  Diogenes.prototype.getFunctionGraph = function registry_getFunctionGraph(config) {
+  Diogenes.prototype.graph = function registry_graph(config) {
     return new FunctionGraph(this, config);
   };
 
@@ -806,7 +806,7 @@
     });
 
     var tempreg = newreg.merge(this._registry);
-    tempreg.getFunctionGraph(this._config).run('__main__', done);
+    tempreg.graph(this._config).run('__main__', done);
     return this;
   };
 
