@@ -51,16 +51,12 @@
   function Service(name, registry) {
     this.name = name;
     this._desc = '';
-    this._registry = registry; // backreference
+    this.registry = registry; // backreference
     this._funcs = or();
     this._deps = or().notFound(function () {
       return [];
     });
   }
-
-  Service.prototype.registry = function service_registry() {
-    return this._registry;
-  };
 
   Service.prototype.description = function service_description(desc) {
     if (typeof desc === 'undefined') {
@@ -85,7 +81,7 @@
     out.dependencies = this._getDeps(config, true).deps;
 
     try {
-      out.executionOrder = this._registry
+      out.executionOrder = this.registry
       .graph(config)
       .getExecutionOrder(this.name, true)
       .slice(0, -1);
@@ -213,7 +209,7 @@
   };
 
   Service.prototype.remove = function service_remove() {
-    this._registry.remove(this.name);
+    this.registry.remove(this.name);
   };
 
   Service.prototype._manageError = function service__manageError(err, config, callback) {
@@ -225,7 +221,7 @@
     var func = obj.func;
     var arity = obj.arity;
     var service = this;
-    var registry = this._registry;
+    var registry = this.registry;
     var error = depsHasError(deps);
 
     if (error) {
@@ -303,7 +299,7 @@
   };
 
   Service.prototype.run = function service_run(config, done) {
-    this._registry.graph(config).run(this.name, done);
+    this.registry.graph(config).run(this.name, done);
     return this;
   };
 
@@ -425,20 +421,20 @@
   Service.prototype.on = function service_on() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift(this.name);
-    this._registry.on.apply(this._registry, args);
+    this.registry.on.apply(this.registry, args);
     return this;
   };
 
   Service.prototype.one = function service_one() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift(this.name);
-    this._registry.one.apply(this._registry, args);
+    this.registry.one.apply(this.registry, args);
     return this;
   };
 
   Service.prototype.off = function service_off() {
     var args = Array.prototype.slice.call(arguments);
-    this._registry.off.apply(this._registry, args);
+    this.registry.off.apply(this.registry, args);
     return this;
   };
 
@@ -697,14 +693,14 @@
   */
 
   function FunctionGraph(registry, config) {
-    this._registry = registry; // backreference
+    this.registry = registry; // backreference
     this._config = config;
   }
 
 
   FunctionGraph.prototype.infoObj = function graph_infoObj() {
     var config = this._config;
-    var registry = this._registry;
+    var registry = this.registry;
 
     var out = {};
     registry.forEach(function (service, name) {
@@ -715,7 +711,7 @@
 
   FunctionGraph.prototype.info = function graph_info() {
     var config = this._config;
-    var registry = this._registry;
+    var registry = this.registry;
     var out = [];
     registry.forEach(function (service) {
       out.push(this.info(config));
@@ -724,7 +720,7 @@
   };
 
   FunctionGraph.prototype.getExecutionOrder = function graph_getExecutionOrder(name, noCache) {
-    var adjlists = this._registry._filterByConfig(this._config, noCache);
+    var adjlists = this.registry._filterByConfig(this._config, noCache);
     var sorted_services = dfs(adjlists, name);
     return sorted_services;
   };
@@ -734,7 +730,7 @@
     var config = this._config;
     var deps = {}; // all dependencies already resolved
     var debugInfo = {}; // profiling
-    var registry = this._registry;
+    var registry = this.registry;
     var services = registry.services;
 
     if (!done) {
@@ -742,7 +738,7 @@
     }
 
     try {
-      adjlists = this._registry._filterByConfig(config);
+      adjlists = this.registry._filterByConfig(config);
       sorted_services = dfs(adjlists, name);
     }
     catch (e) {
@@ -822,7 +818,7 @@
       next(undefined, deps);
     });
 
-    var tempreg = newreg.merge(this._registry);
+    var tempreg = newreg.merge(this.registry);
     tempreg.graph(this._config).run('__main__', done);
     return this;
   };

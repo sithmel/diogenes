@@ -868,9 +868,9 @@ describe('diogenes', function () {
 
     it('must run only once', function (done) {
       cached.cacheOn();
-      cached.registry().graph({}).run('cached', function (err, dep) {
+      cached.registry.graph({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
-        cached.registry().graph({}).run('cached', function (err, dep) {
+        cached.registry.graph({}).run('cached', function (err, dep) {
           assert.equal(dep, 'hello 0');
           done();
         });
@@ -879,15 +879,15 @@ describe('diogenes', function () {
 
     it('must pause the cache', function (done) {
       cached.cacheOn();
-      cached.registry().graph({}).run('cached', function (err, dep) {
+      cached.registry.graph({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
-        cached.registry().graph({}).run('cached', function (err, dep) {
+        cached.registry.graph({}).run('cached', function (err, dep) {
           assert.equal(dep, 'hello 0');
           cached.cachePause();
-          cached.registry().graph({}).run('cached', function (err, dep) {
+          cached.registry.graph({}).run('cached', function (err, dep) {
             assert.equal(dep, 'hello 1');
             cached.cacheResume();
-            cached.registry().graph({}).run('cached', function (err, dep) {
+            cached.registry.graph({}).run('cached', function (err, dep) {
               assert.equal(dep, 'hello 0');
               done();
             });
