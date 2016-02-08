@@ -302,8 +302,8 @@
     }
   };
 
-  Service.prototype.run = function service_run(globalConfig, done) {
-    this._registry.run(this.name, globalConfig, done);
+  Service.prototype.run = function service_run(config, done) {
+    this._registry.graph(config).run(this.name, done);
     return this;
   };
 
@@ -450,6 +450,23 @@
     _registries._diogenes_event_handlers = {};
   }
 
+  // deadly simple memoize using the first arguments as key
+  function simpleMemoize(func) {
+    var cache = {};
+    return function () {
+      var args = Array.prototype.slice.call(arguments, 0);
+      var output;
+      if (args[0] in cache) {
+        return cache[args[0]];
+      }
+      else {
+        output = func.apply(null, args);
+        cache[args[0]] = output;
+        return output;
+      }
+    };
+  }
+
   /*
 
   Registry object
@@ -548,8 +565,22 @@
     return this;
   };
 
+  Diogenes.prototype._filterByConfig = function registry__filterByConfig(config, noCache) {
+    var registry = this;
+    var services = registry.services;
+    return simpleMemoize(function (name) {
+      if (!(name in services)) return;
+      return services[name]._getDeps(config, noCache);
+    });
+  };
+
   Diogenes.prototype.graph = function registry_graph(config) {
     return new FunctionGraph(this, config);
+  };
+
+  Diogenes.prototype.run = function registry_run(name, config, done) {
+    this.graph(config).run(name, done);
+    return this;
   };
 
   // events
@@ -692,22 +723,8 @@
     return out.join('\n\n');
   };
 
-  FunctionGraph.prototype._filterByConfig = function graph__filterByConfig(noCache) {
-    var config = this._config;
-    var registry = this._registry;
-    var cache = {};
-    var services = registry.services;
-    return function (name) {
-      if (!(name in cache)) {
-        if (!(name in services)) return;
-        cache[name] = services[name]._getDeps(config, noCache);
-      }
-      return cache[name];
-    };
-  };
-
   FunctionGraph.prototype.getExecutionOrder = function graph_getExecutionOrder(name, noCache) {
-    var adjlists = this._filterByConfig(noCache);
+    var adjlists = this._registry._filterByConfig(this._config, noCache);
     var sorted_services = dfs(adjlists, name);
     return sorted_services;
   };
@@ -725,7 +742,7 @@
     }
 
     try {
-      adjlists = this._filterByConfig();
+      adjlists = this._registry._filterByConfig(config);
       sorted_services = dfs(adjlists, name);
     }
     catch (e) {

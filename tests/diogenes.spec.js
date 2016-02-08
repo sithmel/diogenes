@@ -64,6 +64,29 @@ describe('diogenes', function () {
     });
   });
 
+
+  it('must works service shortcut', function (done) {
+    registry.service('hello').returns(function (config, deps, next) {
+      assert.deepEqual(config, {test: 1});
+      next(undefined, 'hello');
+    });
+    registry.service('hello').run({test: 1}, function (err, dep) {
+      assert.deepEqual(dep, 'hello');
+      done();
+    });
+  });
+
+  it('must works registry shortcut', function (done) {
+    registry.service('hello').returns(function (config, deps, next) {
+      assert.deepEqual(config, {test: 1});
+      next(undefined, 'hello');
+    });
+    registry.run('hello', {test: 1}, function (err, dep) {
+      assert.deepEqual(dep, 'hello');
+      done();
+    });
+  });
+
   it('must return a service in a simple case (1 function)', function (done) {
     registry.service('hello').returns(function (config, deps, next) {
       assert.equal(registry, this);
@@ -77,6 +100,7 @@ describe('diogenes', function () {
       done();
     });
   });
+
 
   it('must return undefined (1 function)', function (done) {
     registry.graph({}).run('hello', function (err, dep) {
