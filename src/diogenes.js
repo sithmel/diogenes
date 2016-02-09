@@ -82,7 +82,7 @@
 
     try {
       out.executionOrder = this.registry
-      .graph(config)
+      .instance(config)
       .getExecutionOrder(this.name, true)
       .slice(0, -1);
     }
@@ -91,7 +91,7 @@
       out.dependencies = [];
     }
 
-    out.cached = !!this.cache;
+    out.cached = !!this._cache;
     out.manageError = !!this.onError;
 
     out.metadata = this.metadata();
@@ -156,60 +156,37 @@
   };
 
   Service.prototype._returns = function service__returns() {
-    var method = arguments[arguments.length - 1];
-    var func = arguments[arguments.length - 2];
+    var func = arguments[arguments.length - 1];
     var arity = func.length;
     var adapter = function () {
       return {func: func, arity: arity};
     };
 
-    if (arguments.length > 3) {
-      this._funcs[method](or.validator().match(arguments[0]),
+    if (arguments.length > 2) {
+      this._funcs.add(or.validator().match(arguments[0]),
                       or.validator().match(arguments[1]), adapter);
     }
-    else if (arguments.length > 2) {
-      this._funcs[method](or.validator().match(arguments[0]), adapter);
+    else if (arguments.length > 1) {
+      this._funcs.add(or.validator().match(arguments[0]), adapter);
     }
     else {
-      this._funcs[method](or.validator(), adapter);
+      this._funcs.add(or.validator(), adapter);
     }
     return this;
   };
 
+  Service.prototype.provides = function service_provides() {
+    var args = Array.prototype.slice.call(arguments, 0);
+    return this._returns.apply(this, args);
+  };
+
   Service.prototype.returns = function service_returns() {
     var args = Array.prototype.slice.call(arguments, 0);
-    args.push('add');
-    return this._returns.apply(this, args);
-  };
-
-  Service.prototype.returnsValue = function service_returnsValue() {
-    var args = Array.prototype.slice.call(arguments, 0);
     var value = args[args.length - 1];
     args[args.length - 1] = function (conf, deps) {
       return value;
     };
-    args.push('add');
     return this._returns.apply(this, args);
-  };
-
-  Service.prototype.returnsOnce = function service_returnsOnce() {
-    var args = Array.prototype.slice.call(arguments, 0);
-    args.push('one');
-    return this._returns.apply(this, args);
-  };
-
-  Service.prototype.returnsValueOnce = function service_returnsOnceValue() {
-    var args = Array.prototype.slice.call(arguments, 0);
-    var value = args[args.length - 1];
-    args[args.length - 1] = function (conf, deps) {
-      return value;
-    };
-    args.push('one');
-    return this._returns.apply(this, args);
-  };
-
-  Service.prototype.remove = function service_remove() {
-    this.registry.remove(this.name);
   };
 
   Service.prototype._manageError = function service__manageError(err, config, callback) {
@@ -245,7 +222,7 @@
       var result;
       try {
         if (arity < 3) { // no callback
-          result = func.call(registry, config, deps);
+          result = func.call(service, config, deps);
           if (typeof result == 'object' && isPromise(result)) {
             result.then(function (res) { // onfulfilled
               wrapped_func(undefined, res);
@@ -259,7 +236,7 @@
           }
         }
         else { // callback
-          func.call(registry, config, deps, wrapped_func);
+          func.call(service, config, deps, wrapped_func);
         }
       }
       catch (err) {
@@ -271,11 +248,11 @@
 
   Service.prototype._getDeps = function service__getDeps(config, noCache) {
     var key, hit;
-    if (this.cache && !this.pauseCache && !noCache) { // cache check here !!!
-      this.cachePurge(); // purge stale cache entries
-      key = this.key(config);
-      if (key in this.cache) {
-        hit = this.cache[key]; // cache hit!
+    if (this._cache && !this.pauseCache && !noCache) { // cache check here !!!
+      this._cachePurge(); // purge stale cache entries
+      key = this._getCacheKey(config);
+      if (key in this._cache) {
+        hit = this._cache[key]; // cache hit!
         return {
           name: this.name,
           deps: [], // no dependencies needed for cached values
@@ -299,8 +276,12 @@
   };
 
   Service.prototype.run = function service_run(config, done) {
-    this.registry.graph(config).run(this.name, done);
+    this.registry.instance(config).run(this.name, done);
     return this;
+  };
+
+  Service.prototype.getExecutionOrder = function service_getExecutionOrder(config) {
+    return this.registry.instance(config).getExecutionOrder(this.name);
   };
 
   Service.prototype.cacheOn = function service_cacheOn(opts) {
@@ -308,10 +289,10 @@
     var key = opts.key;
 
     if (typeof key === 'function') {
-      this.key = key;
+      this._getCacheKey = key;
     }
     else if (typeof key === 'string') {
-      this.key = function (config) {
+      this._getCacheKey = function (config) {
         if (typeof config[key] === 'object') {
           return JSON.stringify(config[key]);
         }
@@ -321,7 +302,7 @@
       };
     }
     else if (Array.isArray(key)) {
-      this.key = function (config) {
+      this._getCacheKey = function (config) {
         var value = config;
         for (var i = 0; i < key.length; i++) {
           value = value[key[i]];
@@ -335,39 +316,39 @@
       };
     }
     else {
-      this.key = function (config) {
+      this._getCacheKey = function (config) {
         return '_default';
       };
     }
 
-    this.cache = {}; // key, value
-    this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx} new ones first
+    this._cache = {}; // key, value
+    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx} new ones first
 
     this.maxAge = opts.maxAge || Infinity;
     this.maxSize = opts.maxSize || Infinity;
   };
 
-  Service.prototype.cachePush = function service_cachePush(config, output) {
-    if (!this.cache) return;
-    var k = this.key(config);
-    if (k in this.cache) return;
-    this.cache[k] = output;
-    this.cacheKeys.unshift({
+  Service.prototype._cachePush = function service__cachePush(config, output) {
+    if (!this._cache) return;
+    var k = this._getCacheKey(config);
+    if (k in this._cache) return;
+    this._cache[k] = output;
+    this._cacheKeys.unshift({
       key: k,
       ts: Date.now()
     });
-    this.cachePurge();
+    this._cachePurge();
   };
 
-  Service.prototype.cachePurge = function service_cachePurge() {
-    if (!this.cache) return;
+  Service.prototype._cachePurge = function service__cachePurge() {
+    if (!this._cache) return;
     // remove old entries
     var maxAge = this.maxAge;
     var maxSize = this.maxSize;
-    var cache = this.cache;
+    var cache = this._cache;
 
     var now = Date.now();
-    this.cacheKeys = this.cacheKeys.filter(function (item) {
+    this._cacheKeys = this._cacheKeys.filter(function (item) {
       if (item.ts + maxAge < now ) {
         delete cache[item.key];
         return false;
@@ -376,17 +357,17 @@
     });
 
     // trim cache
-    var keysToRemove = this.cacheKeys.slice(maxSize, Infinity);
+    var keysToRemove = this._cacheKeys.slice(maxSize, Infinity);
     keysToRemove.forEach(function (item) {
       var k = item.key;
       delete cache[k];
     });
-    this.cacheKeys = this.cacheKeys.slice(0, maxSize);
+    this._cacheKeys = this._cacheKeys.slice(0, maxSize);
   };
 
   Service.prototype.cacheOff = function service_cacheOff() {
-    this.cache = undefined;
-    this.cacheKeys = undefined;
+    this._cache = undefined;
+    this._cacheKeys = undefined;
   };
 
   Service.prototype.cachePause = function service_cachePause() {
@@ -398,8 +379,8 @@
   };
 
   Service.prototype.cacheReset = function service_cacheReset() {
-    this.cache = {}; // key, value
-    this.cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+    this._cache = {}; // key, value
+    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
   };
 
   // on error
@@ -570,13 +551,17 @@
     });
   };
 
-  Diogenes.prototype.graph = function registry_graph(config) {
-    return new FunctionGraph(this, config);
+  Diogenes.prototype.instance = function registry_graph(config, options) {
+    return new FunctionGraph(this, config, options);
   };
 
   Diogenes.prototype.run = function registry_run(name, config, done) {
-    this.graph(config).run(name, done);
+    this.instance(config).run(name, done);
     return this;
+  };
+
+  Diogenes.prototype.getExecutionOrder = function registry_getExecutionOrder(name, config) {
+    return this.instance(config).getExecutionOrder(name);
   };
 
   // events
@@ -600,7 +585,10 @@
 
   Diogenes.prototype.trigger = function registry_trigger() {
     var args = Array.prototype.slice.call(arguments);
-    this.events.trigger.apply(this, args);
+    var registry = this;
+    setImmediate(function () {
+      registry.events.trigger.apply(this, args);
+    });
     return this;
   };
 
@@ -681,7 +669,6 @@
     if (!(name in debugInfo)) {
       debugInfo[name] = {};
     }
-
     debugInfo[name].end = Date.now();
     debugInfo[name].delta = debugInfo[name].end - debugInfo[name].start;
   }
@@ -692,11 +679,11 @@
 
   */
 
-  function FunctionGraph(registry, config) {
+  function FunctionGraph(registry, config, options) {
     this.registry = registry; // backreference
     this._config = config;
+    this._options = options || {};
   }
-
 
   FunctionGraph.prototype.infoObj = function graph_infoObj() {
     var config = this._config;
@@ -732,6 +719,9 @@
     var debugInfo = {}; // profiling
     var registry = this.registry;
     var services = registry.services;
+    var numberParallelCallback = 0;
+    var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
+    var debug = 'debug' in this._options ? this._options.debug : false;
 
     if (!done) {
       done = function () {};
@@ -752,14 +742,12 @@
 
       if (name) {
         deps[name] = dep;
+        numberParallelCallback--;
         debugEnd(name, debugInfo);
         if (!(dep instanceof Error)) {
-          services[name].cachePush(config, dep);
-
+          services[name]._cachePush(config, dep);
           if (!cached) {
-            setImmediate(function () {
-              registry.trigger(name, dep, config);
-            });
+            registry.trigger(name, dep, config);
           }
         }
       }
@@ -775,6 +763,7 @@
       }
 
       while (i < sorted_services.length) {
+        if (numberParallelCallback >= limitParallelCallback) break;
         currentService = services[sorted_services[i]];
         adj = adjlists(currentService.name);
         if ('cached' in adj) {
@@ -794,6 +783,7 @@
             }
             debugStart(currentService.name, debugInfo);
             sorted_services.splice(i, 1);
+            numberParallelCallback++;
             setImmediate(func);
           }
           else {
@@ -814,12 +804,12 @@
       return this;
     }
 
-    newreg.service('__main__').dependsOn(name).returns(function (config, deps, next) {
+    newreg.service('__main__').dependsOn(name).provides(function (config, deps, next) {
       next(undefined, deps);
     });
 
     var tempreg = newreg.merge(this.registry);
-    tempreg.graph(this._config).run('__main__', done);
+    tempreg.instance(this._config).run('__main__', done);
     return this;
   };
 
