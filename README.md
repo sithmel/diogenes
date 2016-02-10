@@ -444,6 +444,16 @@ Returns a single service. It creates the service if it doesn't exist.
 registry.service("name");
 ```
 
+instance
+--------
+Returns a an registryInstance object. It is a registry with a configuration and it is used to run services.
+```js
+registry.instance(config, options);
+```
+The config argument will be passed to all services (calling the run method). Currently there are 2 options:
+* limit: limit the number of services executed in parallel (defaults to Infinity)
+* debug: enable some profiling and debugging informations. They are passed as third and fourth arguments of the run callback.
+
 remove
 ------
 It remove a service from the registry:
