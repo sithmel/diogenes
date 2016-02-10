@@ -44,18 +44,141 @@
 
   /*
 
+  Cache object
+
+  */
+
+  function Cache() {
+    this._cache = undefined;
+    this._cacheKeys = undefined;
+  }
+
+  Cache.prototype.on = function cache_on(opts) {
+    opts = opts || {};
+    var key = opts.key;
+
+    if (typeof key === 'function') {
+      this._getCacheKey = key;
+    }
+    else if (typeof key === 'string') {
+      this._getCacheKey = function (config) {
+        if (typeof config[key] === 'object') {
+          return JSON.stringify(config[key]);
+        }
+        else {
+          return config[key];
+        }
+      };
+    }
+    else if (Array.isArray(key)) {
+      this._getCacheKey = function (config) {
+        var value = config;
+        for (var i = 0; i < key.length; i++) {
+          value = value[key[i]];
+        }
+        if (typeof value === 'object') {
+          return JSON.stringify(value);
+        }
+        else {
+          return value;
+        }
+      };
+    }
+    else {
+      this._getCacheKey = function (config) {
+        return '_default';
+      };
+    }
+
+    this._cache = {}; // key, value
+    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx} new ones first
+
+    this._maxAge = opts.maxAge || Infinity;
+    this._maxSize = opts.maxSize || Infinity;
+  };
+
+  Cache.prototype.push = function cache_push(config, output) {
+    if (!this._cache) return;
+    var k = this._getCacheKey(config);
+    if (k in this._cache) return;
+    this._cache[k] = output;
+    this._cacheKeys.unshift({
+      key: k,
+      ts: Date.now()
+    });
+    this.purge();
+  };
+
+  Cache.prototype.purge = function cache_purge() {
+    if (!this._cache) return;
+    // remove old entries
+    var maxAge = this._maxAge;
+    var maxSize = this._maxSize;
+    var cache = this._cache;
+
+    var now = Date.now();
+    this._cacheKeys = this._cacheKeys.filter(function (item) {
+      if (item.ts + maxAge < now ) {
+        delete cache[item.key];
+        return false;
+      }
+      return true;
+    });
+
+    // trim cache
+    var keysToRemove = this._cacheKeys.slice(maxSize, Infinity);
+    keysToRemove.forEach(function (item) {
+      var k = item.key;
+      delete cache[k];
+    });
+    this._cacheKeys = this._cacheKeys.slice(0, maxSize);
+  };
+
+  Cache.prototype.off = function cache_off() {
+    this._cache = undefined;
+    this._cacheKeys = undefined;
+  };
+
+  Cache.prototype.reset = function cache_reset() {
+    this._cache = {}; // key, value
+    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+  };
+
+  Cache.prototype.isOn = function cache_isOn(config) {
+    return !!this._cache;
+  };
+
+  Cache.prototype.query = function cache_query(config) {
+    var hit,
+      cached = false,
+      key = this._getCacheKey(config);
+    if (key in this._cache) {
+      cached = true;
+      hit = this._cache[key]; // cache hit!
+    }
+    return {
+      cached: cached,
+      key: key,
+      hit: hit
+    };
+  };
+
+  /*
+
   Service object
 
   */
 
   function Service(name, registry) {
     this.name = name;
-    this._desc = '';
     this.registry = registry; // backreference
+    this._desc = '';
     this._funcs = or();
     this._deps = or().notFound(function () {
       return [];
     });
+    this._mainCache = new Cache(); // used for caching
+    this._secondaryCache = new Cache(); // used for exceptions
   }
 
   Service.prototype.description = function service_description(desc) {
@@ -91,7 +214,7 @@
       out.dependencies = [];
     }
 
-    out.cached = !!this._cache;
+    out.cached = this._mainCache.isOn();
     out.manageError = !!this.onError;
 
     out.metadata = this.metadata();
@@ -190,7 +313,7 @@
   };
 
   Service.prototype._manageError = function service__manageError(err, config, callback) {
-    return callback(this.name, typeof this.onError !== 'undefined' ? this.onError(config) : err);
+    return callback(this.name, typeof this.onError !== 'undefined' ? this.onError.call(this, config, err) : err);
   };
 
   Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
@@ -198,7 +321,6 @@
     var func = obj.func;
     var arity = obj.arity;
     var service = this;
-    var registry = this.registry;
     var error = depsHasError(deps);
 
     if (error) {
@@ -210,7 +332,7 @@
     var wrapped_func = function (err, dep) {
       var d;
       if (err) {
-        d = typeof service.onError !== 'undefined' ? service.onError(config) : err;
+        d = typeof service.onError !== 'undefined' ? service.onError.call(service, config, err) : err;
       }
       else {
         d = dep;
@@ -247,16 +369,16 @@
   };
 
   Service.prototype._getDeps = function service__getDeps(config, noCache) {
-    var key, hit;
-    if (this._cache && !this.pauseCache && !noCache) { // cache check here !!!
-      this._cachePurge(); // purge stale cache entries
-      key = this._getCacheKey(config);
-      if (key in this._cache) {
-        hit = this._cache[key]; // cache hit!
+    var cacheState;
+    if (this._mainCache.isOn() && !this.pauseCache && !noCache) { // cache check here !!!
+      this._mainCache.purge(); // purge stale cache entries
+      cacheState = this._mainCache.query(config);
+      if (cacheState.cached) {
+        // cache hit!
         return {
           name: this.name,
           deps: [], // no dependencies needed for cached values
-          cached: hit
+          cached: cacheState.hit
         };
       }
     }
@@ -285,117 +407,69 @@
   };
 
   Service.prototype.cacheOn = function service_cacheOn(opts) {
-    opts = opts || {};
-    var key = opts.key;
-
-    if (typeof key === 'function') {
-      this._getCacheKey = key;
-    }
-    else if (typeof key === 'string') {
-      this._getCacheKey = function (config) {
-        if (typeof config[key] === 'object') {
-          return JSON.stringify(config[key]);
-        }
-        else {
-          return config[key];
-        }
-      };
-    }
-    else if (Array.isArray(key)) {
-      this._getCacheKey = function (config) {
-        var value = config;
-        for (var i = 0; i < key.length; i++) {
-          value = value[key[i]];
-        }
-        if (typeof value === 'object') {
-          return JSON.stringify(value);
-        }
-        else {
-          return value;
-        }
-      };
-    }
-    else {
-      this._getCacheKey = function (config) {
-        return '_default';
-      };
-    }
-
-    this._cache = {}; // key, value
-    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx} new ones first
-
-    this.maxAge = opts.maxAge || Infinity;
-    this.maxSize = opts.maxSize || Infinity;
+    return this._mainCache.on(opts);
+    return this;
   };
 
   Service.prototype._cachePush = function service__cachePush(config, output) {
-    if (!this._cache) return;
-    var k = this._getCacheKey(config);
-    if (k in this._cache) return;
-    this._cache[k] = output;
-    this._cacheKeys.unshift({
-      key: k,
-      ts: Date.now()
-    });
-    this._cachePurge();
-  };
-
-  Service.prototype._cachePurge = function service__cachePurge() {
-    if (!this._cache) return;
-    // remove old entries
-    var maxAge = this.maxAge;
-    var maxSize = this.maxSize;
-    var cache = this._cache;
-
-    var now = Date.now();
-    this._cacheKeys = this._cacheKeys.filter(function (item) {
-      if (item.ts + maxAge < now ) {
-        delete cache[item.key];
-        return false;
-      }
-      return true;
-    });
-
-    // trim cache
-    var keysToRemove = this._cacheKeys.slice(maxSize, Infinity);
-    keysToRemove.forEach(function (item) {
-      var k = item.key;
-      delete cache[k];
-    });
-    this._cacheKeys = this._cacheKeys.slice(0, maxSize);
+    this._mainCache.push(config, output);
+    this._secondaryCache.push(config, output);
   };
 
   Service.prototype.cacheOff = function service_cacheOff() {
-    this._cache = undefined;
-    this._cacheKeys = undefined;
+    this._mainCache.off();
+    return this;
   };
 
   Service.prototype.cachePause = function service_cachePause() {
     this.pauseCache = true;
+    return this;
   };
 
   Service.prototype.cacheResume = function service_cacheResume() {
     this.pauseCache = undefined;
+    return this;
   };
 
   Service.prototype.cacheReset = function service_cacheReset() {
-    this._cache = {}; // key, value
-    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+    this._mainCache.reset();
+    return this;
   };
 
   // on error
   Service.prototype.onErrorReturn = function service_onErrorReturn(value) {
-    this.onError = function (config) {
+    this._secondaryCache.off();
+    this.onError = function (config, err) {
       return value;
     };
+    return this;
   };
 
   Service.prototype.onErrorExecute = function service_onErrorExecute(func) {
+    this._secondaryCache.off();
     this.onError = func;
+    return this;
   };
 
+  Service.prototype.onErrorUseCache = function service_onErrorUseCache(opts) {
+    this._secondaryCache.on(opts);
+    this.onError = function (config, err) {
+      var cacheState;
+      this._secondaryCache.purge(); // purge stale cache entries
+      cacheState = this._secondaryCache.query(config);
+      if (cacheState.cached) {
+        return cacheState.hit;
+      }
+      return err;
+    };
+    return this;
+  };
+
+  // default
   Service.prototype.onErrorThrow = function service_onErrorThrow() {
+    this._secondaryCache.off();
     this.onError = undefined;
+    return this;
   };
 
   // events
@@ -735,7 +809,7 @@
       return done.call(registry, e);
     }
 
-    debugStart('__all__', debugInfo);
+    if (debug) { debugStart('__all__', debugInfo); }
     (function resolve(name, dep, cached) {
       var currentService, adj, currentServiceDeps;
       var func, i = 0;
@@ -743,7 +817,7 @@
       if (name) {
         deps[name] = dep;
         numberParallelCallback--;
-        debugEnd(name, debugInfo);
+        if (debug) { debugEnd(name, debugInfo); }
         if (!(dep instanceof Error)) {
           services[name]._cachePush(config, dep);
           if (!cached) {
@@ -753,12 +827,12 @@
       }
 
       if (sorted_services.length === 0) {
-        debugEnd('__all__', debugInfo);
+        if (debug) { debugEnd('__all__', debugInfo); }
         if (dep instanceof Error) {
-          return done.call(registry, dep, deps, debugInfo);
+          return done.call(registry, dep, debug ? deps : undefined, debug ? debugInfo : undefined);
         }
         else {
-          return done.call(registry, undefined, dep, deps, debugInfo);
+          return done.call(registry, undefined, dep, debug ? deps : undefined, debug ? debugInfo : undefined);
         }
       }
 
@@ -781,7 +855,7 @@
             catch (e) {
               return done.call(registry, e, deps, debugInfo);
             }
-            debugStart(currentService.name, debugInfo);
+            if (debug) { debugStart(currentService.name, debugInfo); }
             sorted_services.splice(i, 1);
             numberParallelCallback++;
             setImmediate(func);

@@ -651,7 +651,7 @@ describe('diogenes', function () {
     });
 
     it('must profile the execution', function (done) {
-      registry.instance({}).run('C', function (err, dep, deps, profile) {
+      registry.instance({}, {debug: true}).run('C', function (err, dep, deps, profile) {
         assert.equal(str, 'BAC');
         assert.equal(dep, 'ABC');
         assert(profile.A.delta > 48 && profile.A.delta < 52 );
@@ -754,41 +754,41 @@ describe('diogenes', function () {
     it('must configure cache: default key', function () {
       cached.cacheOn();
       cached._cachePush({}, 'result');
-      assert.deepEqual(cached._cache, {_default: 'result'});
-      assert.equal(cached._cacheKeys.length, 1);
-      assert.equal(cached._cacheKeys[0].key, '_default');
+      assert.deepEqual(cached._mainCache._cache, {_default: 'result'});
+      assert.equal(cached._mainCache._cacheKeys.length, 1);
+      assert.equal(cached._mainCache._cacheKeys[0].key, '_default');
     });
 
     it('must configure cache: string key', function () {
       cached.cacheOn({key: 'test'});
       cached._cachePush({test: '1'}, 'result1');
       cached._cachePush({test: '2'}, 'result2');
-      assert.deepEqual(cached._cache, {'1': 'result1', '2': 'result2'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '2': 'result2'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
     });
 
     it('must configure cache: string key/object', function () {
       cached.cacheOn({key: 'test'});
       cached._cachePush({test: [1, 2]}, 'result1');
       cached._cachePush({test: [3, 4]}, 'result2');
-      assert.deepEqual(cached._cache, {'[1,2]': 'result1', '[3,4]': 'result2'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'[1,2]': 'result1', '[3,4]': 'result2'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
     });
 
     it('must configure cache: array key', function () {
       cached.cacheOn({key: ['test', 0]});
       cached._cachePush({test: [1, 2]}, 'result1');
       cached._cachePush({test: [3, 4]}, 'result2');
-      assert.deepEqual(cached._cache, {'1': 'result1', '3': 'result2'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '3': 'result2'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
     });
 
     it('must configure cache: array key/object', function () {
       cached.cacheOn({key: ['test']});
       cached._cachePush({test: [1, 2]}, 'result1');
       cached._cachePush({test: [3, 4]}, 'result2');
-      assert.deepEqual(cached._cache, {'[1,2]': 'result1', '[3,4]': 'result2'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'[1,2]': 'result1', '[3,4]': 'result2'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
     });
 
     it('must configure cache: func', function () {
@@ -797,33 +797,33 @@ describe('diogenes', function () {
       }});
       cached._cachePush({test: 4}, 'result1');
       cached._cachePush({test: 6}, 'result2');
-      assert.deepEqual(cached._cache, {'8': 'result1', '12': 'result2'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'8': 'result1', '12': 'result2'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
     });
 
     it('must configure cache: maxSize', function () {
       cached.cacheOn({key: 'test', maxSize: 2});
       cached._cachePush({test: 1}, 'result1');
       cached._cachePush({test: 2}, 'result2');
-      assert.deepEqual(cached._cache, {'1': 'result1', '2': 'result2'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '2': 'result2'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
       cached._cachePush({test: 3}, 'result3');
-      assert.deepEqual(cached._cache, {'2': 'result2', '3': 'result3'});
-      assert.equal(cached._cacheKeys.length, 2);
+      assert.deepEqual(cached._mainCache._cache, {'2': 'result2', '3': 'result3'});
+      assert.equal(cached._mainCache._cacheKeys.length, 2);
     });
 
     it('must configure cache: maxAge', function (done) {
       cached.cacheOn({key: 'test', maxAge: 20});
       cached._cachePush({test: 1}, 'result1');
-      assert.deepEqual(cached._cache, {'1': 'result1'});
+      assert.deepEqual(cached._mainCache._cache, {'1': 'result1'});
       setTimeout(function () {
         cached._cachePush({test: 2}, 'result2');
-        assert.deepEqual(cached._cache, {'1': 'result1', '2': 'result2'});
-        assert.equal(cached._cacheKeys.length, 2);
+        assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '2': 'result2'});
+        assert.equal(cached._mainCache._cacheKeys.length, 2);
         setTimeout(function () {
           cached._cachePush({test: 3}, 'result3');
-          assert.deepEqual(cached._cache, {'2': 'result2', '3': 'result3'});
-          assert.equal(cached._cacheKeys.length, 2);
+          assert.deepEqual(cached._mainCache._cache, {'2': 'result2', '3': 'result3'});
+          assert.equal(cached._mainCache._cacheKeys.length, 2);
           done();
         }, 15);
       }, 10);
@@ -833,13 +833,13 @@ describe('diogenes', function () {
       cached.cacheOn({key: 'test'});
       cached._cachePush({test: 1}, 'result1');
       cached._cachePush({test: 2}, 'result2');
-      assert.deepEqual(cached._cache, {'1': 'result1', '2': 'result2'});
+      assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '2': 'result2'});
       cached.cacheReset();
-      assert.equal(cached._cacheKeys.length, 0);
-      assert.deepEqual(cached._cache, {});
+      assert.equal(cached._mainCache._cacheKeys.length, 0);
+      assert.deepEqual(cached._mainCache._cache, {});
       cached.cacheOff();
-      assert.isUndefined(cached._cacheKeys);
-      assert.isUndefined(cached._cache);
+      assert.isUndefined(cached._mainCache._cacheKeys);
+      assert.isUndefined(cached._mainCache._cache);
     });
 
     it('must run only once', function (done) {
@@ -876,13 +876,13 @@ describe('diogenes', function () {
       cached.cacheOn({key: 'test'});
       cached._cachePush({test: 1}, 'result1');
       cached._cachePush({test: 2}, 'result2');
-      assert.deepEqual(cached._cache, {'1': 'result1', '2': 'result2'});
+      assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '2': 'result2'});
       registry.cacheReset();
-      assert.equal(cached._cacheKeys.length, 0);
-      assert.deepEqual(cached._cache, {});
+      assert.equal(cached._mainCache._cacheKeys.length, 0);
+      assert.deepEqual(cached._mainCache._cache, {});
       registry.cacheOff();
-      assert.isUndefined(cached._cacheKeys);
-      assert.isUndefined(cached._cache);
+      assert.isUndefined(cached._mainCache._cacheKeys);
+      assert.isUndefined(cached._mainCache._cache);
     });
 
   });
@@ -1029,6 +1029,21 @@ describe('diogenes', function () {
       });
     });
 
+    it('must keep propagating the error', function (done) {
+      registry.service('hello').provides(function (config, deps, next) {
+        next(new Error('error'));
+      })
+      .onErrorExecute(function (config, err) {
+        return err;
+      });
+
+      registry.instance({test: 1}).run('hello', function (err, dep) {
+        assert.instanceOf(err, Error);
+        assert.equal(err.message, 'error');
+        done();
+      });
+    });
+
     it('must fallback on propagated error', function (done) {
       registry.service('hello').provides(function (config, deps, next) {
         next(new Error('error'));
@@ -1042,6 +1057,45 @@ describe('diogenes', function () {
       registry.instance({test: 1}).run('world', function (err, dep) {
         assert.isUndefined(err);
         assert.equal(dep, 42);
+        done();
+      });
+    });
+
+    it('must fallback on last cached value', function (done) {
+      registry.service('hello').provides(function (config, deps, next) {
+        if ('error' in config) {
+          next(new Error('error'));
+        }
+        else {
+          next(null, 'ok');
+        }
+      }).onErrorUseCache();
+
+
+      registry.instance({}).run('hello', function (err, dep) {
+        assert.isUndefined(err);
+        assert.equal(dep, 'ok');
+        registry.instance({'error': true}).run('hello', function (err, dep) {
+          assert.isUndefined(err);
+          assert.equal(dep, 'ok');
+          done();
+        });
+      });
+    });
+
+    it('must fallback on last cached value, cache empty', function (done) {
+      registry.service('hello').provides(function (config, deps, next) {
+        if ('error' in config) {
+          next(new Error('error'));
+        }
+        else {
+          next(null, 'ok');
+        }
+      }).onErrorUseCache();
+
+      registry.instance({'error': true}).run('hello', function (err, dep) {
+        assert.instanceOf(err, Error);
+        assert.equal(err.message, 'error');
         done();
       });
     });

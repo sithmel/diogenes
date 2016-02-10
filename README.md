@@ -223,7 +223,7 @@ registry.service("abstract")
 
 The "dependsOn" method can take one validator. If it matches the config, this different set of dependencies will be used.
 The "provides" and "returns" methods can take 2 validators. The first one will match the config, the second the dependencies.
-So you can change on the fly which function use depending on the value returned by a dependency.
+So you can change on the fly which function use depending on the arguments (config and deps).
 
 ![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994528/0fade84a-aa38-11e5-92d2-4f4d8f60dc4d.png)
 
@@ -267,24 +267,33 @@ registry.service('count').cacheOn({key: "abstractLen", maxAge: 1000});
 
 Errors and fallback
 ===================
-If a service returns or throws an exception, this is propagated along the execution graph. Services depending on those are not executed. They are considered failed. While this is the default behaviour, it is also possible to configure a service to fallback on a default value:
+If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. They will propagate the exception to the services depending on them. While this is the default behaviour, it is also possible to configure a service to fallback on a default value:
 ```js
 registry.service('count').onErrorReturn(42);
 ```
-Or on a function (the usual config is the only argument)
+Or on a function (the usual config is the first argument, the exception is the second)
 ```js
-registry.service('count').onErrorExecute(function (config){
+registry.service('count').onErrorExecute(function (config, err){
   return config.defaultCount;
 });
 ```
-This function is called in these cases:
+You can keep propagating the error returning the error.
+You can also cache the last valid returns and using them in case of errors:
+```js
+registry.service('count').onErrorUseCache();
+```
+It takes the same configuration options as the cacheOn method (but a different cache bucket).
+
+In the example the function is called in these cases:
 * the "count" service thrown or returned an exception
 * one of the dependencies of the "count" service propagated an exception
 
 Debugging and profiling
 =======================
-Using the "run" method you can get some profiling and debugging information. You can get them using the extra arguments "deps" and "profile".
+The "instance" method takes an extra argument "options" that can be used to enable some extra options.
+One of these is "debug: true". This enables to return some extra profiling and debugging informations:
 ```js
+var registryInstance = registry.instance({}, {debug: true});
 registryInstance.run("a service",
   function (err, dep, deps, profile){
     // ...
@@ -347,7 +356,7 @@ service.metadata({abstractLen: 10});
 registry.service("abstract")
   .dependsOn(['tokens'])
   .provides(function (config, deps, next) {
-  var len = this.service('abstract').metadata().abstractLen;
+  var len = this.metadata().abstractLen;
   var ellipsis = config.abstractEllipsis;
   next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
 });
@@ -356,7 +365,7 @@ This can be practical if you want to save informations that are "service" specif
 
 Documentation
 =============
-You can attach a a description to a service. This will be used by the method "info" for giving an outline of the services available.
+You can attach a description to a service. This will be used by the method "info" for giving an outline of the services available.
 ```js
 var service = registry.service("abstract")
 
@@ -466,24 +475,24 @@ It returns the registry.
 
 cacheOff
 --------
-It empties and disable the cache of all services.
+It empties and disable the cache of all services. It returns the registry.
 
 cacheReset
 ----------
-It empties the cache of all services.
+It empties the cache of all services. It returns the registry.
 
 cachePause
 ----------
-It pauses the cache of all services.
+It pauses the cache of all services. It returns the registry.
 
 cacheResume
 -----------
-Resume the cache of all services.
+Resume the cache of all services. It returns the registry.
 
 getExecutionOrder
 -----------------
 Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
-Also it will take into consideration what plugins match and caching (a cached items as no dependency!):
+Also it will take into consideration what plugins match and the caching (a cached items as no dependency!):
 ```js
 registry.getExecutionOrder(name, config);
 ```
@@ -538,22 +547,15 @@ trigger
 -------
 Trigger an event. You can use trigger with a bunch of arguments and, all handlers registered with "on" and "one" compatible with those will be called.
 
-info
-----
-It returns a documentation of all services. It requires a configuration to resolve the dependencies.
-```js
-registry.info(config);
-```
-
-Service's methods
-==================
+Service's attributes
+====================
 
 * name: the name of the service
 * registry: a reference to the registry
 
 Service's methods
 ==================
-You can get a service with the "service" method.
+You can get a service from the registry with the "service" method.
 ```js
 var service = registry.service("service1");
 ```
@@ -618,9 +620,9 @@ service.onErrorReturn(value);
 ```
 onErrorExecute
 --------------
-If the service or one of the dependencies fails (thrown an exception) it uses the function to calculate a fallback.
+If the service or one of the dependencies fails (thrown an exception) it uses the function to calculate a fallback. The arguments are the configuration and the error. You can propagate the exception returning the error.
 ```js
-service.onErrorExecute(function (config){
+service.onErrorExecute(function (config, err){
   return ...;
 });
 ```
@@ -629,6 +631,12 @@ onErrorThrown
 It reverts to the default behaviour: on error it propagates the error.
 ```js
 service.onErrorThrown();
+```
+onErrorUseCache
+---------------
+In case of error uses the last valid cached value. It uses a different cache bucket from the one used for the normal cache (the configuration is the same as the cacheOn method). Usually you want to specify longer times for this cache to expire. Its content is used only in case of errors.
+```js
+service.onErrorUseCache(config);
 ```
 cacheOn
 -------
@@ -692,6 +700,61 @@ It returns a documentation of the service. It requires a configuration to resolv
 ```js
 registry.service(name).info(config);
 ```
+infoObj
+-------
+It returns an object with a lot of information about the service. It requires a configuration to resolve the dependencies.
+```js
+registry.service(name).infoObj(config);
+```
+
+
+RegistryInstance's methods
+=======================
+This object is returned with the "instance" registry method.
+
+info
+----
+It returns a documentation of all services.
+```js
+registryInstance.info();
+```
+
+infoObj
+-------
+It returns an object with a lot of information about the services.
+```js
+registryInstance.infoObj();
+```
+
+getExecutionOrder
+-----------------
+Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
+Also it will take into consideration what plugins match and the caching (a cached items as no dependency!):
+```js
+registryInstance.getExecutionOrder(name);
+```
+
+run
+---
+It executes all the dependency tree required by the service and call the function. All the services are called using the configuration used in the method "instance":
+```js
+registryInstance.run(name, func);
+```
+The function takes 2 arguments:
+* an error
+* the value of the service required
+
+You can also use the alternative syntax:
+```js
+registryInstance.run(names, func);
+```
+In this case "names" is an array of strings (the dependency you want to be returned).
+The callback will get as second argument an object with a property for any dependency returned.
+
+The context (this) of this function is the registry itself.
+
+It returns the registry instance.
+
 
 Errors in the services graph
 ============================
