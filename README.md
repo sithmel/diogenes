@@ -560,8 +560,7 @@ Trigger an event. You can use trigger with a bunch of arguments and, all handler
 Service's attributes
 ====================
 
-* name: the name of the service
-* registry: a reference to the registry
+* name: the name of the service (cannot be changed)
 
 Service's methods
 ==================
@@ -812,7 +811,7 @@ app.listen(3000);
 
 Using events for intra service communication
 --------------------------------------------
-All functions added using "provides" have as "this" the service object itself. So they can easily access to all service's methods and registry methods using "this.registry".
+All functions added using "provides" have as "this" the service object itself. So they can easily access to all service's methods and registry methods using "this.registry()".
 
 This simplify the case in which you want:
 
@@ -824,7 +823,7 @@ Example:
 ```js
 var c = 0;
 registry.service('counter-button').provides(function (config, deps, next){
-  var registry = this.registry;
+  var registry = this.registry();
   document.getElementById('inc').addEventListener("click", function (){
     c++;
     console.log(c);
@@ -836,7 +835,7 @@ registry.service('counter-button').provides(function (config, deps, next){
 });
 
 registry.service('reset-button').provides(function (config, deps, next){
-  var registry = this.registry;
+  var registry = this.registry();
   document.getElementById('reset').addEventListener("click", function (){
     registry.trigger("reset-event");
   });
@@ -854,7 +853,7 @@ var registry = new Diogenes();
 registry.service('database-connection').provides(function (config, deps){
   var connection = ..... I get the connection here
 
-  this.registry.on('done', function (){
+  this.registry().on('done', function (){
     connection.dispose();
   });
   next();

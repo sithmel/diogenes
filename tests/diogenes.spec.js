@@ -100,7 +100,6 @@ describe('diogenes', function () {
     });
   });
 
-
   it('must return undefined (1 function)', function (done) {
     registry.instance({}).run('hello', function (err, dep) {
       assert.equal(registry, this);
@@ -137,6 +136,23 @@ describe('diogenes', function () {
 
     registry.instance({}).run('world', function (err, dep) {
       assert.deepEqual(dep, 'hello world!');
+      done();
+    });
+  });
+
+  it('must return an exception if the callback fires twice', function (done) {
+    registry.service('hello').provides(function (config, deps, next) {
+      next(undefined, 'hello ');
+      next(undefined, 'hello ');
+    });
+
+    registry.service('world').dependsOn(['hello']).provides(function (config, deps, next) {
+      next(undefined, deps.hello + 'world!');
+    });
+
+    registry.instance({}).run('world', function (err, dep) {
+      assert.instanceOf(err, Error);
+      assert.equal(err.message, 'Diogenes: a callback has been firing more than once');
       done();
     });
   });
@@ -844,9 +860,9 @@ describe('diogenes', function () {
 
     it('must run only once', function (done) {
       cached.cacheOn();
-      cached.registry.instance({}).run('cached', function (err, dep) {
+      cached.registry().instance({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
-        cached.registry.instance({}).run('cached', function (err, dep) {
+        cached.registry().instance({}).run('cached', function (err, dep) {
           assert.equal(dep, 'hello 0');
           done();
         });
@@ -855,15 +871,15 @@ describe('diogenes', function () {
 
     it('must pause the cache', function (done) {
       cached.cacheOn();
-      cached.registry.instance({}).run('cached', function (err, dep) {
+      cached.registry().instance({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
-        cached.registry.instance({}).run('cached', function (err, dep) {
+        cached.registry().instance({}).run('cached', function (err, dep) {
           assert.equal(dep, 'hello 0');
           cached.cachePause();
-          cached.registry.instance({}).run('cached', function (err, dep) {
+          cached.registry().instance({}).run('cached', function (err, dep) {
             assert.equal(dep, 'hello 1');
             cached.cacheResume();
-            cached.registry.instance({}).run('cached', function (err, dep) {
+            cached.registry().instance({}).run('cached', function (err, dep) {
               assert.equal(dep, 'hello 0');
               done();
             });

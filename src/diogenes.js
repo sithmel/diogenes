@@ -171,7 +171,7 @@
 
   function Service(name, registry) {
     this.name = name;
-    this.registry = registry; // backreference
+    this._registry = registry; // backreference
     this._desc = '';
     this._funcs = or();
     this._deps = or().notFound(function () {
@@ -180,6 +180,10 @@
     this._mainCache = new Cache(); // used for caching
     this._secondaryCache = new Cache(); // used for exceptions
   }
+
+  Service.prototype.registry = function service_registry() {
+    return this._registry;
+  };
 
   Service.prototype.description = function service_description(desc) {
     if (typeof desc === 'undefined') {
@@ -204,7 +208,7 @@
     out.dependencies = this._getDeps(config, true).deps;
 
     try {
-      out.executionOrder = this.registry
+      out.executionOrder = this._registry
       .instance(config)
       .getExecutionOrder(this.name, true)
       .slice(0, -1);
@@ -398,12 +402,12 @@
   };
 
   Service.prototype.run = function service_run(config, done) {
-    this.registry.instance(config).run(this.name, done);
+    this._registry.instance(config).run(this.name, done);
     return this;
   };
 
   Service.prototype.getExecutionOrder = function service_getExecutionOrder(config) {
-    return this.registry.instance(config).getExecutionOrder(this.name);
+    return this._registry.instance(config).getExecutionOrder(this.name);
   };
 
   Service.prototype.cacheOn = function service_cacheOn(opts) {
@@ -476,20 +480,20 @@
   Service.prototype.on = function service_on() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift(this.name);
-    this.registry.on.apply(this.registry, args);
+    this._registry.on.apply(this._registry, args);
     return this;
   };
 
   Service.prototype.one = function service_one() {
     var args = Array.prototype.slice.call(arguments);
     args.unshift(this.name);
-    this.registry.one.apply(this.registry, args);
+    this._registry.one.apply(this._registry, args);
     return this;
   };
 
   Service.prototype.off = function service_off() {
     var args = Array.prototype.slice.call(arguments);
-    this.registry.off.apply(this.registry, args);
+    this._registry.off.apply(this._registry, args);
     return this;
   };
 
@@ -626,7 +630,7 @@
   };
 
   Diogenes.prototype.instance = function registry_graph(config, options) {
-    return new FunctionGraph(this, config, options);
+    return new RegistryInstance(this, config, options);
   };
 
   Diogenes.prototype.run = function registry_run(name, config, done) {
@@ -668,7 +672,7 @@
 
   /*
 
-  FunctionGraph utilities
+  RegistryInstance utilities
 
   */
 
@@ -753,15 +757,19 @@
 
   */
 
-  function FunctionGraph(registry, config, options) {
-    this.registry = registry; // backreference
+  function RegistryInstance(registry, config, options) {
+    this._registry = registry; // backreference
     this._config = config;
     this._options = options || {};
   }
 
-  FunctionGraph.prototype.infoObj = function graph_infoObj() {
+  RegistryInstance.prototype.registry = function registryInstance_registry() {
+    return this._registry;
+  };
+
+  RegistryInstance.prototype.infoObj = function registryInstance_infoObj() {
     var config = this._config;
-    var registry = this.registry;
+    var registry = this._registry;
 
     var out = {};
     registry.forEach(function (service, name) {
@@ -770,9 +778,9 @@
     return out;
   };
 
-  FunctionGraph.prototype.info = function graph_info() {
+  RegistryInstance.prototype.info = function registryInstance_info() {
     var config = this._config;
-    var registry = this.registry;
+    var registry = this._registry;
     var out = [];
     registry.forEach(function (service) {
       out.push(this.info(config));
@@ -780,32 +788,38 @@
     return out.join('\n\n');
   };
 
-  FunctionGraph.prototype.getExecutionOrder = function graph_getExecutionOrder(name, noCache) {
-    var adjlists = this.registry._filterByConfig(this._config, noCache);
+  RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, noCache) {
+    var adjlists = this._registry._filterByConfig(this._config, noCache);
     var sorted_services = dfs(adjlists, name);
     return sorted_services;
   };
 
-  FunctionGraph.prototype._run = function graph__run(name, done) {
+  RegistryInstance.prototype._run = function registryInstance__run(name, done) {
     var adjlists, sorted_services;
     var config = this._config;
     var deps = {}; // all dependencies already resolved
     var debugInfo = {}; // profiling
-    var registry = this.registry;
+    var registry = this._registry;
     var services = registry.services;
     var numberParallelCallback = 0;
     var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
+    var isOver = false;
     var debug = 'debug' in this._options ? this._options.debug : false;
 
     if (!done) {
-      done = function () {};
+      done = function (err, dep) {
+        if (err) {
+          throw err;
+        }
+      };
     }
 
     try {
-      adjlists = this.registry._filterByConfig(config);
+      adjlists = this._registry._filterByConfig(config);
       sorted_services = dfs(adjlists, name);
     }
     catch (e) {
+      isOver = true;
       return done.call(registry, e);
     }
 
@@ -814,7 +828,19 @@
       var currentService, adj, currentServiceDeps;
       var func, i = 0;
 
-      if (name) {
+      if (isOver) {
+        // the process is over (callback returned too)
+        // this may only happen if there is a duplicated callback
+        throw new Error('Diogenes: a callback has been firing more than once');
+        return;
+      }
+      else if (name in deps) {
+        // this dependency already solved.
+        // Did someone is firing the callback twice ?
+        isOver = true;
+        return done.call(registry, new Error('Diogenes: a callback has been firing more than once'));
+      }
+      else if (name) {
         deps[name] = dep;
         numberParallelCallback--;
         if (debug) { debugEnd(name, debugInfo); }
@@ -827,6 +853,7 @@
       }
 
       if (sorted_services.length === 0) {
+        isOver = true;
         if (debug) { debugEnd('__all__', debugInfo); }
         if (dep instanceof Error) {
           return done.call(registry, dep, debug ? deps : undefined, debug ? debugInfo : undefined);
@@ -853,6 +880,7 @@
               func = currentService._getFunc(config, currentServiceDeps, resolve);
             }
             catch (e) {
+              isOver = true;
               return done.call(registry, e, deps, debugInfo);
             }
             if (debug) { debugStart(currentService.name, debugInfo); }
@@ -870,7 +898,7 @@
     return this;
   };
 
-  FunctionGraph.prototype.run = function graph_run(name, done) {
+  RegistryInstance.prototype.run = function registryInstance_run(name, done) {
     var newreg = new Diogenes();
 
     if (typeof name === 'string') {
@@ -882,7 +910,7 @@
       next(undefined, deps);
     });
 
-    var tempreg = newreg.merge(this.registry);
+    var tempreg = newreg.merge(this.registry());
     tempreg.instance(this._config).run('__main__', done);
     return this;
   };
