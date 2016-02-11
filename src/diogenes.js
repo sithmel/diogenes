@@ -401,15 +401,6 @@
     }
   };
 
-  Service.prototype.run = function service_run(config, done) {
-    this._registry.instance(config).run(this.name, done);
-    return this;
-  };
-
-  Service.prototype.getExecutionOrder = function service_getExecutionOrder(config) {
-    return this._registry.instance(config).getExecutionOrder(this.name);
-  };
-
   Service.prototype.cacheOn = function service_cacheOn(opts) {
     return this._mainCache.on(opts);
     return this;
@@ -473,27 +464,6 @@
   Service.prototype.onErrorThrow = function service_onErrorThrow() {
     this._secondaryCache.off();
     this.onError = undefined;
-    return this;
-  };
-
-  // events
-  Service.prototype.on = function service_on() {
-    var args = Array.prototype.slice.call(arguments);
-    args.unshift(this.name);
-    this._registry.on.apply(this._registry, args);
-    return this;
-  };
-
-  Service.prototype.one = function service_one() {
-    var args = Array.prototype.slice.call(arguments);
-    args.unshift(this.name);
-    this._registry.one.apply(this._registry, args);
-    return this;
-  };
-
-  Service.prototype.off = function service_off() {
-    var args = Array.prototype.slice.call(arguments);
-    this._registry.off.apply(this._registry, args);
     return this;
   };
 
@@ -599,22 +569,6 @@
     });
   };
 
-  Diogenes.prototype.cacheReset = function registry_cacheReset() {
-    this._forEachService('cacheReset');
-  };
-
-  Diogenes.prototype.cacheOff = function registry_cacheOff() {
-    this._forEachService('cacheOff');
-  };
-
-  Diogenes.prototype.cachePause = function registry_cachePause() {
-    this._forEachService('cachePause');
-  };
-
-  Diogenes.prototype.cacheResume = function registry_cacheResume() {
-    this._forEachService('cacheResume');
-  };
-
   Diogenes.prototype.remove = function registry_remove(name) {
     delete this.services[name];
     return this;
@@ -629,17 +583,8 @@
     });
   };
 
-  Diogenes.prototype.instance = function registry_graph(config, options) {
+  Diogenes.prototype.instance = function registry_instance(config, options) {
     return new RegistryInstance(this, config, options);
-  };
-
-  Diogenes.prototype.run = function registry_run(name, config, done) {
-    this.instance(config).run(name, done);
-    return this;
-  };
-
-  Diogenes.prototype.getExecutionOrder = function registry_getExecutionOrder(name, config) {
-    return this.instance(config).getExecutionOrder(name);
   };
 
   // events
@@ -847,8 +792,14 @@
         if (!(dep instanceof Error)) {
           services[name]._cachePush(config, dep);
           if (!cached) {
-            registry.trigger(name, dep, config);
+            registry.trigger('success', name, dep, config);
           }
+          else {
+            registry.trigger('cachehit', name, dep, config);
+          }
+        }
+        else {
+          registry.trigger('error', name, dep, config);
         }
       }
 
@@ -886,6 +837,7 @@
             if (debug) { debugStart(currentService.name, debugInfo); }
             sorted_services.splice(i, 1);
             numberParallelCallback++;
+            registry.trigger('before', currentService.name, config);
             setImmediate(func);
           }
           else {

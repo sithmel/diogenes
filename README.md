@@ -185,18 +185,6 @@ registryInstance.run(["count", "abstract"], function (err, deps){
 });
 ```
 In this case the second argument will contain an object with an attribute for each dependency (deps.count, deps.abstract).
-For brevity there are a couple of shortcut method "run". One on the registry and the other one on the regitry:
-```js
-registry.run("paragraph", {abstractLen: 5, abstractEllipsis: "..."},
-  function (err, p){
-    ...
-  });
-
-registry.service("paragraph").run({abstractLen: 5, abstractEllipsis: "..."},
-  function (err, p){
-    ...
-  });
-```
 Using "run", Diogenes calls all services required to satisfy the dependencies tree. You can get the ordering using:
 ```js
 registryInstance.getExecutionOrder("paragraph");
@@ -462,51 +450,6 @@ registry.remove(name);
 ```
 It returns the registry.
 
-run
----
-It executes all the dependency tree required by the service and call the function. All the services are called using config:
-```js
-registry.run(name, config, func);
-```
-The function takes 2 arguments:
-* an error
-* the value of the service required
-
-You can also use the alternative syntax:
-```js
-registry.run(names, config, func);
-```
-In this case "names" is an array of strings (the dependency you want to be returned).
-The callback will get as second argument an object with a property for any dependency returned.
-
-The context (this) of this function is the registry itself.
-
-It returns the registry.
-
-cacheOff
---------
-It empties and disable the cache of all services. It returns the registry.
-
-cacheReset
-----------
-It empties the cache of all services. It returns the registry.
-
-cachePause
-----------
-It pauses the cache of all services. It returns the registry.
-
-cacheResume
------------
-Resume the cache of all services. It returns the registry.
-
-getExecutionOrder
------------------
-Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
-Also it will take into consideration what plugins match and the caching (a cached items as no dependency!):
-```js
-registry.getExecutionOrder(name, config);
-```
-
 init
 ----
 Helper function. It runs a group of functions with the registry as "this". Useful for initializing the registry.
@@ -520,6 +463,7 @@ var module1 = require('module1');
 var module2 = require('module2');
 registry.init([module1, module2]);
 ```
+
 forEach
 -------
 It runs a callback for any service registered.
@@ -528,19 +472,26 @@ registry.forEach(function (service, name){
   // the service is also "this"
 });
 ```
+
 on
 --
-Attach an event handler. It triggers when an services gets a valid output. You can pass up to 3 validators and the function. The function takes 3 arguments:
+Attach an event handler. It triggers when an services gets a valid output. You can pass up to 4 validators and the function. The function takes 4 arguments:
 
+* the type of event (before, success, error, cachehit)
 * the name of the service
-* the output of the service
+* the output of the service (not for the "before" type)
 * the config (used for running this service)
 
 ```js
-registry.on([validators], function (name, dep, config){
+registry.on([validators], function (type, name, dep, config){
   ...
 });
 ```
+Types of events:
+* before: fires before starting executing a service. It doesn't fire for cached services. Arguments: (type, name, config)
+* success: fires after returning a value from a service. Arguments: (type, name, dep, config)
+* error: fires after returning an error from a service. Arguments: (type, name, err, config)
+* cachehit: fires on cached services. Arguments: (type, name, dep, config)
 
 one
 ---
@@ -578,7 +529,7 @@ service.provides(func);
 
 service.provides(configValidator, func);   
 
-service.provides(configValidator, dependencyValidator, func);   
+service.provides(configValidator, dependenciesValidator, func);   
 ```
 The function can have 2 different signatures: with callback (config, deps, next) or without (config, deps):
 * "config" is a value passed to all services when "run" is invoked
@@ -614,19 +565,13 @@ service.dependsOn(configValidator, array);
 service.dependsOn(configValidator, func);
 ```
 
-run
----
-The same as the run registry method:
-```js
-service.run(config, func);
-```
-
 onErrorReturn
 -------------
 If the service or one of the dependencies fails (thrown an exception) it returns "value" as fallback.
 ```js
 service.onErrorReturn(value);
 ```
+
 onErrorExecute
 --------------
 If the service or one of the dependencies fails (thrown an exception) it uses the function to calculate a fallback. The arguments are the configuration and the error. You can propagate the exception returning the error.
@@ -635,18 +580,21 @@ service.onErrorExecute(function (config, err){
   return ...;
 });
 ```
+
 onErrorThrown
 -------------
 It reverts to the default behaviour: on error it propagates the error.
 ```js
 service.onErrorThrown();
 ```
+
 onErrorUseCache
 ---------------
 In case of error uses the last valid cached value. It uses a different cache bucket from the one used for the normal cache (the configuration is the same as the cacheOn method). Usually you want to specify longer times for this cache to expire. Its content is used only in case of errors.
 ```js
 service.onErrorUseCache(config);
 ```
+
 cacheOn
 -------
 Set the cache for this service on. It takes as argument the cache configuration:
@@ -675,20 +623,6 @@ cacheResume
 -----------
 Resume the cache.
 
-on/one/off
-----------
-Manage event handlers. It is a alternate syntax to the registry ones.
-```js
-registry.service(name).on([validators], function (name, dep, config){
-  ...
-});
-
-registry.service(name).one([validators], function (name, dep, config){
-  ...
-});
-
-registry.service(name).off(func);
-```
 metadata
 --------
 Get/set metadata on the service.
@@ -703,19 +637,20 @@ Get/set a service description.
 registry.service(name).description(metadata); // set
 registry.service(name).description(); // get
 ```
+
 info
 ----
 It returns a documentation of the service. It requires a configuration to resolve the dependencies.
 ```js
 registry.service(name).info(config);
 ```
+
 infoObj
 -------
 It returns an object with a lot of information about the service. It requires a configuration to resolve the dependencies.
 ```js
 registry.service(name).infoObj(config);
 ```
-
 
 RegistryInstance's methods
 =======================
@@ -763,7 +698,6 @@ The callback will get as second argument an object with a property for any depen
 The context (this) of this function is the registry itself.
 
 It returns the registry instance.
-
 
 Errors in the services graph
 ============================

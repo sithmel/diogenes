@@ -64,28 +64,6 @@ describe('diogenes', function () {
     });
   });
 
-  it('must works service shortcut', function (done) {
-    registry.service('hello').provides(function (config, deps, next) {
-      assert.deepEqual(config, {test: 1});
-      next(undefined, 'hello');
-    });
-    registry.service('hello').run({test: 1}, function (err, dep) {
-      assert.deepEqual(dep, 'hello');
-      done();
-    });
-  });
-
-  it('must works registry shortcut', function (done) {
-    registry.service('hello').provides(function (config, deps, next) {
-      assert.deepEqual(config, {test: 1});
-      next(undefined, 'hello');
-    });
-    registry.run('hello', {test: 1}, function (err, dep) {
-      assert.deepEqual(dep, 'hello');
-      done();
-    });
-  });
-
   it('must return a service in a simple case (1 function)', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
       assert.equal(registry.service('hello'), this);
@@ -888,19 +866,6 @@ describe('diogenes', function () {
       });
     });
 
-    it('must reset all caches', function () {
-      cached.cacheOn({key: 'test'});
-      cached._cachePush({test: 1}, 'result1');
-      cached._cachePush({test: 2}, 'result2');
-      assert.deepEqual(cached._mainCache._cache, {'1': 'result1', '2': 'result2'});
-      registry.cacheReset();
-      assert.equal(cached._mainCache._cacheKeys.length, 0);
-      assert.deepEqual(cached._mainCache._cache, {});
-      registry.cacheOff();
-      assert.isUndefined(cached._mainCache._cacheKeys);
-      assert.isUndefined(cached._mainCache._cache);
-    });
-
   });
 
   describe('events', function (done) {
@@ -916,10 +881,30 @@ describe('diogenes', function () {
       registry.trigger('test');
     });
 
+    it('must fire before and after', function (done) {
+      var called = [];
+
+      registry.on('success', 'hello', function (type, name, dep, config) {
+        called.push(type);
+        assert.equal(called.join('-'), 'before-success');
+        done();
+      });
+
+      registry.on('before', 'hello', function (type, name, config) {
+        called.push(type);
+      });
+
+      registry.service('hello').provides(function (config, deps, next) {
+        next(undefined, 'hello ');
+      });
+
+      registry.instance({test: 1}).run('hello', function (err, dep) {});
+    });
+
     it('must fire on deps', function (done) {
       var called = false;
 
-      registry.on('world', function (name, dep, config) {
+      registry.on('success', 'world', function (type, name, dep, config) {
         assert.equal(name, 'world');
         assert.equal(dep, 'hello world!');
         assert.deepEqual(config, {test:1});
@@ -927,7 +912,7 @@ describe('diogenes', function () {
         done();
       });
 
-      registry.on('hello', function (name, dep, config) {
+      registry.on('success', 'hello', function (type, name, dep, config) {
         assert.equal(name, 'hello');
         assert.equal(dep, 'hello ');
         assert.deepEqual(config, {test:1});
@@ -945,43 +930,22 @@ describe('diogenes', function () {
       registry.instance({test: 1}).run('world', function (err, dep) {});
     });
 
-    it('must fire on deps (alternate syntax)', function (done) {
-      var called = false;
-
-      registry.service('world').on(function (name, dep, config) {
-        assert.equal(name, 'world');
-        assert.equal(dep, 'hello world!');
-        assert.deepEqual(config, {test:1});
-        assert(called);
-        done();
-      });
-
-      registry.service('hello').on(function (name, dep, config) {
-        assert.equal(name, 'hello');
-        assert.equal(dep, 'hello ');
-        assert.deepEqual(config, {test:1});
-        called = true;
-      });
-
-      registry.service('hello').provides(function (config, deps, next) {
-        next(undefined, 'hello ');
-      });
-
-      registry.service('world').dependsOn(['hello']).provides(function (config, deps, next) {
-        next(undefined, deps.hello + 'world!');
-      });
-
-      registry.instance({test: 1}).run('world', function (err, dep) {});
-    });
-
-    it('mustn\'t fire for cached values', function (done) {
+    it('mustn\'t fire success for cached values, but fire cachehit', function (done) {
       var called = 0;
+      var cached_called = 0;
 
-      registry.service('hello').on(function (name, dep, config) {
+      registry.on('success', 'hello', function (type, name, dep, config) {
         assert.equal(name, 'hello');
         assert.equal(dep, 'hello');
         assert.deepEqual(config, {test:1});
         called++;
+      });
+
+      registry.on('cachehit', 'hello', function (type, name, dep, config) {
+        assert.equal(name, 'hello');
+        assert.equal(dep, 'hello');
+        assert.deepEqual(config, {test:1});
+        cached_called++;
       });
 
       registry.service('hello').provides(function (config, deps, next) {
@@ -992,9 +956,11 @@ describe('diogenes', function () {
       registry.instance({test: 1}).run('hello', function (err, dep) {
         setTimeout(function () {
           assert.equal(called, 1);
+          assert.equal(cached_called, 0);
           registry.instance({test: 1}).run('hello', function (err, dep) {
             setTimeout(function () {
               assert.equal(called, 1);
+              assert.equal(cached_called, 1);
               done();
             }, 10);
           });
@@ -1002,6 +968,23 @@ describe('diogenes', function () {
 
       });
     });
+
+    it('must fire error', function (done) {
+      registry.on('error', 'hello', function (type, name, err, config) {
+        assert.equal(err.message, 'error');
+        assert.instanceOf(err, Error);
+        assert.deepEqual(config, {test:1});
+        done();
+      });
+
+      registry.service('hello').provides(function (config, deps, next) {
+        next(new Error('error'));
+      });
+
+      registry.instance({test: 1}).run('hello', function (err, dep) {});
+    });
+
+
   });
 
   describe('onError', function (done) {
