@@ -1101,4 +1101,27 @@ describe('diogenes', function () {
 
   });
 
+  describe('timeout', function () {
+    it('must set/get timeout', function () {
+      var s = registry.service('service');
+      assert.isFalse(s.timeout());
+      assert.equal(s.timeout(4), s);
+      assert.equal(s.timeout(), 4);
+      assert.equal(s.timeout(Infinity), s);
+      assert.isFalse(s.timeout());
+    });
+
+  });
+
+  describe('retry', function () {
+    it('must set/get retry', function () {
+      var s = registry.service('service');
+      assert.isFalse(s.retry());
+      assert.equal(s.retry(4), s);
+      assert.equal(s.retry(), 4);
+      assert.equal(s.retry(Infinity), s);
+      assert.equal(s.retry(), Infinity);
+    });
+
+  });
 });

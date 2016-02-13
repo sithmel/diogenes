@@ -179,6 +179,8 @@
     });
     this._mainCache = new Cache(); // used for caching
     this._secondaryCache = new Cache(); // used for exceptions
+    this._timeout = null;
+    this._retry = 0;
   }
 
   Service.prototype.registry = function service_registry() {
@@ -314,6 +316,32 @@
       return value;
     };
     return this._returns.apply(this, args);
+  };
+
+  Service.prototype.timeout = function service_timeout(time) {
+    if (typeof time === 'undefined') {
+      if (this._timeout && this._timeout > 0 && this._timeout < Infinity) {
+        return this._timeout;
+      }
+      else {
+        return false;
+      }
+    }
+    this._timeout = time;
+    return this;
+  };
+
+  Service.prototype.retry = function service_retry(times) {
+    if (typeof times === 'undefined') {
+      if (this._retry) {
+        return this._retry;
+      }
+      else {
+        return false;
+      }
+    }
+    this._retry = times;
+    return this;
   };
 
   Service.prototype._manageError = function service__manageError(err, config, callback) {
