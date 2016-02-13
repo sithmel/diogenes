@@ -1,5 +1,6 @@
 var Diogenes = require('../src');
 var assert = require('chai').assert;
+var errors = require('../src/lib/errors');
 
 describe('diogenes local/global registry', function () {
 
@@ -82,7 +83,7 @@ describe('diogenes', function () {
     registry.instance({}).run('hello', function (err, dep) {
       assert.equal(registry, this);
       assert.equal(err.message, 'Diogenes: missing dependency: hello');
-      assert.instanceOf(err, Error);
+      assert.instanceOf(err, errors.DiogenesError);
       done();
     });
   });
@@ -129,7 +130,7 @@ describe('diogenes', function () {
     });
 
     registry.instance({}).run('world', function (err, dep) {
-      assert.instanceOf(err, Error);
+      assert.instanceOf(err, errors.DiogenesError);
       assert.equal(err.message, 'Diogenes: a callback has been firing more than once');
       done();
     });
@@ -259,7 +260,7 @@ describe('diogenes', function () {
     });
 
     registry.instance({}).run('hello', function (err, dep) {
-      assert.instanceOf(err, Error);
+      assert.instanceOf(err, errors.DiogenesError);
       assert.equal(err.message, 'Diogenes: circular dependency: hello');
       done();
     });
@@ -279,7 +280,7 @@ describe('diogenes', function () {
     });
 
     registry.instance({}).run('C', function (err, dep) {
-      assert.instanceOf(err, Error);
+      assert.instanceOf(err, errors.DiogenesError);
       assert.equal(err.message, 'Diogenes: circular dependency: C');
       done();
     });
@@ -291,7 +292,7 @@ describe('diogenes', function () {
     });
 
     registry.instance({}).run('hello', function (err, dep) {
-      assert.instanceOf(err, Error);
+      assert.instanceOf(err, errors.DiogenesError);
       assert.equal(err.message, 'Diogenes: missing dependency: world');
       done();
     });

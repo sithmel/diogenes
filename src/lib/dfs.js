@@ -1,3 +1,4 @@
+var errors = require('./errors');
 
 function dfs(adjlists, startingNode) { // depth first search
   var already_visited = {};
@@ -11,13 +12,13 @@ function dfs(adjlists, startingNode) { // depth first search
     already_visited[node] = true;
 
     if (!adjlists(node)) {
-      throw new Error('Diogenes: missing dependency: ' + node);
+      throw new errors.DiogenesError('Diogenes: missing dependency: ' + node);
     }
 
     if (adjlists(node).error) throw adjlists(node).error;
     adjlist = adjlists(node).deps.filter(function (adj) {
       if (adj in already_visited && !(adj in already_backtracked)) {
-        throw new Error('Diogenes: circular dependency: ' + adj);
+        throw new errors.DiogenesError('Diogenes: circular dependency: ' + adj);
       }
       return !(adj in already_visited);
     });

@@ -4,6 +4,7 @@ var or = require('occamsrazor');
 var Service = require('./service');
 var RegistryInstance = require('./registry-instance');
 var simpleMemoize = require('./lib/simple-memoize');
+var errors = require('./lib/errors');
 
 // initialize global registries
 var _registries = typeof window == 'undefined' ? global : window;
@@ -78,7 +79,7 @@ Registry.prototype.clone = function registry_clone() {
 
 Registry.prototype.service = function registry_service(name) {
   if (typeof name !== 'string') {
-    throw new Error('Diogenes: the name of the service should be a string');
+    throw new errors.DiogenesError('Diogenes: the name of the service should be a string');
   }
 
   if (!(name in this.services)) {
