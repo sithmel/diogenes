@@ -2,7 +2,7 @@
   "name": "diogenes",
   "version": "0.5.2",
   "description": "Defines and executes functions with a common interface (services) configured in a directed acyclic graph",
-  "main": "src/diogenes.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "mocha tests/*.js",
     "watch": "npm run test -- -w",
@@ -29,6 +29,7 @@
     "npm-release": "^1.0.0"
   },
   "dependencies": {
+    "object-assign": "^4.0.1",
     "occamsrazor": "^4.4.0",
     "setimmediate": "^1.0.4"
   }

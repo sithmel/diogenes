@@ -1,4 +1,4 @@
-var Diogenes = require('../src/diogenes');
+var Diogenes = require('../src');
 var assert = require('chai').assert;
 
 describe('diogenes local/global registry', function () {
