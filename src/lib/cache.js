@@ -108,6 +108,9 @@ Cache.prototype.query = function cache_query(config) {
   var hit,
     cached = false,
     key = this._getCacheKey(config);
+
+  this.purge(); // purge stale cache entries
+
   if (key in this._cache) {
     cached = true;
     hit = this._cache[key]; // cache hit!
@@ -117,6 +120,10 @@ Cache.prototype.query = function cache_query(config) {
     key: key,
     hit: hit
   };
+};
+
+Cache.prototype.size = function cache_size() {
+  return this._cacheKeys.length;
 };
 
 module.exports = Cache;

@@ -615,14 +615,6 @@ cacheReset
 ----------
 It empties the cache.
 
-cachePause
-----------
-It pauses the cache. The cache will work as usual but the cached result won't be used
-
-cacheResume
------------
-Resume the cache.
-
 metadata
 --------
 Get/set metadata on the service.

@@ -254,8 +254,7 @@ Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
 
 Service.prototype._getDeps = function service__getDeps(config, noCache) {
   var cacheState;
-  if (this._mainCache.isOn() && !this.pauseCache && !noCache) { // cache check here !!!
-    this._mainCache.purge(); // purge stale cache entries
+  if (this._mainCache.isOn() && !noCache) { // cache check here !!!
     cacheState = this._mainCache.query(config);
     if (cacheState.cached) {
       // cache hit!
@@ -296,16 +295,6 @@ Service.prototype.cacheOff = function service_cacheOff() {
   return this;
 };
 
-Service.prototype.cachePause = function service_cachePause() {
-  this.pauseCache = true;
-  return this;
-};
-
-Service.prototype.cacheResume = function service_cacheResume() {
-  this.pauseCache = undefined;
-  return this;
-};
-
 Service.prototype.cacheReset = function service_cacheReset() {
   this._mainCache.reset();
   return this;
@@ -330,7 +319,6 @@ Service.prototype.onErrorUseCache = function service_onErrorUseCache(opts) {
   this._secondaryCache.on(opts);
   this.onError = function (config, err) {
     var cacheState;
-    this._secondaryCache.purge(); // purge stale cache entries
     cacheState = this._secondaryCache.query(config);
     if (cacheState.cached) {
       return cacheState.hit;
