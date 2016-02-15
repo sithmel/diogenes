@@ -1,5 +1,5 @@
 var dfs = require('./lib/dfs');
-var errors = require('./lib/errors');
+var DiogenesError = require('./lib/diogenes-error');
 /*
 
 RegistryInstance utilities
@@ -112,14 +112,14 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
     if (isOver) {
       // the process is over (callback returned too)
       // this may only happen if there is a duplicated callback
-      throw new errors.DiogenesError('Diogenes: a callback has been firing more than once');
+      throw new DiogenesError('Diogenes: a callback has been firing more than once');
       return;
     }
     else if (name in deps) {
       // this dependency already solved.
       // Did someone is firing the callback twice ?
       isOver = true;
-      return done.call(registry, new errors.DiogenesError('Diogenes: a callback has been firing more than once'));
+      return done.call(registry, new DiogenesError('Diogenes: a callback has been firing more than once'));
     }
     else if (name) {
       deps[name] = dep;

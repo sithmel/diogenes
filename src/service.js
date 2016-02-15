@@ -1,5 +1,8 @@
 var or = require('occamsrazor');
 var Cache = require('./lib/cache');
+var DiogenesError = require('./lib/diogenes-error');
+var timeoutDecorator = require('./lib/timeout-decorator');
+var callbackifyDecorator = require('./lib/callbackify-decorator');
 
 function isPromise(obj) {
   return 'then' in obj;
@@ -138,9 +141,9 @@ Service.prototype.dependsOn = function service_dependsOn() {
 
 Service.prototype._returns = function service__returns() {
   var func = arguments[arguments.length - 1];
-  var arity = func.length;
+  func = func.length < 3 ? callbackifyDecorator(func) : func;
   var adapter = function () {
-    return {func: func, arity: arity};
+    return {func: func};
   };
 
   if (arguments.length > 2) {
@@ -203,7 +206,6 @@ Service.prototype._manageError = function service__manageError(err, config, call
 Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
   var obj = this._funcs(config, deps);
   var func = obj.func;
-  var arity = obj.arity;
   var service = this;
   var error = depsHasError(deps);
 
@@ -226,28 +228,8 @@ Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
 
   return function () {
     var result;
-    try {
-      if (arity < 3) { // no callback
-        result = func.call(service, config, deps);
-        if (typeof result == 'object' && isPromise(result)) {
-          result.then(function (res) { // onfulfilled
-            wrapped_func(undefined, res);
-          },
-          function (error) { // onrejected
-            wrapped_func(error);
-          });
-        }
-        else {
-          wrapped_func(undefined, result);
-        }
-      }
-      else { // callback
-        func.call(service, config, deps, wrapped_func);
-      }
-    }
-    catch (err) {
-      service._manageError(err, config, callback);
-    }
+    func = service.timeout() ? timeoutDecorator(service.timeout())(func) : func;
+    func.call(service, config, deps, wrapped_func);
   };
 
 };

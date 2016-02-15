@@ -1,6 +1,6 @@
 var Diogenes = require('../src');
 var assert = require('chai').assert;
-var errors = require('../src/lib/errors');
+var DiogenesError = require('../src/lib/diogenes-error');
 
 describe('diogenes local/global registry', function () {
 
@@ -83,15 +83,15 @@ describe('registry', function () {
     registry.instance({}).run('hello', function (err, dep) {
       assert.equal(registry, this);
       assert.equal(err.message, 'Diogenes: missing dependency: hello');
-      assert.instanceOf(err, errors.DiogenesError);
+      assert.instanceOf(err, DiogenesError);
       done();
     });
   });
 
   it('must return an exception if the function fails', function (done) {
-    registry.service('hello').provides(function (config, deps, next) {
+    registry.service('hello').provides(function (config, deps) {
       throw new Error('broken');
-      next(undefined, 'hello');
+      return 'hello';
     });
 
     registry.instance({}).run('hello', function (err, dep) {
@@ -130,7 +130,7 @@ describe('registry', function () {
     });
 
     registry.instance({}).run('world', function (err, dep) {
-      assert.instanceOf(err, errors.DiogenesError);
+      assert.instanceOf(err, DiogenesError);
       assert.equal(err.message, 'Diogenes: a callback has been firing more than once');
       done();
     });
@@ -260,7 +260,7 @@ describe('registry', function () {
     });
 
     registry.instance({}).run('hello', function (err, dep) {
-      assert.instanceOf(err, errors.DiogenesError);
+      assert.instanceOf(err, DiogenesError);
       assert.equal(err.message, 'Diogenes: circular dependency: hello');
       done();
     });
@@ -280,7 +280,7 @@ describe('registry', function () {
     });
 
     registry.instance({}).run('C', function (err, dep) {
-      assert.instanceOf(err, errors.DiogenesError);
+      assert.instanceOf(err, DiogenesError);
       assert.equal(err.message, 'Diogenes: circular dependency: C');
       done();
     });
@@ -292,7 +292,7 @@ describe('registry', function () {
     });
 
     registry.instance({}).run('hello', function (err, dep) {
-      assert.instanceOf(err, errors.DiogenesError);
+      assert.instanceOf(err, DiogenesError);
       assert.equal(err.message, 'Diogenes: missing dependency: world');
       done();
     });
@@ -569,26 +569,4 @@ describe('registry', function () {
     });
   });
 
-  describe('timeout', function () {
-    it('must set/get timeout', function () {
-      var s = registry.service('service');
-      assert.isFalse(s.timeout());
-      assert.equal(s.timeout(4), s);
-      assert.equal(s.timeout(), 4);
-      assert.equal(s.timeout(Infinity), s);
-      assert.isFalse(s.timeout());
-    });
-  });
-
-  describe('retry', function () {
-    it('must set/get retry', function () {
-      var s = registry.service('service');
-      assert.isFalse(s.retry());
-      assert.equal(s.retry(4), s);
-      assert.equal(s.retry(), 4);
-      assert.equal(s.retry(Infinity), s);
-      assert.equal(s.retry(), Infinity);
-    });
-
-  });
 });

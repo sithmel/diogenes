@@ -4,7 +4,7 @@ var or = require('occamsrazor');
 var Service = require('./service');
 var RegistryInstance = require('./registry-instance');
 var simpleMemoize = require('./lib/simple-memoize');
-var errors = require('./lib/errors');
+var DiogenesError = require('./lib/diogenes-error');
 
 // initialize global registries
 var _registries = typeof window == 'undefined' ? global : window;
