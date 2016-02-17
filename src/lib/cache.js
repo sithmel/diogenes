@@ -1,3 +1,5 @@
+var sizeof = require('sizeof');
+
 /*
 
 Cache object
@@ -96,8 +98,10 @@ Cache.prototype.off = function cache_off() {
 };
 
 Cache.prototype.reset = function cache_reset() {
-  this._cache = {}; // key, value
-  this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+  if (this._cache) {
+    this._cache = {}; // key, value
+    this._cacheKeys = []; // sorted by time {ts: xxx, key: xxx}
+  }
 };
 
 Cache.prototype.isOn = function cache_isOn(config) {
@@ -122,7 +126,11 @@ Cache.prototype.query = function cache_query(config) {
   };
 };
 
-Cache.prototype.size = function cache_size() {
+Cache.prototype.size = function cache_size(pretty) {
+  return sizeof.sizeof(this, pretty);
+};
+
+Cache.prototype.len = function cache_len() {
   return this._cacheKeys.length;
 };
 

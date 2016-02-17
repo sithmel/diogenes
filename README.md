@@ -84,11 +84,10 @@ A step by step example
 
 Importing diogenes
 ------------------
-The easiest way to import Diogenes is using commonjs:
+You can import Diogenes using commonjs:
 ```js
 var Diogenes = require('diogenes');
 ```
-You can also import it as a global module. In that case you should take care of the dependencies (setImmediate and occamsrazor).
 
 Creating a registry
 -------------------
@@ -276,6 +275,10 @@ In the example the function is called in these cases:
 * the "count" service thrown or returned an exception
 * one of the dependencies of the "count" service propagated an exception
 
+Timeout
+=======
+It is possible to define ...
+
 Debugging and profiling
 =======================
 The "instance" method takes an extra argument "options" that can be used to enable some extra options.
@@ -355,7 +358,7 @@ Documentation
 =============
 You can attach a description to a service. This will be used by the method "info" for giving an outline of the services available.
 ```js
-var service = registry.service("abstract")
+var service = registry.service("abstract");
 
 service.description("This service returns the abstract of a paragraph.");
 service.info({}); // I pass the configuration
@@ -368,10 +371,6 @@ Dependencies:
 * tokens
 ```
 You can also use the method "info" of the registry to get all the services.
-
-Dependencies
-============
-Diogenes depends on setimmediate and occamsrazor.
 
 How does it work
 ================

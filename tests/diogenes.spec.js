@@ -383,41 +383,41 @@ describe('registry', function () {
       assert.equal(registry.service('world').description(), 'returns the string world');
     });
 
-    it('must create doc object', function () {
-      var obj1 = {
-        'cached': false,
-        'dependencies': [],
-        'description': 'returns the string hello',
-        'executionOrder': [],
-        'manageError': false,
-        'metadata': 'Metadata',
-        'name': 'hello'
-      };
-      var obj2 = {
-        'cached': false,
-        'dependencies': [
-          'hello'
-        ],
-        'description': 'returns the string world',
-        'executionOrder': [
-          'hello'
-        ],
-        'manageError': false,
-        'metadata': undefined,
-        'name': 'world'
-      };
-      assert.deepEqual(registry.service('hello').infoObj(), obj1);
-      assert.deepEqual(registry.service('world').infoObj(),  obj2);
-      assert.deepEqual(registry.instance().infoObj(), {hello: obj1, world: obj2});
-    });
-
-    it('must create doc', function () {
-      var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n```\n';
-      var doc2 = 'world\n=====\nreturns the string world\n\nExecution order:\n* hello\n\nDependencies:\n* hello\n';
-      assert.equal(registry.service('hello').info(), doc1);
-      assert.equal(registry.service('world').info(),  doc2);
-      assert.equal(registry.instance().info(), doc1 + '\n\n' + doc2);
-    });
+    // it('must create doc object', function () {
+    //   var obj1 = {
+    //     'cached': false,
+    //     'dependencies': [],
+    //     'description': 'returns the string hello',
+    //     'executionOrder': [],
+    //     'manageError': false,
+    //     'metadata': 'Metadata',
+    //     'name': 'hello'
+    //   };
+    //   var obj2 = {
+    //     'cached': false,
+    //     'dependencies': [
+    //       'hello'
+    //     ],
+    //     'description': 'returns the string world',
+    //     'executionOrder': [
+    //       'hello'
+    //     ],
+    //     'manageError': false,
+    //     'metadata': undefined,
+    //     'name': 'world'
+    //   };
+    //   assert.deepEqual(registry.service('hello').infoObj(), obj1);
+    //   assert.deepEqual(registry.service('world').infoObj(),  obj2);
+    //   assert.deepEqual(registry.instance().infoObj(), {hello: obj1, world: obj2});
+    // });
+    //
+    // it('must create doc', function () {
+    //   var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n```\n';
+    //   var doc2 = 'world\n=====\nreturns the string world\n\nExecution order:\n* hello\n\nDependencies:\n* hello\n';
+    //   assert.equal(registry.service('hello').info(), doc1);
+    //   assert.equal(registry.service('world').info(),  doc2);
+    //   assert.equal(registry.instance().info(), doc1 + '\n\n' + doc2);
+    // });
   });
 
   describe('correct services in the correct order (using the config/plugin)', function () {
@@ -558,7 +558,7 @@ describe('registry', function () {
     });
 
     it('must run only once', function (done) {
-      cached.cacheOn();
+      cached.cache();
       cached.registry().instance({}).run('cached', function (err, dep) {
         assert.equal(dep, 'hello 0');
         cached.registry().instance({}).run('cached', function (err, dep) {

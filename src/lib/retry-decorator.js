@@ -1,8 +1,15 @@
 
 
-function retryDecorator(times, condition) {
+function retryDecorator(times, error) {
+  var condition;
   times = times || Infinity;
-  condition = condition || function () { return true; };
+  error = error || Error;
+  if (error === Error || Error.isPrototypeOf(error)) {
+    condition = function (err, dep) { return err instanceof error; };
+  }
+  else {
+    condition = error;
+  }
   return function (func) {
     return function () {
       var counter = 0;
@@ -16,7 +23,7 @@ function retryDecorator(times, condition) {
       };
 
       args[args.length - 1] = function (err, dep) {
-        if (err instanceof Error && condition(err) && counter < times) {
+        if (condition(err, dep) && counter < times) {
           retry();
         }
         else {

@@ -86,7 +86,7 @@ describe('events', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
       next(undefined, 'hello');
     })
-    .cacheOn();
+    .cache();
 
     registry.instance({test: 1}).run('hello', function (err, dep) {
       setTimeout(function () {

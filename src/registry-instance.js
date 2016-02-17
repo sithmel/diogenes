@@ -48,26 +48,26 @@ RegistryInstance.prototype.registry = function registryInstance_registry() {
   return this._registry;
 };
 
-RegistryInstance.prototype.infoObj = function registryInstance_infoObj() {
-  var config = this._config;
-  var registry = this._registry;
-
-  var out = {};
-  registry.forEach(function (service, name) {
-    out[name] = this.infoObj(config);
-  });
-  return out;
-};
-
-RegistryInstance.prototype.info = function registryInstance_info() {
-  var config = this._config;
-  var registry = this._registry;
-  var out = [];
-  registry.forEach(function (service) {
-    out.push(this.info(config));
-  });
-  return out.join('\n\n');
-};
+// RegistryInstance.prototype.infoObj = function registryInstance_infoObj() {
+//   var config = this._config;
+//   var registry = this._registry;
+//
+//   var out = {};
+//   registry.forEach(function (service, name) {
+//     out[name] = this.infoObj(config);
+//   });
+//   return out;
+// };
+//
+// RegistryInstance.prototype.info = function registryInstance_info() {
+//   var config = this._config;
+//   var registry = this._registry;
+//   var out = [];
+//   registry.forEach(function (service) {
+//     out.push(this.info(config));
+//   });
+//   return out.join('\n\n');
+// };
 
 RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, noCache) {
   var adjlists = this._registry._filterByConfig(this._config, noCache);

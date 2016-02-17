@@ -18,11 +18,11 @@ describe('service timeout', function () {
 
   it('must set/get timeout', function () {
     var s = registry.service('service');
-    assert.isFalse(s.timeout());
+    assert.isFalse(s.hasTimeout());
     assert.equal(s.timeout(4), s);
-    assert.equal(s.timeout(), 4);
+    assert.equal(s._timeout, 4);
     assert.equal(s.timeout(Infinity), s);
-    assert.isFalse(s.timeout());
+    assert.isFalse(s.hasTimeout());
   });
 
   it('must time out', function (done) {

@@ -25,6 +25,12 @@ describe('cache', function () {
     assert.equal(res.hit, 'result');
   });
 
+  it('must return a size', function () {
+    cache.on();
+    cache.push({}, 'result');
+    assert.equal(cache.size(true), '234B');
+  });
+
   it('must configure cache: string key', function () {
     cache.on({key: 'test'});
     cache.push({test: '1'}, 'result1');
@@ -98,10 +104,10 @@ describe('cache', function () {
     cache.on({key: 'test', maxSize: 2});
     cache.push({test: 1}, 'result1');
     cache.push({test: 2}, 'result2');
-    assert.equal(cache.size(), 2);
+    assert.equal(cache.len(), 2);
     cache.push({test: 3}, 'result3');
 
-    assert.equal(cache.size(), 2);
+    assert.equal(cache.len(), 2);
 
     var res1 = cache.query({test: 1});
     var res2 = cache.query({test: 2});
@@ -149,7 +155,7 @@ describe('cache', function () {
     cache.on({key: 'test'});
     cache.push({test: 1}, 'result1');
     cache.reset();
-    assert.equal(cache.size(), 0);
+    assert.equal(cache.len(), 0);
 
     var res1 = cache.query({test: 1});
 

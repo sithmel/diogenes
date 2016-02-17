@@ -10,21 +10,21 @@ function callbackify(func) {
     var cb = arguments[arguments.length - 1];
     try {
       var output = func.apply(context, args);
-
-      if (isPromise(output)) {
-        output.then(function (res) { // onfulfilled
-          cb(undefined, res);
-        },
-        function (error) { // onrejected
-          cb(error);
-        });
-      }
-      else {
-        cb(undefined, output);
-      }
     }
     catch (e) {
-      cb(e);
+      return cb(e);
+    }
+
+    if (isPromise(output)) {
+      output.then(function (res) { // onfulfilled
+        cb(undefined, res);
+      },
+      function (error) { // onrejected
+        cb(error);
+      });
+    }
+    else {
+      cb(undefined, output);
     }
   };
 }

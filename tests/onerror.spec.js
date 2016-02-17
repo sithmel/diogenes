@@ -11,7 +11,7 @@ describe('onError', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
       next(new Error('error'));
     })
-    .onErrorReturn(42);
+    .fallbackValue(42);
 
     registry.instance({test: 1}).run('hello', function (err, dep) {
       assert.isUndefined(err);
@@ -24,7 +24,7 @@ describe('onError', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
       next(new Error('error'));
     })
-    .onErrorReturn(undefined);
+    .fallbackValue(undefined);
 
     registry.instance({test: 1}).run('hello', function (err, dep) {
       assert.isUndefined(err);
@@ -37,7 +37,7 @@ describe('onError', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
       next(new Error('error'));
     })
-    .onErrorExecute(function (config) {return config.test;});
+    .fallbackFunction(function (config) {return config.test;});
 
     registry.instance({test: 1}).run('hello', function (err, dep) {
       assert.isUndefined(err);
@@ -50,7 +50,7 @@ describe('onError', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
       next(new Error('error'));
     })
-    .onErrorExecute(function (config, err) {
+    .fallbackFunction(function (config, err) {
       return err;
     });
 
@@ -69,7 +69,7 @@ describe('onError', function (done) {
     registry.service('world').dependsOn(['hello']).provides(function (config, deps, next) {
       next(undefined, 'world');
     })
-    .onErrorReturn(42);
+    .fallbackValue(42);
 
     registry.instance({test: 1}).run('world', function (err, dep) {
       assert.isUndefined(err);
@@ -86,7 +86,7 @@ describe('onError', function (done) {
       else {
         next(null, 'ok');
       }
-    }).onErrorUseCache();
+    }).fallbackUseCache();
 
 
     registry.instance({}).run('hello', function (err, dep) {
@@ -108,11 +108,15 @@ describe('onError', function (done) {
       else {
         next(null, 'ok');
       }
-    }).onErrorUseCache();
+    }).fallbackUseCache();
+
+    assert.equal(registry.service('hello1').hasFallback(), false);
+    assert.equal(registry.service('hello').hasFallback(), true);
 
     registry.instance({'error': true}).run('hello', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'error');
+      assert.equal(this.service('hello').fallbackCacheSize(), 172);
       done();
     });
   });

@@ -31,6 +31,7 @@
   "dependencies": {
     "object-assign": "^4.0.1",
     "occamsrazor": "^4.4.0",
-    "setimmediate": "^1.0.4"
+    "setimmediate": "^1.0.4",
+    "sizeof": "^1.0.0"
   }
 }
