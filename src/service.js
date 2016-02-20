@@ -1,9 +1,13 @@
 var or = require('occamsrazor');
 var Cache = require('./lib/cache');
 var DiogenesError = require('./lib/diogenes-error');
-var timeoutDecorator = require('./lib/timeout-decorator');
-var retryDecorator = require('./lib/retry-decorator');
-var callbackifyDecorator = require('./lib/callbackify-decorator');
+var timeoutDecorator = require('callback-decorators/callback/timeout');
+var retryDecorator = require('callback-decorators/callback/retry');
+var callbackifyDecorator = require('callback-decorators/utils/callbackify');
+// to use
+var compose = require('callback-decorators/utils/compose');
+var fallbackDecorator = require('callback-decorators/callback/fallback');
+var logDecorator = require('callback-decorators/callback/log');
 
 function isPromise(obj) {
   return 'then' in obj;

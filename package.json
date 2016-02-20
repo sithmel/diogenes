@@ -29,6 +29,7 @@
     "npm-release": "^1.0.0"
   },
   "dependencies": {
+    "callback-decorators": "0.1.0",
     "object-assign": "^4.0.1",
     "occamsrazor": "^4.4.0",
     "setimmediate": "^1.0.4",
