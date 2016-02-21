@@ -1,13 +1,13 @@
 var or = require('occamsrazor');
 var Cache = require('./lib/cache');
 var DiogenesError = require('./lib/diogenes-error');
-var timeoutDecorator = require('callback-decorators/callback/timeout');
-var retryDecorator = require('callback-decorators/callback/retry');
-var callbackifyDecorator = require('callback-decorators/utils/callbackify');
+var timeoutDecorator = require('async-deco/callback/timeout');
+var retryDecorator = require('async-deco/callback/retry');
+var callbackifyDecorator = require('async-deco/utils/callbackify');
 // to use
-var compose = require('callback-decorators/utils/compose');
-var fallbackDecorator = require('callback-decorators/callback/fallback');
-var logDecorator = require('callback-decorators/callback/log');
+var compose = require('async-deco/utils/compose');
+var fallbackDecorator = require('async-deco/callback/fallback');
+var logDecorator = require('async-deco/callback/log');
 
 function isPromise(obj) {
   return 'then' in obj;
@@ -67,75 +67,6 @@ Service.prototype.metadata = function service_metadata(meta) {
   this.meta = meta;
   return this;
 };
-
-// Service.prototype.infoObj = function service_infoObj(config) {
-//   var out = {};
-//   out.name = this.name;
-//   out.description = this.description();
-//   out.dependencies = this._getDeps(config, true).deps;
-//
-//   try {
-//     out.executionOrder = this._registry
-//     .instance(config)
-//     .getExecutionOrder(this.name, true)
-//     .slice(0, -1);
-//   }
-//   catch (e) {
-//     out.inactive = true;
-//     out.dependencies = [];
-//   }
-//
-//   out.cached = this._mainCache.isOn();
-//   out.manageError = !!this.onError;
-//
-//   out.metadata = this.metadata();
-//   return out;
-// };
-//
-// Service.prototype.info = function service_info(config) {
-//   var infoObj = this.infoObj(config);
-//   var rows = [infoObj.name];
-//   rows.push(infoObj.name.split('').map(function () {return '=';}).join(''));
-//   rows.push(infoObj.description);
-//
-//   if (infoObj.inactive) {
-//     rows.push('Not available with this configuration.');
-//   }
-//
-//   if (infoObj.executionOrder.length > 0) {
-//     rows.push('');
-//     rows.push('Execution order:');
-//     infoObj.executionOrder.forEach(function (d) {
-//       rows.push('* ' + d);
-//     });
-//   }
-//
-//   if (infoObj.dependencies.length > 0) {
-//     rows.push('');
-//     rows.push('Dependencies:');
-//     infoObj.dependencies.forEach(function (d) {
-//       rows.push('* ' + d);
-//     });
-//   }
-//
-//   if (infoObj.metadata) {
-//     rows.push('');
-//     rows.push('Metadata:');
-//     rows.push('```js');
-//     rows.push(JSON.stringify(infoObj.metadata, null, '  '));
-//     rows.push('```');
-//   }
-//
-//   rows.push('');
-//   if (infoObj.cached) {
-//     rows.push('* Cached');
-//   }
-//   if (infoObj.manageError) {
-//     rows.push('* it doesn\'t throw exceptions');
-//   }
-//
-//   return rows.join('\n');
-// };
 
 Service.prototype.dependsOn = function service_dependsOn() {
   var deps = arguments[arguments.length - 1];
@@ -212,10 +143,15 @@ Service.prototype._manageError = function service__manageError(err, config, call
   return callback(this.name, typeof this.onError !== 'undefined' ? this.onError.call(this, config, err) : err);
 };
 
-Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
+Service.prototype._getFunc = function service__getFunc(config, deps, logger, callback) {
   var obj = this._funcs(config, deps);
-  var func = obj.func;
   var service = this;
+  var decorator = compose([
+    service.hasRetry() ? retryDecorator(service._retryTimes, 0, service.retryFunc, logger) : undefined,
+    service.hasTimeout() ? timeoutDecorator(service._timeout, logger) : undefined,
+    logDecorator(logger),
+  ]);
+  var func = decorator(obj.func);
   var error = depsHasError(deps);
 
   if (error) {
@@ -236,8 +172,7 @@ Service.prototype._getFunc = function service__getFunc(config, deps, callback) {
   };
 
   return function () {
-    func = service.hasTimeout() ? timeoutDecorator(service._timeout)(func) : func;
-    func = service.hasRetry() ? retryDecorator(service._retryTimes, service.retryFunc)(func) : func;
+
     func.call(service, config, deps, wrapped_func);
   };
 };

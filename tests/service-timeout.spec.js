@@ -1,5 +1,5 @@
 var Diogenes = require('../src');
-var TimeoutError = require('callback-decorators/errors/timeout-error');
+var TimeoutError = require('async-deco/errors/timeout-error');
 var assert = require('chai').assert;
 
 describe('service timeout', function () {

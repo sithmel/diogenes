@@ -17,21 +17,6 @@ function getDependencies(currentDeps, requiredDeps) {
   return deps;
 }
 
-function debugStart(name, debugInfo) {
-  if (!(name in debugInfo)) {
-    debugInfo[name] = {};
-  }
-  debugInfo[name].start = Date.now();
-}
-
-function debugEnd(name, debugInfo) {
-  if (!(name in debugInfo)) {
-    debugInfo[name] = {};
-  }
-  debugInfo[name].end = Date.now();
-  debugInfo[name].delta = debugInfo[name].end - debugInfo[name].start;
-}
-
 /*
 
 RegistryInstance
@@ -48,27 +33,6 @@ RegistryInstance.prototype.registry = function registryInstance_registry() {
   return this._registry;
 };
 
-// RegistryInstance.prototype.infoObj = function registryInstance_infoObj() {
-//   var config = this._config;
-//   var registry = this._registry;
-//
-//   var out = {};
-//   registry.forEach(function (service, name) {
-//     out[name] = this.infoObj(config);
-//   });
-//   return out;
-// };
-//
-// RegistryInstance.prototype.info = function registryInstance_info() {
-//   var config = this._config;
-//   var registry = this._registry;
-//   var out = [];
-//   registry.forEach(function (service) {
-//     out.push(this.info(config));
-//   });
-//   return out.join('\n\n');
-// };
-
 RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, noCache) {
   var adjlists = this._registry._filterByConfig(this._config, noCache);
   var sorted_services = dfs(adjlists, name);
@@ -79,13 +43,12 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var adjlists, sorted_services;
   var config = this._config;
   var deps = {}; // all dependencies already resolved
-  var debugInfo = {}; // profiling
   var registry = this._registry;
   var services = registry.services;
   var numberParallelCallback = 0;
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
-  var debug = 'debug' in this._options ? this._options.debug : false;
+  var logger = this._options.logger || function () {};
 
   if (!done) {
     done = function (err, dep) {
@@ -104,7 +67,6 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
     return done.call(registry, e);
   }
 
-  if (debug) { debugStart('__all__', debugInfo); }
   (function resolve(name, dep, cached) {
     var currentService, adj, currentServiceDeps;
     var func, i = 0;
@@ -124,7 +86,6 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
     else if (name) {
       deps[name] = dep;
       numberParallelCallback--;
-      if (debug) { debugEnd(name, debugInfo); }
       if (!(dep instanceof Error)) {
         services[name]._cachePush(config, dep);
         if (!cached) {
@@ -141,12 +102,11 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
 
     if (sorted_services.length === 0) {
       isOver = true;
-      if (debug) { debugEnd('__all__', debugInfo); }
       if (dep instanceof Error) {
-        return done.call(registry, dep, debug ? deps : undefined, debug ? debugInfo : undefined);
+        return done.call(registry, dep);
       }
       else {
-        return done.call(registry, undefined, dep, debug ? deps : undefined, debug ? debugInfo : undefined);
+        return done.call(registry, undefined, dep);
       }
     }
 
@@ -164,13 +124,12 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
         currentServiceDeps = getDependencies(deps, adj.deps);
         if (currentServiceDeps) {
           try {
-            func = currentService._getFunc(config, currentServiceDeps, resolve);
+            func = currentService._getFunc(config, currentServiceDeps, logger, resolve);
           }
           catch (e) {
             isOver = true;
-            return done.call(registry, e, deps, debugInfo);
+            return done.call(registry, e);
           }
-          if (debug) { debugStart(currentService.name, debugInfo); }
           sorted_services.splice(i, 1);
           numberParallelCallback++;
           registry.trigger('before', currentService.name, config);
