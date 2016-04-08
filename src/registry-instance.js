@@ -1,4 +1,4 @@
-var dfs = require('./lib/dfs');
+var depSort = require('./lib/dep-sort');
 var DiogenesError = require('./lib/diogenes-error');
 /*
 
@@ -33,14 +33,16 @@ RegistryInstance.prototype.registry = function registryInstance_registry() {
   return this._registry;
 };
 
-RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, noCache) {
+RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, noCache, next) {
   var adjlists = this._registry._filterByConfig(this._config, noCache);
-  var sorted_services = dfs(adjlists, name);
-  return sorted_services;
+  depSort(adjlists, name, function (err, sorted_services) {
+    if (err) return next(err);
+    next(null, sorted_services.map(function (item) {return item.name;}));
+  });
 };
 
 RegistryInstance.prototype._run = function registryInstance__run(name, done) {
-  var adjlists, sorted_services;
+  var adjlists;
   var config = this._config;
   var deps = {}; // all dependencies already resolved
   var registry = this._registry;
@@ -48,7 +50,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var numberParallelCallback = 0;
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
-  var logger = this._options.logger || function () {};
+  var logger = this._options.logger || function () { return function () {}; };
 
   if (!done) {
     done = function (err, dep) {
@@ -58,89 +60,80 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
     };
   }
 
-  try {
-    adjlists = this._registry._filterByConfig(config);
-    sorted_services = dfs(adjlists, name);
-  }
-  catch (e) {
-    isOver = true;
-    return done.call(registry, e);
-  }
+  adjlists = this._registry._filterByConfig(config);
 
-  (function resolve(name, dep, cached) {
-    var currentService, adj, currentServiceDeps;
-    var func, i = 0;
+  depSort(adjlists, name, function (err, sorted_services) {
+    if (err) {
+      return done.call(registry, err);
+    }
+    (function resolve(name, dep, cached) {
+      var currentService, adj, currentServiceDeps;
+      var func, i = 0;
 
-    if (isOver) {
-      // the process is over (callback returned too)
-      // this may only happen if there is a duplicated callback
-      throw new DiogenesError('Diogenes: a callback has been firing more than once');
-      return;
-    }
-    else if (name in deps) {
-      // this dependency already solved.
-      // Did someone is firing the callback twice ?
-      isOver = true;
-      return done.call(registry, new DiogenesError('Diogenes: a callback has been firing more than once'));
-    }
-    else if (name) {
-      deps[name] = dep;
-      numberParallelCallback--;
-      if (!(dep instanceof Error)) {
-        services[name]._cachePush(config, dep);
-        if (!cached) {
-          registry.trigger('success', name, dep, config);
+      if (isOver) {
+        // the process is over (callback returned too)
+        // this may only happen if there is a duplicated callback
+        throw new DiogenesError('Diogenes: a callback has been firing more than once');
+        return;
+      }
+      else if (name in deps) {
+        // this dependency already solved.
+        // Did someone is firing the callback twice ?
+        isOver = true;
+        return done.call(registry, new DiogenesError('Diogenes: a callback has been firing more than once'));
+      }
+      else if (name) {
+        deps[name] = dep;
+        numberParallelCallback--;
+        if (!(dep instanceof Error)) {
+          services[name]._cachePush(config, dep);
+        }
+      }
+
+      if (sorted_services.length === 0) {
+        isOver = true;
+        if (dep instanceof Error) {
+          return done.call(registry, dep);
         }
         else {
-          registry.trigger('cachehit', name, dep, config);
+          return done.call(registry, undefined, dep);
         }
       }
-      else {
-        registry.trigger('error', name, dep, config);
-      }
-    }
 
-    if (sorted_services.length === 0) {
-      isOver = true;
-      if (dep instanceof Error) {
-        return done.call(registry, dep);
-      }
-      else {
-        return done.call(registry, undefined, dep);
-      }
-    }
+      while (i < sorted_services.length) {
+        if (numberParallelCallback >= limitParallelCallback) break;
+        currentService = services[sorted_services[i].name];
+        adj = sorted_services[i];
 
-    while (i < sorted_services.length) {
-      if (numberParallelCallback >= limitParallelCallback) break;
-      currentService = services[sorted_services[i]];
-      adj = adjlists(currentService.name);
-      if ('cached' in adj) {
-        setImmediate(function () {
-          resolve(currentService.name, adj.cached, true);
-        });
-        sorted_services.splice(i, 1);
-      }
-      else {
-        currentServiceDeps = getDependencies(deps, adj.deps);
-        if (currentServiceDeps) {
-          try {
-            func = currentService._getFunc(config, currentServiceDeps, logger, resolve);
-          }
-          catch (e) {
-            isOver = true;
-            return done.call(registry, e);
-          }
+        if ('cached' in adj) {
+          setImmediate(function () {
+            resolve(currentService.name, adj.cached, true);
+          });
           sorted_services.splice(i, 1);
-          numberParallelCallback++;
-          registry.trigger('before', currentService.name, config);
-          setImmediate(func);
         }
         else {
-          i++;
+          currentServiceDeps = getDependencies(deps, adj.deps);
+          if (currentServiceDeps) {
+            try {
+              func = currentService._getFunc(config, currentServiceDeps, logger, resolve);
+            }
+            catch (e) {
+              isOver = true;
+              return done.call(registry, e);
+            }
+            sorted_services.splice(i, 1);
+            numberParallelCallback++;
+            setImmediate(func);
+          }
+          else {
+            i++;
+          }
         }
       }
-    }
-  }());
+    }());
+
+  });
+
 
   return this;
 };

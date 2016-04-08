@@ -1,17 +1,14 @@
 var or = require('occamsrazor');
-var Cache = require('./lib/cache');
+var validator = require('occamsrazor-validator');
+var Cache = require('memoize-cache').ramCache;
 var DiogenesError = require('./lib/diogenes-error');
-var timeoutDecorator = require('async-deco/callback/timeout');
-var retryDecorator = require('async-deco/callback/retry');
 var callbackifyDecorator = require('async-deco/utils/callbackify');
-// to use
-var compose = require('async-deco/utils/compose');
-var fallbackDecorator = require('async-deco/callback/fallback');
-var logDecorator = require('async-deco/callback/log');
-
-function isPromise(obj) {
-  return 'then' in obj;
-}
+// var compose = require('async-deco/utils/compose');
+// var timeoutDecorator = require('async-deco/callback/timeout');
+// var retryDecorator = require('async-deco/callback/retry');
+// var fallbackDecorator = require('async-deco/callback/fallback');
+// var fallbackCacheDecorator = require('async-deco/callback/fallback-cache');
+// var logDecorator = require('async-deco/callback/log');
 
 function depsHasError(deps) {
   var depsList = Object.keys(deps);
@@ -23,6 +20,10 @@ function depsHasError(deps) {
   return false;
 }
 
+function getValidator(v) {
+  return (typeof v === 'function' && 'score' in v) ? v : validator().match(v);
+}
+
 /*
 
 Service object
@@ -32,50 +33,25 @@ Service object
 function Service(name, registry) {
   this.name = name;
   this._registry = registry; // backreference
-  this._desc = '';
   this._funcs = or();
-  this._deps = or().notFound(function () {
+  this._deps = or().add(function () {
     return [];
   });
-  this._mainCache = new Cache(); // used for caching
-  this._secondaryCache = new Cache(); // used for exceptions
-
-  this._timeout = undefined;
-
-  this._retry = false;
-  this._retryTimes = undefined;
-  this._retryFunc = undefined;
-
+  this._mainCache = undefined; // caching
 }
 
 Service.prototype.registry = function service_registry() {
   return this._registry;
 };
 
-Service.prototype.description = function service_description(desc) {
-  if (typeof desc === 'undefined') {
-    return this._desc;
-  }
-  this._desc = desc;
-  return this;
-};
-
-Service.prototype.metadata = function service_metadata(meta) {
-  if (typeof meta === 'undefined') {
-    return this.meta;
-  }
-  this.meta = meta;
-  return this;
-};
-
 Service.prototype.dependsOn = function service_dependsOn() {
   var deps = arguments[arguments.length - 1];
   var depsFunc = typeof deps === 'function' ? deps : function () {return deps;};
   if (arguments.length > 1) {
-    this._deps.add(or.validator().match(arguments[0]), depsFunc);
+    this._deps.add(getValidator(arguments[0]), depsFunc);
   }
   else {
-    this._deps.add(or.validator(), depsFunc);
+    this._deps.add(validator(), depsFunc);
   }
   return this;
 };
@@ -88,14 +64,14 @@ Service.prototype._returns = function service__returns() {
   };
 
   if (arguments.length > 2) {
-    this._funcs.add(or.validator().match(arguments[0]),
-                    or.validator().match(arguments[1]), adapter);
+    this._funcs.add(getValidator(arguments[0]),
+                    getValidator(arguments[1]), adapter);
   }
   else if (arguments.length > 1) {
-    this._funcs.add(or.validator().match(arguments[0]), adapter);
+    this._funcs.add(getValidator(arguments[0]), adapter);
   }
   else {
-    this._funcs.add(or.validator(), adapter);
+    this._funcs.add(validator(), adapter);
   }
   return this;
 };
@@ -114,159 +90,94 @@ Service.prototype.returns = function service_returns() {
   return this._returns.apply(this, args);
 };
 
-Service.prototype.timeout = function service_timeout(time) {
-  this._timeout = time;
-  return this;
-};
-
-Service.prototype.hasTimeout = function service_hasTimeout() {
-  if (this._timeout && this._timeout > 0 && this._timeout < Infinity) {
-    return this._timeout;
-  }
-  else {
-    return false;
-  }
-};
-
-Service.prototype.retry = function service_retry(times, func) {
-  this._retry = true;
-  this._retryTimes = times;
-  this._retryFunc = func;
-  return this;
-};
-
-Service.prototype.hasRetry = function service_hasRetry(times, func) {
-  return this._retry;
-};
-
-Service.prototype._manageError = function service__manageError(err, config, callback) {
-  return callback(this.name, typeof this.onError !== 'undefined' ? this.onError.call(this, config, err) : err);
-};
+// Service.prototype._manageError = function service__manageError(err, config, callback) {
+//   return callback(this.name, typeof this._fallbackFunction !== 'undefined' ? this._fallbackFunction.call(this, config, err) : err);
+// };
 
 Service.prototype._getFunc = function service__getFunc(config, deps, logger, callback) {
   var obj = this._funcs(config, deps);
   var service = this;
-  var decorator = compose([
-    service.hasRetry() ? retryDecorator(service._retryTimes, 0, service.retryFunc, logger) : undefined,
-    service.hasTimeout() ? timeoutDecorator(service._timeout, logger) : undefined,
-    logDecorator(logger),
-  ]);
-  var func = decorator(obj.func);
   var error = depsHasError(deps);
+  var func = obj.func;
 
   if (error) {
-    return function () {
-      service._manageError(error, config, callback);
-    };
+    func = function (config, deps, next) { next(error); }; // propagates the error
   }
 
   var wrapped_func = function (err, dep) {
-    var d;
-    if (err) {
-      d = typeof service.onError !== 'undefined' ? service.onError.call(service, config, err) : err;
-    }
-    else {
-      d = dep;
-    }
+    var d = err ? err : dep;
     return callback(service.name, d);
   };
 
   return function () {
-
     func.call(service, config, deps, wrapped_func);
   };
 };
 
-Service.prototype._getDeps = function service__getDeps(config, noCache) {
-  var cacheState;
-  if (this._mainCache.isOn() && !noCache) { // cache check here !!!
-    cacheState = this._mainCache.query(config);
-    if (cacheState.cached) {
-      // cache hit!
-      return {
-        name: this.name,
-        deps: [], // no dependencies needed for cached values
-        cached: cacheState.hit
-      };
+Service.prototype._getDeps = function service__getDeps(config, noCache, next) {
+  var service = this;
+  if (this._mainCache && !noCache) { // cache check here !!!
+    this._mainCache.query(config, function (err, cacheState) {
+      if (cacheState.cached) {
+        // cache hit!
+        return next(undefined, {
+          name: service.name,
+          deps: [], // no dependencies needed for cached values
+          cached: cacheState.hit
+        });
+      }
+      try {
+        return next(undefined, {
+          name: service.name,
+          deps: service._deps(config)
+        });
+      }
+      catch (e) {
+        // this should throw only if this service
+        // is part of the execution graph
+        return next(undefined, {error: e});
+      }
+    });
+  }
+  else {
+    try {
+      return next(undefined, {
+        name: service.name,
+        deps: service._deps(config)
+      });
     }
-  }
-  try {
-    return {
-      name: this.name,
-      deps: this._deps(config)
-    };
-  }
-  catch (e) {
-    // this should throw only if this service
-    // is part of the execution graph
-    return {
-      error: e
-    };
+    catch (e) {
+      // this should throw only if this service
+      // is part of the execution graph
+      return next(undefined, {error: e});
+    }
   }
 };
 
 Service.prototype.hasCache = function service_hasCache() {
-  return this._mainCache.isOn();
+  return !!this._mainCache;
 };
 
 Service.prototype.cache = function service_cache(opts) {
-  return this._mainCache.on(opts);
+  opts = opts || {};
+  if ('push' in opts && 'query' in opts) {
+    this._mainCache = opts;
+  }
+  else {
+    this._mainCache = new Cache(opts);
+  }
   return this;
 };
 
-Service.prototype.cacheSize = function service_cacheSize() {
-  return this._mainCache.size();
-};
-
 Service.prototype._cachePush = function service__cachePush(config, output) {
-  this._mainCache.push(config, output);
-  this._secondaryCache.push(config, output);
+  if (this._mainCache) {
+    this._mainCache.push(config, output);
+  }
 };
 
 Service.prototype.cacheReset = function service_cacheReset() {
   this._mainCache.reset();
   return this;
-};
-
-// on error
-Service.prototype.fallbackValue = function service_fallbackValue(value) {
-  this._secondaryCache.off();
-  this.onError = function (config, err) {
-    return value;
-  };
-  return this;
-};
-
-Service.prototype.fallbackFunction = function service_fallbackFunction(func) {
-  this._secondaryCache.off();
-  this.onError = func;
-  return this;
-};
-
-Service.prototype.fallbackUseCache = function service_fallbackUseCache(opts) {
-  this._secondaryCache.on(opts);
-  this.onError = function (config, err) {
-    var cacheState;
-    cacheState = this._secondaryCache.query(config);
-    if (cacheState.cached) {
-      return cacheState.hit;
-    }
-    return err;
-  };
-  return this;
-};
-
-Service.prototype.fallbackCacheReset = function service_fallbackCacheReset() {
-  return this._secondaryCache.reset();
-  return this;
-};
-
-Service.prototype.fallbackCacheSize = function service_fallbackCacheSize() {
-  return this._secondaryCache.size();
-};
-
-Service.prototype.hasFallback = function service_hasFallback() {
-  return !!this.onError;
 };
 
 module.exports = Service;

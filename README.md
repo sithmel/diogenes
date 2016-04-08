@@ -524,11 +524,11 @@ provides
 --------
 It adds a function to the service:
 ```js
-service.provides(func);   
+service.provides(func);
 
-service.provides(configValidator, func);   
+service.provides(configValidator, func);
 
-service.provides(configValidator, dependenciesValidator, func);   
+service.provides(configValidator, dependenciesValidator, func);
 ```
 The function can have 2 different signatures: with callback (config, deps, next) or without (config, deps):
 * "config" is a value passed to all services when "run" is invoked
@@ -544,18 +544,18 @@ returns
 -------
 It works the same as the "provides" method but instead of adds a function it adds a value. This will be the dependency returned.
 ```js
-service.returns(value);   
+service.returns(value);
 
-service.returns(configValidator, value);   
+service.returns(configValidator, value);
 
-service.returns(configValidator, dependencyValidator, value);   
+service.returns(configValidator, dependencyValidator, value);
 ```
 
 dependsOn
 ---------
 It defines the dependencies of a service. It may be an array or a function returning an array. The function takes "config" as argument:
 ```js
-service.dependsOn(array);   
+service.dependsOn(array);
 
 service.dependsOn(func);
 

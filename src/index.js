@@ -1,7 +1,8 @@
 var or = require('occamsrazor');
+var validator = require('occamsrazor-validator');
 require('setimmediate');
 var Registry = require('./registry');
 
-Registry.validator = or.validator;
+Registry.validator = validator;
 
 module.exports = Registry;

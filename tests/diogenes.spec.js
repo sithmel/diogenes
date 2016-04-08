@@ -2,24 +2,6 @@ var Diogenes = require('../src');
 var assert = require('chai').assert;
 var DiogenesError = require('../src/lib/diogenes-error');
 
-describe('diogenes local/global registry', function () {
-
-  it('must be different if local', function () {
-    var registry1 = Diogenes.getRegistry();
-    var registry2 = Diogenes.getRegistry();
-
-    assert.notEqual(registry1.services, registry2.services);
-  });
-
-  it('must be equal if global', function () {
-    var registry1 = Diogenes.getRegistry('default');
-    var registry2 = Diogenes.getRegistry('default');
-
-    assert.equal(registry1.services, registry2.services);
-  });
-
-});
-
 describe('diogenes merge registries', function () {
 
   var registry1, registry2, registry3;
@@ -29,18 +11,12 @@ describe('diogenes merge registries', function () {
     registry2 = Diogenes.getRegistry();
     registry1.service('answer').returns(42);
     registry2.service('question').returns('the answer to life the universe and everything');
-    registry1.on(function () {});
-    registry2.on(function () {});
     registry3 = registry1.merge(registry2);
   });
 
   it('must be different from previous registries', function () {
     assert.notEqual(registry1, registry3);
     assert.notEqual(registry2, registry3);
-  });
-
-  it('must copy the events', function () {
-    assert.equal(registry3.events.size(), 2);
   });
 
   it('must copy the services', function () {
@@ -323,12 +299,6 @@ describe('registry', function () {
     });
   });
 
-  it('must read write metadata', function () {
-    registry.service('hello').returns('hello', 'hello');
-    registry.service('hello').metadata('metadata');
-    assert.equal(registry.service('hello').metadata(), 'metadata');
-  });
-
   describe('plugins', function () {
     beforeEach(function () {
       registry.service('hello').returns('hello')
@@ -367,64 +337,11 @@ describe('registry', function () {
 
   });
 
-  describe('documentation', function () {
-    beforeEach(function () {
-      registry.service('hello').returns('hello');
-
-      registry.service('world').dependsOn(['hello']).returns('world');
-      registry.service('hello').metadata('Metadata');
-      registry.service('hello').description('returns the string hello');
-      registry.service('world').description('returns the string world');
-      registry.service('world');
-    });
-
-    it('must read write description', function () {
-      assert.equal(registry.service('hello').description(), 'returns the string hello');
-      assert.equal(registry.service('world').description(), 'returns the string world');
-    });
-
-    // it('must create doc object', function () {
-    //   var obj1 = {
-    //     'cached': false,
-    //     'dependencies': [],
-    //     'description': 'returns the string hello',
-    //     'executionOrder': [],
-    //     'manageError': false,
-    //     'metadata': 'Metadata',
-    //     'name': 'hello'
-    //   };
-    //   var obj2 = {
-    //     'cached': false,
-    //     'dependencies': [
-    //       'hello'
-    //     ],
-    //     'description': 'returns the string world',
-    //     'executionOrder': [
-    //       'hello'
-    //     ],
-    //     'manageError': false,
-    //     'metadata': undefined,
-    //     'name': 'world'
-    //   };
-    //   assert.deepEqual(registry.service('hello').infoObj(), obj1);
-    //   assert.deepEqual(registry.service('world').infoObj(),  obj2);
-    //   assert.deepEqual(registry.instance().infoObj(), {hello: obj1, world: obj2});
-    // });
-    //
-    // it('must create doc', function () {
-    //   var doc1 = 'hello\n=====\nreturns the string hello\n\nMetadata:\n```js\n"Metadata"\n```\n';
-    //   var doc2 = 'world\n=====\nreturns the string world\n\nExecution order:\n* hello\n\nDependencies:\n* hello\n';
-    //   assert.equal(registry.service('hello').info(), doc1);
-    //   assert.equal(registry.service('world').info(),  doc2);
-    //   assert.equal(registry.instance().info(), doc1 + '\n\n' + doc2);
-    // });
-  });
-
   describe('correct services in the correct order (using the config/plugin)', function () {
     var isReversed;
 
     beforeEach(function () {
-      isReversed = isAnything.match(['reverse']);
+      isReversed = isAnything.has('reverse');
 
       registry.service('hello')
       .provides(function (config, deps, next) {
@@ -518,9 +435,12 @@ describe('registry', function () {
 
     });
 
-    it('must return a correct order (readme example)', function () {
-      var a = registry.instance({abstractLen: 5, abstractEllipsis: '...'}).getExecutionOrder('paragraph');
-      assert.deepEqual(a, ['text', 'tokens', 'abstract', 'count', 'paragraph']);
+    it('must return a correct order (readme example)', function (done) {
+      registry.instance({abstractLen: 5, abstractEllipsis: '...'})
+      .getExecutionOrder('paragraph', false, function (err, a) {
+        assert.deepEqual(a, ['text', 'tokens', 'abstract', 'count', 'paragraph']);
+        done();
+      });
     });
 
     it('must work (readme example)', function (done) {
@@ -532,9 +452,12 @@ describe('registry', function () {
       });
     });
 
-    it('must return a correct order (readme example) - alternate version', function () {
-      var a = registry.instance({abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'}).getExecutionOrder('paragraph');
-      assert.deepEqual(a, ['text', 'abstract', 'tokens', 'count', 'paragraph']);
+    it('must return a correct order (readme example) - alternate version', function (done) {
+      var a = registry.instance({abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'})
+      .getExecutionOrder('paragraph', false, function (err, a) {
+        assert.deepEqual(a, ['text', 'abstract', 'tokens', 'count', 'paragraph']);
+        done();
+      });
     });
 
     it('must work (readme example) - alternate version', function (done) {
