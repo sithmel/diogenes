@@ -3,12 +3,7 @@ var validator = require('occamsrazor-validator');
 var Cache = require('memoize-cache').ramCache;
 var DiogenesError = require('./lib/diogenes-error');
 var callbackifyDecorator = require('async-deco/utils/callbackify');
-// var compose = require('async-deco/utils/compose');
-// var timeoutDecorator = require('async-deco/callback/timeout');
-// var retryDecorator = require('async-deco/callback/retry');
-// var fallbackDecorator = require('async-deco/callback/fallback');
-// var fallbackCacheDecorator = require('async-deco/callback/fallback-cache');
-// var logDecorator = require('async-deco/callback/log');
+// var proxyDecorator = require('async-deco/callback/proxy');
 
 function depsHasError(deps) {
   var depsList = Object.keys(deps);
@@ -58,17 +53,18 @@ Service.prototype.dependsOn = function service_dependsOn() {
 
 Service.prototype._returns = function service__returns() {
   var func = arguments[arguments.length - 1];
-  func = func.length < 3 ? callbackifyDecorator(func) : func;
+  var isSync = arguments[0];
+  func = isSync ? callbackifyDecorator(func) : func;
   var adapter = function () {
     return {func: func};
   };
 
-  if (arguments.length > 2) {
-    this._funcs.add(getValidator(arguments[0]),
-                    getValidator(arguments[1]), adapter);
+  if (arguments.length > 3) {
+    this._funcs.add(getValidator(arguments[1]),
+                    getValidator(arguments[2]), adapter);
   }
-  else if (arguments.length > 1) {
-    this._funcs.add(getValidator(arguments[0]), adapter);
+  else if (arguments.length > 2) {
+    this._funcs.add(getValidator(arguments[1]), adapter);
   }
   else {
     this._funcs.add(validator(), adapter);
@@ -78,6 +74,13 @@ Service.prototype._returns = function service__returns() {
 
 Service.prototype.provides = function service_provides() {
   var args = Array.prototype.slice.call(arguments, 0);
+  args.unshift(false); // isSync
+  return this._returns.apply(this, args);
+};
+
+Service.prototype.promises = function service_provides() {
+  var args = Array.prototype.slice.call(arguments, 0);
+  args.unshift(true); // isSync
   return this._returns.apply(this, args);
 };
 
@@ -87,14 +90,11 @@ Service.prototype.returns = function service_returns() {
   args[args.length - 1] = function (conf, deps) {
     return value;
   };
+  args.unshift(true); // isSync
   return this._returns.apply(this, args);
 };
 
-// Service.prototype._manageError = function service__manageError(err, config, callback) {
-//   return callback(this.name, typeof this._fallbackFunction !== 'undefined' ? this._fallbackFunction.call(this, config, err) : err);
-// };
-
-Service.prototype._getFunc = function service__getFunc(config, deps, logger, callback) {
+Service.prototype._getFunc = function service__getFunc(config, deps, context, callback) {
   var obj = this._funcs(config, deps);
   var service = this;
   var error = depsHasError(deps);
@@ -110,24 +110,34 @@ Service.prototype._getFunc = function service__getFunc(config, deps, logger, cal
   };
 
   return function () {
-    func.call(service, config, deps, wrapped_func);
+    func.call(context, config, deps, wrapped_func);
   };
 };
 
 Service.prototype._getDeps = function service__getDeps(config, noCache, next) {
   var service = this;
   if (this._mainCache && !noCache) { // cache check here !!!
-    this._mainCache.query(config, function (err, cacheState) {
-      if (cacheState.cached) {
-        // cache hit!
-        return next(undefined, {
-          name: service.name,
-          deps: [], // no dependencies needed for cached values
-          cached: cacheState.hit
-        });
-      }
+    this._mainCache.query(config, __getDeps);
+  }
+  else {
+    __getDeps(undefined, {cached: false});
+  }
+
+  function __getDeps(err, cacheState) {
+    if (err) {
+      next(undefined, {error: err});
+    }
+    else if (cacheState.cached) {
+      // cache hit!
+      next(undefined, {
+        name: service.name,
+        deps: [], // no dependencies needed for cached values
+        cached: cacheState.hit
+      });
+    }
+    else {
       try {
-        return next(undefined, {
+        next(undefined, {
           name: service.name,
           deps: service._deps(config)
         });
@@ -135,23 +145,10 @@ Service.prototype._getDeps = function service__getDeps(config, noCache, next) {
       catch (e) {
         // this should throw only if this service
         // is part of the execution graph
-        return next(undefined, {error: e});
+        next(undefined, {error: e});
       }
-    });
-  }
-  else {
-    try {
-      return next(undefined, {
-        name: service.name,
-        deps: service._deps(config)
-      });
     }
-    catch (e) {
-      // this should throw only if this service
-      // is part of the execution graph
-      return next(undefined, {error: e});
-    }
-  }
+  };
 };
 
 Service.prototype.hasCache = function service_hasCache() {

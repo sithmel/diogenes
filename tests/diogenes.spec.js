@@ -65,7 +65,7 @@ describe('registry', function () {
   });
 
   it('must return an exception if the function fails', function (done) {
-    registry.service('hello').provides(function (config, deps) {
+    registry.service('hello').promises(function (config, deps) {
       throw new Error('broken');
       return 'hello';
     });
@@ -113,12 +113,12 @@ describe('registry', function () {
   });
 
   it('must return a service in a simple case (2 functions) not using next', function (done) {
-    registry.service('hello').provides(function (config, deps) {
+    registry.service('hello').promises(function (config, deps) {
       assert.deepEqual(deps, {});
       return 'hello ';
     });
 
-    registry.service('world').dependsOn(['hello']).provides(function (config, deps) {
+    registry.service('world').dependsOn(['hello']).promises(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       return deps.hello + 'world!';
     });
@@ -130,7 +130,7 @@ describe('registry', function () {
   });
 
   it('must return a service in a simple case (2 functions) using promises', function (done) {
-    registry.service('hello').provides(function (config, deps) {
+    registry.service('hello').promises(function (config, deps) {
       assert.deepEqual(deps, {});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -140,7 +140,7 @@ describe('registry', function () {
       return p;
     });
 
-    registry.service('world').dependsOn(['hello']).provides(function (config, deps) {
+    registry.service('world').dependsOn(['hello']).promises(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -165,7 +165,7 @@ describe('registry', function () {
       });
     };
 
-    registry.service('hello').provides(function (config, deps) {
+    registry.service('hello').promises(function (config, deps) {
       assert.deepEqual(deps, {});
       return getPromise(getPromise('hello'));
     });
@@ -177,7 +177,7 @@ describe('registry', function () {
   });
 
   it('must propagate an error using promises', function (done) {
-    registry.service('hello').provides(function (config, deps) {
+    registry.service('hello').promises(function (config, deps) {
       assert.deepEqual(deps, {});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -187,7 +187,7 @@ describe('registry', function () {
       return p;
     });
 
-    registry.service('world').dependsOn(['hello']).provides(function (config, deps) {
+    registry.service('world').dependsOn(['hello']).promises(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -306,7 +306,7 @@ describe('registry', function () {
         return cfg.greetings;
       });
 
-      registry.service('world').dependsOn(['hello']).provides(function (cfg, deps) {
+      registry.service('world').dependsOn(['hello']).promises(function (cfg, deps) {
         return deps.hello + ' world';
       })
       .provides({who: /mars/gi}, function (cfg, deps) {

@@ -1,4 +1,5 @@
 var depSort = require('./lib/dep-sort');
+var buildLogger = require('async-deco/utils/build-logger');
 var DiogenesError = require('./lib/diogenes-error');
 /*
 
@@ -50,7 +51,8 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var numberParallelCallback = 0;
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
-  var logger = this._options.logger || function () { return function () {}; };
+  var id = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 10);
+  var logger = 'logger' in this._options ? this._options.logger : undefined;
 
   if (!done) {
     done = function (err, dep) {
@@ -67,7 +69,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
       return done.call(registry, err);
     }
     (function resolve(name, dep, cached) {
-      var currentService, adj, currentServiceDeps;
+      var context, currentService, adj, currentServiceDeps;
       var func, i = 0;
 
       if (isOver) {
@@ -115,7 +117,8 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
           currentServiceDeps = getDependencies(deps, adj.deps);
           if (currentServiceDeps) {
             try {
-              func = currentService._getFunc(config, currentServiceDeps, logger, resolve);
+              context = logger ? buildLogger(currentService, currentService.name, id, logger) : currentService;
+              func = currentService._getFunc(config, currentServiceDeps, context, resolve);
             }
             catch (e) {
               isOver = true;
