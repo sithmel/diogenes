@@ -64,7 +64,7 @@ describe('dfs: 4 functions', function (done) {
   });
 
   it('must return execution order', function (done) {
-    registry.instance({}).getExecutionOrder('D', false, function (err, list) {
+    registry.instance({}).getExecutionOrder('D', function (err, list) {
       assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
       done();
     });
@@ -76,7 +76,7 @@ describe('dfs: 4 functions', function (done) {
       next(undefined, deps['A'] + 'D');
     });
 
-    registry.instance({}).getExecutionOrder('D', false, function (err, list) {
+    registry.instance({}).getExecutionOrder('D', function (err, list) {
       assert.deepEqual(list, [ 'A', 'D' ]);
       done();
     });

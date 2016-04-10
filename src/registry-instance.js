@@ -1,6 +1,8 @@
 var depSort = require('./lib/dep-sort');
 var buildLogger = require('async-deco/utils/build-logger');
 var DiogenesError = require('./lib/diogenes-error');
+var memoizeDecorator = require('async-deco/callback/memoize');
+
 /*
 
 RegistryInstance utilities
@@ -34,17 +36,30 @@ RegistryInstance.prototype.registry = function registryInstance_registry() {
   return this._registry;
 };
 
-RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, noCache, next) {
-  var adjlists = this._registry._filterByConfig(this._config, noCache);
-  depSort(adjlists, name, function (err, sorted_services) {
+RegistryInstance.prototype._filterByConfig = function registryInstance__filterByConfig() {
+  var registry = this._registry;
+  var services = registry.services;
+  var config = this._config;
+  var memoize = memoizeDecorator(function (name) {return name;});
+  return memoize(function (name, next) {
+    if (!(name in services)) {
+      return next(null);
+    };
+    return services[name]._getDeps(config, next);
+  });
+};
+
+RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, next) {
+  var getAdjlists = this._filterByConfig();
+  depSort(getAdjlists, name, function (err, sorted_services) {
     if (err) return next(err);
     next(null, sorted_services.map(function (item) {return item.name;}));
   });
 };
 
 RegistryInstance.prototype._run = function registryInstance__run(name, done) {
-  var adjlists;
   var config = this._config;
+  var getAdjlists = this._filterByConfig();
   var deps = {}; // all dependencies already resolved
   var registry = this._registry;
   var services = registry.services;
@@ -62,13 +77,11 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
     };
   }
 
-  adjlists = this._registry._filterByConfig(config);
-
-  depSort(adjlists, name, function (err, sorted_services) {
+  depSort(getAdjlists, name, function (err, sorted_services) {
     if (err) {
       return done.call(registry, err);
     }
-    (function resolve(name, dep, cached) {
+    (function resolve(name, dep) {
       var context, currentService, adj, currentServiceDeps;
       var func, i = 0;
 
@@ -109,7 +122,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
 
         if ('cached' in adj) {
           setImmediate(function () {
-            resolve(currentService.name, adj.cached, true);
+            resolve(currentService.name, adj.cached);
           });
           sorted_services.splice(i, 1);
         }
@@ -134,10 +147,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
         }
       }
     }());
-
   });
-
-
   return this;
 };
 

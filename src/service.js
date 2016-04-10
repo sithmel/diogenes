@@ -3,17 +3,17 @@ var validator = require('occamsrazor-validator');
 var Cache = require('memoize-cache').ramCache;
 var DiogenesError = require('./lib/diogenes-error');
 var callbackifyDecorator = require('async-deco/utils/callbackify');
-// var proxyDecorator = require('async-deco/callback/proxy');
+var proxyDecorator = require('async-deco/callback/proxy');
 
-function depsHasError(deps) {
+var depsHasError = proxyDecorator(function depsHasError(config, deps, next) {
   var depsList = Object.keys(deps);
   for (var i = 0; i < depsList.length; i++) {
     if (deps[depsList[i]] instanceof Error) {
-      return deps[depsList[i]]; // one of the deps is an error
+      return next(deps[depsList[i]]); // one of the deps is an error
     }
   }
-  return false;
-}
+  next();
+});
 
 function getValidator(v) {
   return (typeof v === 'function' && 'score' in v) ? v : validator().match(v);
@@ -56,7 +56,7 @@ Service.prototype._returns = function service__returns() {
   var isSync = arguments[0];
   func = isSync ? callbackifyDecorator(func) : func;
   var adapter = function () {
-    return {func: func};
+    return {func: depsHasError(func)};
   };
 
   if (arguments.length > 3) {
@@ -78,13 +78,13 @@ Service.prototype.provides = function service_provides() {
   return this._returns.apply(this, args);
 };
 
-Service.prototype.promises = function service_provides() {
+Service.prototype.returns = function service_provides() {
   var args = Array.prototype.slice.call(arguments, 0);
   args.unshift(true); // isSync
   return this._returns.apply(this, args);
 };
 
-Service.prototype.returns = function service_returns() {
+Service.prototype.returnsValue = function service_returns() {
   var args = Array.prototype.slice.call(arguments, 0);
   var value = args[args.length - 1];
   args[args.length - 1] = function (conf, deps) {
@@ -97,26 +97,19 @@ Service.prototype.returns = function service_returns() {
 Service.prototype._getFunc = function service__getFunc(config, deps, context, callback) {
   var obj = this._funcs(config, deps);
   var service = this;
-  var error = depsHasError(deps);
   var func = obj.func;
 
-  if (error) {
-    func = function (config, deps, next) { next(error); }; // propagates the error
-  }
-
-  var wrapped_func = function (err, dep) {
-    var d = err ? err : dep;
-    return callback(service.name, d);
-  };
-
   return function () {
-    func.call(context, config, deps, wrapped_func);
+    func.call(context, config, deps, function (err, dep) {
+      var d = err ? err : dep;
+      return callback(service.name, d);
+    });
   };
 };
 
-Service.prototype._getDeps = function service__getDeps(config, noCache, next) {
+Service.prototype._getDeps = function service__getDeps(config, next) {
   var service = this;
-  if (this._mainCache && !noCache) { // cache check here !!!
+  if (this._mainCache) { // cache check here !!!
     this._mainCache.query(config, __getDeps);
   }
   else {
@@ -151,10 +144,6 @@ Service.prototype._getDeps = function service__getDeps(config, noCache, next) {
   };
 };
 
-Service.prototype.hasCache = function service_hasCache() {
-  return !!this._mainCache;
-};
-
 Service.prototype.cache = function service_cache(opts) {
   opts = opts || {};
   if ('push' in opts && 'query' in opts) {
@@ -170,11 +159,6 @@ Service.prototype._cachePush = function service__cachePush(config, output) {
   if (this._mainCache) {
     this._mainCache.push(config, output);
   }
-};
-
-Service.prototype.cacheReset = function service_cacheReset() {
-  this._mainCache.reset();
-  return this;
 };
 
 module.exports = Service;

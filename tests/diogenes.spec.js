@@ -1,6 +1,7 @@
 var Diogenes = require('../src');
 var assert = require('chai').assert;
 var DiogenesError = require('../src/lib/diogenes-error');
+var validator = require('occamsrazor-validator');
 
 describe('diogenes merge registries', function () {
 
@@ -9,8 +10,8 @@ describe('diogenes merge registries', function () {
   beforeEach(function () {
     registry1 = Diogenes.getRegistry();
     registry2 = Diogenes.getRegistry();
-    registry1.service('answer').returns(42);
-    registry2.service('question').returns('the answer to life the universe and everything');
+    registry1.service('answer').returnsValue(42);
+    registry2.service('question').returnsValue('the answer to life the universe and everything');
     registry3 = registry1.merge(registry2);
   });
 
@@ -30,7 +31,7 @@ describe('registry', function () {
 
   beforeEach(function () {
     registry = Diogenes.getRegistry();
-    isAnything = Diogenes.validator();
+    isAnything = validator();
   });
 
   describe('init', function () {
@@ -65,7 +66,7 @@ describe('registry', function () {
   });
 
   it('must return an exception if the function fails', function (done) {
-    registry.service('hello').promises(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       throw new Error('broken');
       return 'hello';
     });
@@ -113,12 +114,12 @@ describe('registry', function () {
   });
 
   it('must return a service in a simple case (2 functions) not using next', function (done) {
-    registry.service('hello').promises(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       return 'hello ';
     });
 
-    registry.service('world').dependsOn(['hello']).promises(function (config, deps) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       return deps.hello + 'world!';
     });
@@ -130,7 +131,7 @@ describe('registry', function () {
   });
 
   it('must return a service in a simple case (2 functions) using promises', function (done) {
-    registry.service('hello').promises(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -140,7 +141,7 @@ describe('registry', function () {
       return p;
     });
 
-    registry.service('world').dependsOn(['hello']).promises(function (config, deps) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -165,7 +166,7 @@ describe('registry', function () {
       });
     };
 
-    registry.service('hello').promises(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       return getPromise(getPromise('hello'));
     });
@@ -177,7 +178,7 @@ describe('registry', function () {
   });
 
   it('must propagate an error using promises', function (done) {
-    registry.service('hello').promises(function (config, deps) {
+    registry.service('hello').returns(function (config, deps) {
       assert.deepEqual(deps, {});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -187,7 +188,7 @@ describe('registry', function () {
       return p;
     });
 
-    registry.service('world').dependsOn(['hello']).promises(function (config, deps) {
+    registry.service('world').dependsOn(['hello']).returns(function (config, deps) {
       assert.deepEqual(deps, {hello: 'hello '});
       var p = new Promise(function (resolve, reject) {
         setTimeout(function () {
@@ -291,7 +292,7 @@ describe('registry', function () {
   });
 
   it('must add a value', function (done) {
-    registry.service('hello').returns('hello');
+    registry.service('hello').returnsValue('hello');
 
     registry.instance({}).run('hello', function (err, dep) {
       assert.equal(dep, 'hello');
@@ -301,12 +302,12 @@ describe('registry', function () {
 
   describe('plugins', function () {
     beforeEach(function () {
-      registry.service('hello').returns('hello')
+      registry.service('hello').returnsValue('hello')
       .provides({greetings: undefined}, function (cfg, deps) {
         return cfg.greetings;
       });
 
-      registry.service('world').dependsOn(['hello']).promises(function (cfg, deps) {
+      registry.service('world').dependsOn(['hello']).returns(function (cfg, deps) {
         return deps.hello + ' world';
       })
       .provides({who: /mars/gi}, function (cfg, deps) {
@@ -398,7 +399,7 @@ describe('registry', function () {
     'be looking for an honest man.'].join();
 
     beforeEach(function () {
-      registry.service('text').returns(text);
+      registry.service('text').returnsValue(text);
 
       registry.service('tokens').dependsOn(['text']).provides(function (config, deps, next) {
         next(undefined, deps.text.split(' '));
@@ -423,7 +424,7 @@ describe('registry', function () {
         });
       });
 
-      var useAlternativeClamp = Diogenes.validator().match({abstractClamp: 'chars'});
+      var useAlternativeClamp = validator().match({abstractClamp: 'chars'});
 
       registry.service('abstract')
       .dependsOn(useAlternativeClamp, ['text'])
@@ -437,7 +438,7 @@ describe('registry', function () {
 
     it('must return a correct order (readme example)', function (done) {
       registry.instance({abstractLen: 5, abstractEllipsis: '...'})
-      .getExecutionOrder('paragraph', false, function (err, a) {
+      .getExecutionOrder('paragraph', function (err, a) {
         assert.deepEqual(a, ['text', 'tokens', 'abstract', 'count', 'paragraph']);
         done();
       });
@@ -454,7 +455,7 @@ describe('registry', function () {
 
     it('must return a correct order (readme example) - alternate version', function (done) {
       var a = registry.instance({abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'})
-      .getExecutionOrder('paragraph', false, function (err, a) {
+      .getExecutionOrder('paragraph', function (err, a) {
         assert.deepEqual(a, ['text', 'abstract', 'tokens', 'count', 'paragraph']);
         done();
       });

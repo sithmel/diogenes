@@ -1,6 +1,4 @@
 var assign = require('object-assign');
-var or = require('occamsrazor');
-var memoizeDecorator = require('async-deco/callback/memoize');
 
 var Service = require('./service');
 var RegistryInstance = require('./registry-instance');
@@ -52,7 +50,7 @@ Registry.prototype.clone = function registry_clone() {
 
 Registry.prototype.service = function registry_service(name) {
   if (typeof name !== 'string') {
-    throw new errors.DiogenesError('Diogenes: the name of the service should be a string');
+    throw new DiogenesError('Diogenes: the name of the service should be a string');
   }
 
   if (!(name in this.services)) {
@@ -62,27 +60,9 @@ Registry.prototype.service = function registry_service(name) {
   return this.services[name];
 };
 
-Registry.prototype._forEachService = function registry__forEachService(method) {
-  this.forEach(function () {
-    this[method]();
-  });
-};
-
 Registry.prototype.remove = function registry_remove(name) {
   delete this.services[name];
   return this;
-};
-
-Registry.prototype._filterByConfig = function registry__filterByConfig(config, noCache) {
-  var registry = this;
-  var services = registry.services;
-  var memoize = memoizeDecorator(function (name) {return name;});
-  return memoize(function (name, next) {
-    if (!(name in services)) {
-      return next(null);
-    };
-    return services[name]._getDeps(config, noCache, next);
-  });
 };
 
 Registry.prototype.instance = function registry_instance(config, options) {

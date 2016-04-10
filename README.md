@@ -6,18 +6,7 @@ Diogenes
 ![Registry as graph](https://upload.wikimedia.org/wikipedia/commons/b/b6/Diogenes_looking_for_a_man_-_attributed_to_JHW_Tischbein.jpg)
 > When asked why he went about with a lamp in broad daylight, Diogenes confessed, "I am looking for a [honest] man."
 
-Diogenes defines and executes functions with a common interface (services) configured in a directed acyclic graph.
-
-What is a service
------------------
-I define a "service" as a function with a specific interface. Its arguments are:
-
-* a configuration, common to all services
-* a list of dependencies (the output of other services)
-* an optional callback
-
-A service outputs a "dependency", this is identified with a name.
-Services are organized inside registries. The common interface allows to automate how the dependencies are resolved within the registry.
+Diogenes defines and executes functions with a common interface (services) sorting out the execution order automatically (by dependency).
 
 From functions to services
 --------------------------
@@ -31,11 +20,11 @@ decodeURL(url, function (err, id){
     if (err) {
       returnHTML('Error');
     }
-    getDataFromDB(id, function (err, obj){
+    getDataFromDB(db, id, function (err, obj){
       if (err) {
         returnHTML('Error');
       }
-      retrieveTemplate("template.html", function (err, template){
+      retrieveTemplate(templateName, function (err, template){
         if (err) {
           returnHTML('Error');
         }
@@ -43,17 +32,42 @@ decodeURL(url, function (err, id){
           if (err) {
             returnHTML('Error');
           }
-          returnHTML(html)
+          else {
+            returnHTML(html)            
+          }
         });
       });
     });
   });
 });
 ```
-I am sure you have already seen something like this.
-Well, I can see more than one issue here. The first one, usually called "the pyramid of doom", can be solved easily using promises (or other techniques).
-But there is a worst issue, you are designing how the components interact between them, in an imperative way.
-This is awkward as you'll either use the same patterns again and again, or you'll spend a lot of time refactoring the old code trying to avoid repetition.
+Well, I can see more than one issue here. The first one, usually called "the pyramid of doom", can be partially solved using promises:
+```js
+Promise.all([ // <- this executes 2 blocks in parallel
+  decodeURL(url)
+    .then(function (id) {
+      return getDB(config)
+        .then(function (db) {
+          return getDataFromDB(db, id);
+        })
+    }),
+  retrieveTemplate(templateName)
+])
+  .then(function (results) {
+    var obj = results[0],
+        template = results[1];
+    return renderTemplate(obj, template);
+  })
+  .then(function (html) {
+    returnHTML(html);
+  })
+  .catch(function () {
+    return returnHTML(err);
+  });
+```
+This second version is not only more concise but is also much more efficient as it executes some operations in parallel. Also automatic propagation of errors is a very cool feature!
+But still is not perfect: handling the passage of values can be clumsy, swallowing exception when you forgot the catch can be dangerous, mixing promises and callback annoying ...
+But there is a worst issue, you are designing how the components interact between them, in an imperative way. Wouldn't it better if the system could figure out the execution order ? Even better working flawlessly with promises, synchronous functions and callbacks ?
 
 With Diogenes you can describe the flow of informations in terms of services, describing the relations between them:
 ```js
@@ -68,7 +82,7 @@ registry.service("data")
 registry.service("template").provides(retrieveTemplate);
 registry.service("html")
   .dependsOn(["template", "data"])
-  .provides(enderTemplate);
+  .provides(renderTemplate);
 ```
 and let the system do the job:
 ```js
@@ -78,6 +92,18 @@ registry
 ```
 Diogenes resolves the whole dependency tree for you, executing the services in the right order (even in parallel when possible).
 Then it serves you the result on a silver platter.
+
+What is a service
+-----------------
+A service is a unit of code with a name. It can be a simple value, a synchronous function (returning a value), an asynchronous function using a callback or an asynchronous function returning a promise.
+As a function, it has a specific interface. Its arguments are:
+
+* a configuration, common to all services
+* an object containing the dependencies (output of other services)
+* an optional callback (if the function needs it)
+
+A service outputs a "dependency", this is identified with the service name.
+Services are organized inside a registry. The common interface allows to automate how the dependencies are resolved within the registry.
 
 A step by step example
 ======================
@@ -100,19 +126,20 @@ Defining services
 -----------------
 A service is defined by a name (a string) and it can be as simple as a value:
 ```js
-registry.service("text").returns(["Diogenes became notorious for his philosophical ",
+registry.service("text").returnsValue(["Diogenes became notorious for his philosophical ",
     "stunts such as carrying a lamp in the daytime, claiming to ",
     "be looking for an honest man."].join());
 ```
 most of the time you will define a service as a function:
 ```js
-registry.service("text").provides(function (config, deps) {
+registry.service("text").returns(function (config, deps) {
   var text = fs.readFileSync(config.path, {encoding: 'utf8'});
   return text;
 });
 ```
 The "config" argument is a generic configuration used for all services.
-You can also define a service using a callback (or a Promise), the system will abstract that for you (it is asynchronous by default!). When you use a callback you have to add a third argument:
+The "returns" method can be used for synchronous functions, but it works even if you return promises!
+You can also define a service using a callback:
 ```js
 registry.service("text").provides(function (config, deps, next) {
   fs.readFile(config.path, {encoding: 'utf8'}, next);
@@ -120,11 +147,12 @@ registry.service("text").provides(function (config, deps, next) {
 ```
 The callback uses the node.js convention: the first argument is the error instance (or null if there isn't any) and the second is the value returned.
 For synchronous functions you can throw an exception in case of errors as usual.
+As you can see, Diogenes allows to mix sync and async (callback and promise based) functions. How cool is that?
 Let's add other services:
 ```js
 registry.service("tokens")
   .dependsOn(['text'])
-  .provides(function (config, deps) {
+  .returns(function (config, deps) {
   return deps.text.split(' ');
 });
 ```
@@ -133,13 +161,13 @@ in this example: deps.text.
 ```js
 registry.service("count")
   .dependsOn(['tokens'])
-  .provides(function (config, deps) {
+  .returns(function (config, deps) {
   return deps.tokens.length;
 });
 
 registry.service("abstract")
   .dependsOn(['tokens'])
-  .provides(function (config, deps) {
+  .returns(function (config, deps) {
   var len = config.abstractLen;
   var ellipsis = config.abstractEllipsis;
   return deps.tokens.slice(0, len).join(' ') + ellipsis;
@@ -147,7 +175,7 @@ registry.service("abstract")
 
 registry.service("paragraph")
   .dependsOn(['text', 'abstract', 'count'])
-  .provides(function (config, deps) {
+  .returns(function (config, deps) {
     return {
         count: deps.count,
         abstract: deps.abstract,
@@ -186,7 +214,9 @@ registryInstance.run(["count", "abstract"], function (err, deps){
 In this case the second argument will contain an object with an attribute for each dependency (deps.count, deps.abstract).
 Using "run", Diogenes calls all services required to satisfy the dependencies tree. You can get the ordering using:
 ```js
-registryInstance.getExecutionOrder("paragraph");
+registryInstance.getExecutionOrder("paragraph", function (err, dependencies) {
+  //
+});
 ```
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
 Diogenes does not strictly follow that order: "count", for example doesn't require to wait for "abstract" as it depends on "tokens" only.
@@ -196,7 +226,8 @@ Plugins
 A service can contain more than one function, and more than one set of dependencies.
 Let's say for example that you want to use a different way to get the abstract:
 ```js
-var useAlternativeClamp = Diogenes.validator().match({abstractClamp: "chars"});
+var validator = require('occamsrazor-validator');
+var useAlternativeClamp = validator().match({abstractClamp: "chars"});
 
 registry.service("abstract")
   .dependsOn(useAlternativeClamp, ['text'])
@@ -206,10 +237,10 @@ registry.service("abstract")
     next(undefined, deps.text.slice(0, len) + ellipsis);
   });
 ```
-"useAlternativeClamp" is an [occamsrazor validator](https://github.com/sithmel/occamsrazor.js#tutorial) instance. Diogenes.validator is a copy of occamsrazor.validator (for convenience).
+"useAlternativeClamp" is an [occamsrazor validator](https://github.com/sithmel/occamsrazor-validator).
 
 The "dependsOn" method can take one validator. If it matches the config, this different set of dependencies will be used.
-The "provides" and "returns" methods can take 2 validators. The first one will match the config, the second the dependencies.
+The "provides", "returns" and "returnsValue" methods can take 2 validators. The first one will match the config, the second the dependencies.
 So you can change on the fly which function use depending on the arguments (config and deps).
 
 ![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994528/0fade84a-aa38-11e5-92d2-4f4d8f60dc4d.png)
@@ -217,7 +248,9 @@ So you can change on the fly which function use depending on the arguments (conf
 ```js
 var registryInstance = registry.instance({abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
 
-registryInstance.getExecutionOrder("paragraph");
+registryInstance.getExecutionOrder("paragraph", function (err, dependencies) {
+  // ....
+});
 ```
 will output: ["text", "abstract", "tokens", "count", "paragraph"].
 You can run the service as usual:
@@ -239,165 +272,43 @@ The key point is that you just extended the system without changing the original
 Caching a service
 -----------------
 If the result of a service depends on the configuration and it is heavy to compute, you can cache it.
-You can enable the cache with "cacheOn", empty the cache with "cacheReset" or disable it with "cacheOff".
-The "cacheOn" method takes an object as argument with 3 different attributes:
+The "cache" method takes an object as argument with 3 different attributes:
 
-* key: (a string/an array or a function) it generates the key to use as cache key. You can specify an attribute of the configuration (string), an nested property (array) or use a custom function running on the configuration. It default to a single key (it will store a single value)
+* key: (a function) it generates the key to use as cache key. It default to a single key (it will store a single value)
 * maxAge: the time in ms for preserving the cache. Default to infinity.
-* maxSize: the length of the cache. Default to infinity
+* maxLen: the length of the cache. Default to infinity
 
 Note: a cached service, when using the cached value, it will return no dependencies. After all if the service has a defined return value it doesn't need to relay on any other service.
 So for example:
 ```js
-registry.service('count').cacheOn({key: "abstractLen", maxAge: 1000});
-```
-
-Errors and fallback
-===================
-If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. They will propagate the exception to the services depending on them. While this is the default behaviour, it is also possible to configure a service to fallback on a default value:
-```js
-registry.service('count').onErrorReturn(42);
-```
-Or on a function (the usual config is the first argument, the exception is the second)
-```js
-registry.service('count').onErrorExecute(function (config, err){
-  return config.defaultCount;
+registry.service('count')
+.cache({
+  key: function (config){
+    return config.abstractLen;
+  },
+  maxAge: 1000
 });
 ```
-You can keep propagating the error returning the error.
-You can also cache the last valid returns and using them in case of errors:
+The "cache" methods can also take as argument a [memoize-cache](https://github.com/sithmel/memoize-cache) object:
 ```js
-registry.service('count').onErrorUseCache();
-```
-It takes the same configuration options as the cacheOn method (but a different cache bucket).
+var Cache = require('memoize-cache/ram-cache');
 
-In the example the function is called in these cases:
-* the "count" service thrown or returned an exception
-* one of the dependencies of the "count" service propagated an exception
-
-Timeout
-=======
-It is possible to define ...
-
-Debugging and profiling
-=======================
-The "instance" method takes an extra argument "options" that can be used to enable some extra options.
-One of these is "debug: true". This enables to return some extra profiling and debugging informations:
-```js
-var registryInstance = registry.instance({}, {debug: true});
-registryInstance.run("a service",
-  function (err, dep, deps, profile){
-    // ...
+var cache = new Cache({
+    key: function (config){
+      return config.abstractLen;
+    },
+    maxAge: 1000
   });
-```
-deps is an object containing all the dependencies used. Profile contains, for each of these dependencies:
-* start: when the service started executing, (timestamp since the epoch)
-* end: when the service finished executing, (timestamp since the epoch)
-* delta: end - start
-There is a special dependency "__all__" containing the same informations related to the whole run.
 
-Events
+registry.service('count').cache(cache);
+```
+This is very convenient as it allows to manage the cache and even use different back ends (redis or file system for example).
+
+Errors
 ======
-The event system allows to do something when a service is executed.
-You can listen to a service in this way:
-```js
-registry.on('paragraph', function (name, dep, config){
-  // name is "paragraph"
-  // dep is the output of the "count" service
-  // config is the usual one used in the "run" method
-});
-```
-The event system is implemented with occamsrazor (see the doc, especially the "mediator" example https://github.com/sithmel/occamsrazor.js#implementing-a-mediator-with-occamsrazor). So you can execute the function depending on the arguments (just pass as many validators you need).
-```js
-registry.on(function (name, dep, config){
-  // this is executed for any service
-});
+If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. They will propagate the exception to the services depending on them.
 
-registry.on("paragraph", isLessThan5, useAlternativeClamp, function (name, dep, config){
-  // this is executed for count service
-  // only if count is less than 5 and
-  // the config passes the "useAlternativeClamp" validator
-});
-
-registry.on(/count.*/, function (name, dep, config){
-  // this is executed for any service with the name that matches
-  // that regular expression
-});
-
-```
-Be aware that events are suppressed for cached values and their dependencies!
-You can also handle the event once with "one" and remove the event handler with "off".
-If you need you can also emit your own custom events:
-```js
-registry.on("my custom event", function (name, data1, data2){
-  //
-});
-
-registry.trigger("my custom event", data1, data2);
-```
-
-metadata
-========
-You can store any data related to a service with the metadata:
-```js
-var service = registry.service("abstract")
-
-service.metadata({abstractLen: 10});
-
-registry.service("abstract")
-  .dependsOn(['tokens'])
-  .provides(function (config, deps, next) {
-  var len = this.metadata().abstractLen;
-  var ellipsis = config.abstractEllipsis;
-  next(undefined, deps.tokens.slice(0, len).join(' ') + ellipsis);
-});
-```
-This can be practical if you want to save informations that are "service" specific.
-
-Documentation
-=============
-You can attach a description to a service. This will be used by the method "info" for giving an outline of the services available.
-```js
-var service = registry.service("abstract");
-
-service.description("This service returns the abstract of a paragraph.");
-service.info({}); // I pass the configuration
-
-abstract
-========
-This service returns the abstract of a paragraph.
-Dependencies:
-* text
-* tokens
-```
-You can also use the method "info" of the registry to get all the services.
-
-How does it work
-================
-A lot of the things going on requires a bit of knowledge of occamsrazor (https://github.com/sithmel/occamsrazor.js).
-The main abstraction is the registry, the registry contains services. Each service (identified by a name) has a list of dependencies and a function. Both these entities are implemented with two occamsrazor adapter's registry. When you pass the configuration in the "instance" method the registry uses that to reveal the graph topography. In fact the dependencies are returned by a function that takes the configuration as argument.
-Then, when you try running a service diogenes performs a depth first search (DFS) to sort the services by dependencies. Every service starts executing when its dependencies are satisfied, the service itself is an occamsrazor adapter so it is possible to use a different function depending on the configuration and the dependencies.
-
-Diogenes is ES6 friendly!
-=========================
-Using Diogenes with ES6 helps a lot if you want a concise syntax. But pay attention! you can't use "this" with arrow functions!
-```js
-// using arrow function
-registry.service("textfile")
-  .provides((config, deps, next) => fs.readFile(config.path, 'utf8', next));
-
-// destructuring and promises
-registry
-  .service("user").provides((config, deps, next) => {
-  const {id, firstName, lastName} = config;
-  return axios.put('/user/' + id, {
-    firstName: 'Fred',
-    lastName: 'Flintstone'
-  });
-});
-```
-
-Syntax
+Syntax ////////
 ======
 
 Diogenes.getRegistry
