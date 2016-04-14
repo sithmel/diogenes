@@ -4,6 +4,7 @@ var Cache = require('memoize-cache').ramCache;
 var DiogenesError = require('./lib/diogenes-error');
 var callbackifyDecorator = require('async-deco/utils/callbackify');
 var proxyDecorator = require('async-deco/callback/proxy');
+var decorate = require('async-deco/utils/decorate');
 
 var depsHasError = proxyDecorator(function depsHasError(config, deps, next) {
   var depsList = Object.keys(deps);
@@ -14,6 +15,13 @@ var depsHasError = proxyDecorator(function depsHasError(config, deps, next) {
   }
   next();
 });
+
+function applyDecorators(f, isSync) {
+  f = Array.isArray(f) ? f : [f];
+  f.splice(-1, 0, depsHasError);
+  f[f.length - 1] = isSync ? callbackifyDecorator(f[f.length - 1]) : f[f.length - 1];
+  return decorate(f);
+}
 
 function getValidator(v) {
   return (typeof v === 'function' && 'score' in v) ? v : validator().match(v);
@@ -52,11 +60,9 @@ Service.prototype.dependsOn = function service_dependsOn() {
 };
 
 Service.prototype._returns = function service__returns() {
-  var func = arguments[arguments.length - 1];
-  var isSync = arguments[0];
-  func = isSync ? callbackifyDecorator(func) : func;
+  var func = applyDecorators(arguments[arguments.length - 1], arguments[0]);
   var adapter = function () {
-    return {func: depsHasError(func)};
+    return {func: func};
   };
 
   if (arguments.length > 3) {

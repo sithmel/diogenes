@@ -29,7 +29,7 @@
     "npm-release": "^1.0.0"
   },
   "dependencies": {
-    "async-deco": "^4.1.0",
+    "async-deco": "^4.2.1",
     "memoize-cache": "^1.0.2",
     "object-assign": "^4.0.1",
     "occamsrazor": "^5.0.0",
