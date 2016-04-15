@@ -66,7 +66,7 @@ Promise.all([ // <- this executes 2 blocks in parallel
   });
 ```
 This second version is not only more concise but is also much more efficient as it executes some operations in parallel. Also automatic propagation of errors is a very cool feature!
-But still is not perfect: handling the passage of values can be clumsy, swallowing exception when you forgot the catch can be dangerous, mixing promises and callback annoying ...
+But still is not perfect: handling the passage of values can be clumsy, swallowing exception when you forgot the "catch" can be dangerous, mixing promises and callback annoying ...
 But there is a worst issue, you are designing how the components interact between them, in an imperative way. Wouldn't it better if the system could figure out the execution order ? Even better working flawlessly with promises, synchronous functions and callbacks ?
 
 With Diogenes you can describe the flow of informations in terms of services, describing the relations between them:
@@ -188,7 +188,7 @@ This is how services relates each other:
 
 Calling a service
 -----------------
-You can call a service using the method "run" on a registry instance. The instance "method" returns a registry instance using a specific configuration.
+You can call a service using the method "run" on a registry instance. The "instance" method returns a registry instance using a specific configuration.
 ```js
 var registryInstance = registry.instance({abstractLen: 5, abstractEllipsis: "..."});
 
@@ -308,7 +308,67 @@ Errors
 ======
 If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. They will propagate the exception to the services depending on them.
 
-Syntax ////////
+Decorators
+==========
+The "provides" and "returns" methods can optionally take an array instead of the function:
+```js
+registry.service('myservice').provides([
+  decorator1,
+  decorator2,
+  function (config, deps, next) {
+    ...
+  }
+]);
+```
+That is the equivalent of:
+```js
+registry.service('myservice').provides(
+  decorator1(decorator2())(function (config, deps, next) {
+    ...
+  }));
+```
+A decorator is a function wrapping another function and adding some functionality.
+You can find many decorators in this package [async-deco](https://github.com/sithmel/async-deco).
+You are free to add your own but be careful to add it in the right orders (the final function is always last)!
+
+For synchronous or promise based function you can do the same, the original function is always converted to a callback based function before applying the decorators.
+```js
+registry.service('myservice').returns([
+  decorator1,
+  decorator2,
+  function (config, deps) {
+    ...
+  }
+]);
+```
+
+Logging
+=======
+You can pass a logger function to the instance method:
+```js
+registry.instance(config, {logger: logger});
+```
+
+logger is a function that takes these arguments:
+* name: the name of the service
+* id: a random id that changes every time you call "run"
+* ts: the timestamp for this event
+* evt: the name of the event
+* payload: an object with additional information about this event
+
+Services don't log anything by default. You can rely on what is logged by the decorators added [async-deco](https://github.com/sithmel/async-deco).
+You can also add your own custom log:
+```js
+var defaultLogger = require('async-deco/utils/default-logger');
+
+function myFunction() {
+  var logger = defaultLogger.apply(this);
+  ...
+  logger('myevent', {... additional info ...});
+}
+```
+
+Syntax
 ======
 
 Diogenes.getRegistry
@@ -321,16 +381,6 @@ or
 ```js
 var registry = new Diogenes();
 ```
-If you don't pass any argument this registry will be local. And you will need to reach the local variable "registry" to use its services.
-If you pass a string, the registry will use a global variable to store services:
-```js
-var registry = Diogenes.getRegistry("myregistry");
-```
-or
-```js
-var registry = new Diogenes("myregistry");
-```
-This is convenient if you want any application register its services to a specific registry.
 
 Registry's methods
 ==================
@@ -350,7 +400,14 @@ registry.instance(config, options);
 ```
 The config argument will be passed to all services (calling the run method). Currently there are 2 options:
 * limit: limit the number of services executed in parallel (defaults to Infinity)
-* debug: enable some profiling and debugging informations. They are passed as third and fourth arguments of the run callback.
+* logger: a function that takes these arguments:
+  * name: the name of the service
+  * id: a random id that changes every time you call "run"
+  * ts: the timestamp for this event
+  * evt: the name of the event
+  * payload: an object with additional information about this event
+
+See the section above on how to log.
 
 remove
 ------
@@ -383,41 +440,6 @@ registry.forEach(function (service, name){
 });
 ```
 
-on
---
-Attach an event handler. It triggers when an services gets a valid output. You can pass up to 4 validators and the function. The function takes 4 arguments:
-
-* the type of event (before, success, error, cachehit)
-* the name of the service
-* the output of the service (not for the "before" type)
-* the config (used for running this service)
-
-```js
-registry.on([validators], function (type, name, dep, config){
-  ...
-});
-```
-Types of events:
-* before: fires before starting executing a service. It doesn't fire for cached services. Arguments: (type, name, config)
-* success: fires after returning a value from a service. Arguments: (type, name, dep, config)
-* error: fires after returning an error from a service. Arguments: (type, name, err, config)
-* cachehit: fires on cached services. Arguments: (type, name, dep, config)
-
-one
----
-The same as "on". The function is executed only once.
-
-off
----
-Remove an event handler. It takes the previously registered function.
-```js
-registry.off(func);
-```
-
-trigger
--------
-Trigger an event. You can use trigger with a bunch of arguments and, all handlers registered with "on" and "one" compatible with those will be called.
-
 Service's attributes
 ====================
 
@@ -433,7 +455,7 @@ All the service methods returns a service instance so they can be chained.
 
 provides
 --------
-It adds a function to the service:
+It adds a function to the service. This function uses a callback following the node.js convention:
 ```js
 service.provides(func);
 
@@ -441,25 +463,46 @@ service.provides(configValidator, func);
 
 service.provides(configValidator, dependenciesValidator, func);
 ```
-The function can have 2 different signatures: with callback (config, deps, next) or without (config, deps):
+The function has this signature: (config, deps, next).
 * "config" is a value passed to all services when "run" is invoked
 * "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
 * "next" is the function called with the output of this service: next(undefined, output).
 * If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')).
-If you use the signature without "next" you can return the value using return, or throw an exception in case of errors. If you return a promise (A or A+) this will be automatically used.
-The "this" symbol will be the service itself.
-configValidator and dependencyValidator are occamsrazor validators. (https://github.com/sithmel/occamsrazor.js). You can also pass a value as explained in the "match" validator (https://github.com/sithmel/occamsrazor.js#occamsrazorvalidatormatch).
+If you use the signature without "next" you can return the value using return, or throw an exception in case of errors.
+"configValidator" and "dependencyValidator" are occamsrazor validators. (https://github.com/sithmel/occamsrazor.js). You can also pass a value as explained in the "match" validator (https://github.com/sithmel/occamsrazor-validator#validatormatch).
 They matches respectively the first and second argument of the function.
+"this" will be the service itself.
+Optionally is possible to define an array instead of a function. See the section "decorators" above for further explanations.
 
 returns
 -------
-It works the same as the "provides" method but instead of adds a function it adds a value. This will be the dependency returned.
+It adds a function to the service. This function returns its output with "return"
 ```js
-service.returns(value);
+service.returns(func);
 
-service.returns(configValidator, value);
+service.returns(configValidator, func);
 
-service.returns(configValidator, dependencyValidator, value);
+service.returns(configValidator, dependenciesValidator, func);
+```
+The function has this signature: (config, deps).
+* "config" is a value passed to all services when "run" is invoked
+* "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
+
+"configValidator" and "dependencyValidator" are occamsrazor validators. (https://github.com/sithmel/occamsrazor.js). You can also pass a value as explained in the "match" validator (https://github.com/sithmel/occamsrazor-validator#validatormatch).
+They matches respectively the first and second argument of the function.
+If you return a promise (A or A+) this will be automatically used.
+"this" will be the service itself.
+Optionally is possible to define an array instead of a function. See the section "decorators" above for further explanations.
+
+returnsValue
+------------
+It works the same as the previous ones but instead of adds a function it adds a value. This will be the dependency returned.
+```js
+service.returnsValue(value);
+
+service.returnsValue(configValidator, value);
+
+service.returnsValue(configValidator, dependencyValidator, value);
 ```
 
 dependsOn
@@ -475,109 +518,36 @@ service.dependsOn(configValidator, array);
 service.dependsOn(configValidator, func);
 ```
 
-onErrorReturn
--------------
-If the service or one of the dependencies fails (thrown an exception) it returns "value" as fallback.
+cache
+-----
+Set the cache for this service. It takes as argument the cache configuration:
 ```js
-service.onErrorReturn(value);
+service.cache(config);
 ```
-
-onErrorExecute
---------------
-If the service or one of the dependencies fails (thrown an exception) it uses the function to calculate a fallback. The arguments are the configuration and the error. You can propagate the exception returning the error.
+or
 ```js
-service.onErrorExecute(function (config, err){
-  return ...;
-});
-```
-
-onErrorThrown
--------------
-It reverts to the default behaviour: on error it propagates the error.
-```js
-service.onErrorThrown();
-```
-
-onErrorUseCache
----------------
-In case of error uses the last valid cached value. It uses a different cache bucket from the one used for the normal cache (the configuration is the same as the cacheOn method). Usually you want to specify longer times for this cache to expire. Its content is used only in case of errors.
-```js
-service.onErrorUseCache(config);
-```
-
-cacheOn
--------
-Set the cache for this service on. It takes as argument the cache configuration:
-```js
-service.cacheOn(config);
+service.cache(cache);
 ```
 The configuration contains 3 parameters:
 
 * key: (a string/an array or a function) it generates the key to use as cache key. You can specify an attribute of the configuration (string), an nested property (array) or use a custom function running on the configuration. It default to a single key (it will store a single value)
 * maxAge: the time in ms for preserving the cache. Default to infinity.
-* maxSize: the length of the cache. Default to infinity
+* maxLen: the length of the cache. Default to infinity
 
-cacheOff
---------
-It empties and disable the cache.
-
-cacheReset
-----------
-It empties the cache.
-
-metadata
---------
-Get/set metadata on the service.
-```js
-registry.service(name).metadata(metadata); // set
-registry.service(name).metadata(); // get
-```
-description
------------
-Get/set a service description.
-```js
-registry.service(name).description(metadata); // set
-registry.service(name).description(); // get
-```
-
-info
-----
-It returns a documentation of the service. It requires a configuration to resolve the dependencies.
-```js
-registry.service(name).info(config);
-```
-
-infoObj
--------
-It returns an object with a lot of information about the service. It requires a configuration to resolve the dependencies.
-```js
-registry.service(name).infoObj(config);
-```
+In the second syntax it uses a [memoize-cache](https://github.com/sithmel/memoize-cache).
 
 RegistryInstance's methods
 =======================
 This object is returned with the "instance" registry method.
 
-info
-----
-It returns a documentation of all services.
-```js
-registryInstance.info();
-```
-
-infoObj
--------
-It returns an object with a lot of information about the services.
-```js
-registryInstance.infoObj();
-```
-
 getExecutionOrder
 -----------------
 Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
-Also it will take into consideration what plugins match and the caching (a cached items as no dependency!):
+Also it will take into consideration what plugins match and the caching (a cached dependency has no dependency!):
 ```js
-registryInstance.getExecutionOrder(name);
+registryInstance.getExecutionOrder(name, function (err, dependencies) {
+
+});
 ```
 
 run
@@ -630,16 +600,16 @@ var registry = new Diogenes();
 registry.service('hello')
   .dependsOn(['req', 'res'])
   .provides(function (config, deps, next){
-  var username = deps.req.query.username;
-  deps.res.send('hello ' + username);
-  next();
+    var username = deps.req.query.username;
+    deps.res.send('hello ' + username);
+    next();
 });
 
 app.get('/', function(req, res){
   var localReg = new Diogenes();
-  localReg.services('req').returns(req);
-  localReg.services('res').returns(res);
-  registry.merge(localReg).run('hello');
+  localReg.service('req').returns(req);
+  localReg.service('res').returns(res);
+  registry.merge(localReg).instance(config).run('hello');
 });
 
 app.listen(3000);
@@ -647,33 +617,32 @@ app.listen(3000);
 
 Using events for intra service communication
 --------------------------------------------
-All functions added using "provides" have as "this" the service object itself. So they can easily access to all service's methods and registry methods using "this.registry()".
-
-This simplify the case in which you want:
-
-* manipulate the cache of a service (reset for example)
-* communicate between services using the event system
-* run another service
-
-Example:
+You can use an event bus, such as one generated by [occamsrazor](https://github.com/sithmel/occamsrazor.js) to make one service communicate with another:
 ```js
 var c = 0;
-registry.service('counter-button').provides(function (config, deps, next){
-  var registry = this.registry();
+var or = require('occamsrazor');
+
+registry
+  .service('events').returnsValue(or());
+
+registry
+  .dependsOn(['events'])
+  .service('counter-button').provides(function (config, deps, next){
   document.getElementById('inc').addEventListener("click", function (){
     c++;
     console.log(c);
   });
-  registry.on("reset-event", function (){
+  events.on("reset-event", function (){
     c = 0;
   });
   next();
 });
 
-registry.service('reset-button').provides(function (config, deps, next){
-  var registry = this.registry();
+registry
+  .dependsOn(['events'])
+  .service('reset-button').provides(function (config, deps, next){
   document.getElementById('reset').addEventListener("click", function (){
-    registry.trigger("reset-event");
+    events.trigger("reset-event");
   });
   next();
 });
@@ -681,22 +650,28 @@ registry.service('reset-button').provides(function (config, deps, next){
 registry.run(['counter-button', 'reset-button']);
 ```
 
-The callback in the "run" method instead uses as "this" the registry itself.
 Another example: a service requires to do some clean up after its execution. In this case you can leverage the event system:
 ```js
+var or = require('occamsrazor');
+
+registry
+  .service('events').returnsValue(or());
+
 var registry = new Diogenes();
 ...
-registry.service('database-connection').provides(function (config, deps){
+registry
+  .dependsOn(['events'])
+  .service('database-connection').provides(function (config, deps){
   var connection = ..... I get the connection here
 
-  this.registry().on('done', function (){
+  events.on('done', function (){
     connection.dispose();
   });
   next();
 });
 
-registry.run('main-service', function (err, dep){
+registry.run(['main-service', 'events'], function (err, dep){
   ...
-  this.trigger('done');
+  events.trigger('done');
 });
 ```
