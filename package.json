@@ -2,9 +2,10 @@
   "name": "diogenes",
   "version": "0.5.2",
   "description": "Defines and executes functions with a common interface (services) configured in a directed acyclic graph",
-  "main": "src/diogenes.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "mocha tests/*.js",
+    "watch": "npm run test -- -w",
     "lint": "./node_modules/.bin/eslint --ext .js ./src ./tests",
     "release:major": "./node_modules/.bin/npm-release major",
     "release:minor": "./node_modules/.bin/npm-release minor",
@@ -28,7 +29,11 @@
     "npm-release": "^1.0.0"
   },
   "dependencies": {
-    "occamsrazor": "^4.4.0",
+    "async-deco": "^4.2.1",
+    "memoize-cache": "^1.0.2",
+    "object-assign": "^4.0.1",
+    "occamsrazor": "^5.0.0",
+    "occamsrazor-validator": "^5.1.0",
     "setimmediate": "^1.0.4"
   }
 }
