@@ -6,7 +6,7 @@ Diogenes
 ![Registry as graph](https://upload.wikimedia.org/wikipedia/commons/b/b6/Diogenes_looking_for_a_man_-_attributed_to_JHW_Tischbein.jpg)
 > When asked why he went about with a lamp in broad daylight, Diogenes confessed, "I am looking for a [honest] man."
 
-Diogenes defines and executes functions with a common interface (services) sorting out the execution order automatically (by dependency).
+Diogenes defines and executes functions with a common interface (services) sorting out the execution order automatically.
 
 From functions to services
 --------------------------
@@ -59,7 +59,7 @@ Promise.all([ // <- this executes 2 blocks in parallel
     return renderTemplate(obj, template);
   })
   .then(function (html) {
-    returnHTML(html);
+    return returnHTML(html);
   })
   .catch(function () {
     return returnHTML(err);
@@ -67,7 +67,7 @@ Promise.all([ // <- this executes 2 blocks in parallel
 ```
 This second version is not only more concise but is also much more efficient as it executes some operations in parallel. Also automatic propagation of errors is a very cool feature!
 But still is not perfect: handling the passage of values can be clumsy, swallowing exception when you forgot the "catch" can be dangerous, mixing promises and callback annoying ...
-But there is a worst issue, you are designing how the components interact between them, in an imperative way. Wouldn't it better if the system could figure out the execution order ? Even better working flawlessly with promises, synchronous functions and callbacks ?
+But there is a worst issue, you are designing how these components interact between them, in an imperative way. Wouldn't it better if the system could figure out the execution order ? Even better working flawlessly with promises, synchronous functions and callbacks ?
 
 With Diogenes you can describe the flow of informations in terms of services, describing the relations between them:
 ```js
@@ -177,9 +177,9 @@ registry.service("paragraph")
   .dependsOn(['text', 'abstract', 'count'])
   .returns(function (config, deps) {
     return {
-        count: deps.count,
-        abstract: deps.abstract,
-        text: deps.text
+      count: deps.count,
+      abstract: deps.abstract,
+      text: deps.text
     };
   });
 ```
@@ -194,13 +194,13 @@ var registryInstance = registry.instance({abstractLen: 5, abstractEllipsis: "...
 
 registryInstance.run("paragraph", function (err, p){
   if (err){
-      console.log("Something went wrong!");
+    console.log("Something went wrong!");
   }
   else {
-      console.log("This paragraph is " + p.count + " words long");
-      console.log("The abstract is: " + p.anstract);
-      console.log("This is the original text:");
-      console.log(p.text);            
+    console.log("This paragraph is " + p.count + " words long");
+    console.log("The abstract is: " + p.anstract);
+    console.log("This is the original text:");
+    console.log(p.text);            
   }
 });
 ```
@@ -257,13 +257,13 @@ You can run the service as usual:
 ```js
 registryInstance.run("paragraph", function (err, p){
   if (err){
-      console.log("Something went wrong!");
+    console.log("Something went wrong!");
   }
   else {
-      console.log("This paragraph is " + p.count + " words long");
-      console.log("The abstract is: " + p.anstract);
-      console.log("This is the original text:");
-      console.log(p.text);
+    console.log("This paragraph is " + p.count + " words long");
+    console.log("The abstract is: " + p.anstract);
+    console.log("This is the original text:");
+    console.log(p.text);
   }
 });
 ```
@@ -271,7 +271,7 @@ The key point is that you just extended the system without changing the original
 
 Caching a service
 -----------------
-If the result of a service depends on the configuration and it is heavy to compute, you can cache it.
+If the result of a service depends only on the configuration, you can cache it.
 The "cache" method takes an object as argument with 3 different attributes:
 
 * key: (a function) it generates the key to use as cache key. It default to a single key (it will store a single value)
@@ -302,7 +302,7 @@ var cache = new Cache({
 
 registry.service('count').cache(cache);
 ```
-This is very convenient as it allows to manage the cache and even use different back ends (redis or file system for example).
+This is very convenient as it allows to manage the cache and can even uses different back ends (redis or file system for example).
 
 Errors
 ======
@@ -327,9 +327,26 @@ registry.service('myservice').provides(
     ...
   }));
 ```
+The last function of the array is the original function. The other items are decorators.
 A decorator is a function wrapping another function and adding some functionality.
-You can find many decorators in this package [async-deco](https://github.com/sithmel/async-deco).
-You are free to add your own but be careful to add it in the right orders (the final function is always last)!
+Here's a decorator example:
+```js
+registry.service('myservice').provides([
+  function (f) { // takes the original function as input
+    return function (config, deps, next) {
+      f(config, deps, function (err, res) {
+        next(err, res * 2); // multiply the original result by two
+      });
+    }
+  },
+  function (config, deps, next) {
+    next(config.number + 2)
+  }
+]);
+```
+Of course I suggest to put the decorator in an external function and reuse it where possible.
+A part this silly example you can find many useful decorators in this package: [async-deco](https://github.com/sithmel/async-deco).
+But be careful to add them in the right order, or they could work differently from what you expect.
 
 For synchronous or promise based function you can do the same, the original function is always converted to a callback based function before applying the decorators.
 ```js
@@ -361,12 +378,16 @@ You can also add your own custom log:
 ```js
 var defaultLogger = require('async-deco/utils/default-logger');
 
-function myFunction() {
-  var logger = defaultLogger.apply(this);
-  ...
-  logger('myevent', {... additional info ...});
-}
+registry.service('myservice')
+  .returns(function (config, deps) {
+    ...
+    var log = defaultLogger.apply(this);
+    ...
+    log('myevent', {... additional info ...});
+  }
+);
 ```
+You can run the "log" function with the name of the event and some additional informations in an object.
 
 Syntax
 ======
