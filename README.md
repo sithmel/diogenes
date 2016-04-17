@@ -713,3 +713,11 @@ registry.run(['main-service', 'events'], function (err, dep){
   events.trigger('done');
 });
 ```
+
+Acknowledgements
+================
+Diogenes won't be possible without the work of many others. The inspiration came from many different patterns/libraries. In particular I want to thank you:
+* the great explanation of the Depth First Search (DFS) in the Stanford algorithm online course on Coursera.
+* the [zope component architecture](http://muthukadan.net/docs/zca.html) for showing how to build an extensible system
+* [architect](https://github.com/c9/architect) for introducing the idea of initialising a system using the dependency injection pattern
+* [electrician](https://github.com/tes/electrician) that explored a way to wrap the code in "components" having a common interface, that is a prerequisite of having them working together.
