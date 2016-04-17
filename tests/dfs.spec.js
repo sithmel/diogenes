@@ -70,6 +70,16 @@ describe('dfs: 4 functions', function (done) {
     });
   });
 
+  it('must return adjList', function () {
+    assert.deepEqual(registry.instance({}).getAdjList(),
+      {
+        'A': [],
+        'B': ['A'],
+        'C': ['A','B'],
+        'D': ['B','C']
+      });
+  });
+
   it('must replace node', function (done) {
     registry.remove('D');
     registry.service('D').dependsOn(['A']).provides(function (config, deps, next) {

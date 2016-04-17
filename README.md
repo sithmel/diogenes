@@ -561,6 +561,10 @@ RegistryInstance's methods
 =======================
 This object is returned with the "instance" registry method.
 
+options
+-------
+Set the options for this object. They are the same defined in the "instance" method (registry object).
+
 getExecutionOrder
 -----------------
 Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
@@ -570,6 +574,19 @@ registryInstance.getExecutionOrder(name, function (err, dependencies) {
 
 });
 ```
+
+getAdjList
+-----------------
+It returns an object that represents the function s graph. It would be in the form:
+```js
+{
+  serviceA: [], // no dependencies
+  serviceB: ['serviceA'], // depends on serviceA
+  serviceC: ['serviceA','serviceB'], // depends on serviceA serviceB
+  serviceD: ['serviceB','serviceC'] // depends on serviceB serviceC
+}
+```
+This methods do not take caching into consideration. But it will use the configuration to get the dependencies.
 
 run
 ---

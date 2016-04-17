@@ -36,6 +36,10 @@ RegistryInstance.prototype.registry = function registryInstance_registry() {
   return this._registry;
 };
 
+RegistryInstance.prototype.options = function registryInstance_options(options) {
+  this._options = options;
+};
+
 RegistryInstance.prototype._filterByConfig = function registryInstance__filterByConfig() {
   var registry = this._registry;
   var services = registry.services;
@@ -55,6 +59,15 @@ RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExec
     if (err) return next(err);
     next(null, sorted_services.map(function (item) {return item.name;}));
   });
+};
+
+RegistryInstance.prototype.getAdjList = function registryInstance_getAdjList() {
+  var adjList = {};
+  var config = this._config;
+  this.registry().forEach(function (service, name) {
+    adjList[name] = service._deps(config);
+  });
+  return adjList;
 };
 
 RegistryInstance.prototype._run = function registryInstance__run(name, done) {
