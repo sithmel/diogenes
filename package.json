@@ -1,6 +1,6 @@
 {
   "name": "diogenes",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Defines and executes functions with a common interface (services) sorting out the execution order automatically.",
   "main": "src/index.js",
   "scripts": {
