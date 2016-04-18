@@ -126,7 +126,8 @@ Defining services
 -----------------
 A service is defined by a name (a string) and it can be as simple as a value:
 ```js
-registry.service("text").returnsValue(["Diogenes became notorious for his philosophical ",
+registry.service("text")
+  .returnsValue(["Diogenes became notorious for his philosophical ",
     "stunts such as carrying a lamp in the daytime, claiming to ",
     "be looking for an honest man."].join());
 ```
@@ -141,7 +142,8 @@ The "config" argument is a generic configuration used for all services.
 The "returns" method can be used for synchronous functions, but it works even if you return promises!
 You can also define a service using a callback:
 ```js
-registry.service("text").provides(function (config, deps, next) {
+registry.service("text")
+  .provides(function (config, deps, next) {
   fs.readFile(config.path, {encoding: 'utf8'}, next);
 });
 ```
@@ -156,8 +158,7 @@ registry.service("tokens")
   return deps.text.split(' ');
 });
 ```
-The method "dependsOn" allows to specify a list of dependencies. For example this service depends on the "text" service. The deps argument will contain an attribute for every dependency,
-in this example: deps.text.
+The method "dependsOn" allows to specify a list of dependencies. For example this service depends on the "text" service. The deps argument will contain an attribute for every dependency, in this example: deps.text.
 ```js
 registry.service("count")
   .dependsOn(['tokens'])
@@ -238,7 +239,7 @@ registry.service("abstract")
   });
 ```
 "useAlternativeClamp" is an [occamsrazor validator](https://github.com/sithmel/occamsrazor-validator).
-
+A validator is a function that identifies if a value matches some criteria and assigns a score to the match. This helps to choose what dependencies and what service use.
 The "dependsOn" method can take one validator. If it matches the config, this different set of dependencies will be used.
 The "provides", "returns" and "returnsValue" methods can take 2 validators. The first one will match the config, the second the dependencies.
 So you can change on the fly which function use depending on the arguments (config and deps).
@@ -267,7 +268,7 @@ registryInstance.run("paragraph", function (err, p){
   }
 });
 ```
-The key point is that you just extended the system without changing the original code!
+You just extended the system without changing the original code!
 
 Caching a service
 -----------------
@@ -303,6 +304,7 @@ var cache = new Cache({
 registry.service('count').cache(cache);
 ```
 This is very convenient as it allows to manage the cache and can even uses different back ends (redis or file system for example).
+Lastly, using "cache" without options you will cache the first value forever.
 
 Errors
 ======
@@ -490,7 +492,7 @@ The function has this signature: (config, deps, next).
 * "next" is the function called with the output of this service: next(undefined, output).
 * If something goes wrong you can pass the error as first argument: next(new Error('Something wrong!')).
 If you use the signature without "next" you can return the value using return, or throw an exception in case of errors.
-"configValidator" and "dependencyValidator" are occamsrazor validators. (https://github.com/sithmel/occamsrazor.js). You can also pass a value as explained in the "match" validator (https://github.com/sithmel/occamsrazor-validator#validatormatch).
+"configValidator" and "dependencyValidator" are [occamsrazor validators](https://github.com/sithmel/occamsrazor-validator). You can also pass a value as explained in the ["match" validator](https://github.com/sithmel/occamsrazor-validator#validatormatch).
 They matches respectively the first and second argument of the function.
 "this" will be the service itself.
 Optionally is possible to define an array instead of a function. See the section "decorators" above for further explanations.
@@ -509,11 +511,7 @@ The function has this signature: (config, deps).
 * "config" is a value passed to all services when "run" is invoked
 * "deps" is an object. It has as many properties as the dependencies of this service. The attributes of deps have the same name of the respective dependency.
 
-"configValidator" and "dependencyValidator" are occamsrazor validators. (https://github.com/sithmel/occamsrazor.js). You can also pass a value as explained in the "match" validator (https://github.com/sithmel/occamsrazor-validator#validatormatch).
-They matches respectively the first and second argument of the function.
-If you return a promise (A or A+) this will be automatically used.
-"this" will be the service itself.
-Optionally is possible to define an array instead of a function. See the section "decorators" above for further explanations.
+"configValidator" and "dependencyValidator" works the same as in the "provides" method.
 
 returnsValue
 ------------
