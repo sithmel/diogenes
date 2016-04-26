@@ -12,12 +12,18 @@ describe('diogenes merge registries', function () {
     registry2 = Diogenes.getRegistry();
     registry1.service('answer').returnsValue(42);
     registry2.service('question').returnsValue('the answer to life the universe and everything');
+    registry1.events.on(function () {});
+    registry2.events.on(function () {});
     registry3 = registry1.merge(registry2);
   });
 
   it('must be different from previous registries', function () {
     assert.notEqual(registry1, registry3);
     assert.notEqual(registry2, registry3);
+  });
+
+  it('must copy the events', function () {
+    assert.equal(registry3.events.size(), 2);
   });
 
   it('must copy the services', function () {
@@ -44,7 +50,7 @@ describe('registry', function () {
 
   it('must return a service in a simple case (1 function)', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
-      assert.equal(registry.service('hello'), this);
+      assert(registry.service('hello').isPrototypeOf(this));
       assert.deepEqual(deps, {});
       next(undefined, 'hello');
     });

@@ -88,10 +88,11 @@ describe('diogenes using decorators', function () {
 
   it('must log', function (done) {
     var logs = [];
-    var logger = function (name, id, ts, evt, payload) {
-      logs.push({name: name, evt: evt});
-    };
     var registry = Diogenes.getRegistry();
+
+    registry.events.on(function (name, id, ts, evt, payload) {
+      logs.push({name: name, evt: evt});
+    });
 
     registry.service('hello').provides([
       logDecorator(),
@@ -109,7 +110,7 @@ describe('diogenes using decorators', function () {
       }
     ]);
 
-    registry.instance({}, {logger: logger}).run('world', function (err, dep) {
+    registry.instance({}).run('world', function (err, dep) {
       assert.instanceOf(err, Error);
       assert.equal(err.message, 'broken');
       assert.isUndefined(dep);

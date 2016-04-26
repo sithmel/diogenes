@@ -36,10 +36,6 @@ RegistryInstance.prototype.registry = function registryInstance_registry() {
   return this._registry;
 };
 
-RegistryInstance.prototype.options = function registryInstance_options(options) {
-  this._options = options;
-};
-
 RegistryInstance.prototype._filterByConfig = function registryInstance__filterByConfig() {
   var registry = this._registry;
   var services = registry.services;
@@ -71,6 +67,7 @@ RegistryInstance.prototype.getAdjList = function registryInstance_getAdjList() {
 };
 
 RegistryInstance.prototype._run = function registryInstance__run(name, done) {
+  var instance = this;
   var config = this._config;
   var getAdjlists = this._filterByConfig();
   var deps = {}; // all dependencies already resolved
@@ -80,7 +77,10 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
   var id = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 10);
-  var logger = 'logger' in this._options ? this._options.logger : undefined;
+  var logger = function (name, id, ts, evt, payload) {
+    // not using trigger because it introduces a timeout
+    instance._registry.events.all(name, id, ts, evt, payload, instance);
+  };
 
   if (!done) {
     done = function (err, dep) {
@@ -143,7 +143,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
           currentServiceDeps = getDependencies(deps, adj.deps);
           if (currentServiceDeps) {
             try {
-              context = logger ? buildLogger(currentService, currentService.name, id, logger) : currentService;
+              context = buildLogger(currentService, currentService.name, id, logger);
               func = currentService._getFunc(config, currentServiceDeps, context, resolve);
             }
             catch (e) {

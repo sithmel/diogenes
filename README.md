@@ -65,7 +65,7 @@ Promise.all([ // <- this executes 2 blocks in parallel
     return returnHTML(err);
   });
 ```
-This second version is not only more concise but is also much more efficient as it executes some operations in parallel. Also automatic propagation of errors is a very cool feature!
+This second version is not only more concise but is also much more efficient as it executes two functions in parallel (decodeURL and retrieveTemplate). Also automatic propagation of errors allows to be much more coincise!
 But still is not perfect: handling the passage of values can be clumsy, swallowing exception when you forgot the "catch" can be dangerous, mixing promises and callback annoying ...
 But there is a worst issue, you are designing how these components interact between them, in an imperative way. Wouldn't it better if the system could figure out the execution order ? Even better working flawlessly with promises, synchronous functions and callbacks ?
 
@@ -242,7 +242,7 @@ registry.service("abstract")
 A validator is a function that identifies if a value matches some criteria and assigns a score to the match. This helps to choose what dependencies and what service use.
 The "dependsOn" method can take one validator. If it matches the config, this different set of dependencies will be used.
 The "provides", "returns" and "returnsValue" methods can take 2 validators. The first one will match the config, the second the dependencies.
-So you can change on the fly which function use depending on the arguments (config and deps).
+So you can change on the fly which function to use depending on the arguments (config and deps).
 
 ![Registry as graph](https://cloud.githubusercontent.com/assets/460811/11994528/0fade84a-aa38-11e5-92d2-4f4d8f60dc4d.png)
 
@@ -268,7 +268,7 @@ registryInstance.run("paragraph", function (err, p){
   }
 });
 ```
-You just extended the system without changing the original code!
+You have just extended the system without changing the original code!
 
 Caching a service
 -----------------
@@ -350,7 +350,7 @@ Of course I suggest to put the decorator in an external function and reuse it wh
 A part this silly example you can find many useful decorators in this package: [async-deco](https://github.com/sithmel/async-deco).
 But be careful to add them in the right order, or they could work differently from what you expect.
 
-For synchronous or promise based function you can do the same, the original function is always converted to a callback based function before applying the decorators.
+For synchronous or promise based function you can do the same, the original function is always converted to a "callback based function" before applying the decorators.
 ```js
 registry.service('myservice').returns([
   decorator1,
@@ -361,21 +361,35 @@ registry.service('myservice').returns([
 ]);
 ```
 
-Logging
-=======
-You can pass a logger function to the instance method:
+Logging and events
+==================
+Events are fired every time something is logged in a function. You can listen to all log events using:
 ```js
-registry.instance(config, {logger: logger});
+registry.events.on(function (name, id, ts, evt, payload, instance) {
+  //
+});
 ```
+These are the arguments passed to the event handler:
 
-logger is a function that takes these arguments:
 * name: the name of the service
 * id: a random id that changes every time you call "run"
 * ts: the timestamp for this event
 * evt: the name of the event
 * payload: an object with additional information about this event
+* instance: an instance object
 
-Services don't log anything by default. You can rely on what is logged by the decorators added [async-deco](https://github.com/sithmel/async-deco).
+Services don't log anything by default. You can rely on what is logged by the [decorators](https://github.com/sithmel/async-deco).
+```js
+var logDecorator = require('async-deco/callback/log');
+
+registry.service('myservice').provides([
+  logDecorator(), // this logs start, error and error events
+  function (config, deps, next) {
+    next(...);
+  }
+]);
+
+```
 You can also add your own custom log:
 ```js
 var defaultLogger = require('async-deco/utils/default-logger');
@@ -405,6 +419,26 @@ or
 var registry = new Diogenes();
 ```
 
+Registry's attributes
+=====================
+
+events
+------
+Events are fired every time something is logged in one function.
+```js
+registry.events.on(function (name, id, ts, evt, payload, instance) {
+  //
+});
+```
+These are the arguments passed to the event handler:
+* name: the name of the service
+* id: a random id that changes every time you call "run"
+* ts: the timestamp for this event
+* evt: the name of the event
+* payload: an object with additional information about this event
+* instance: the registry instance
+The "events" object is an occamsrazor registry. You can find its API [here](https://github.com/sithmel/occamsrazor.js)
+
 Registry's methods
 ==================
 
@@ -421,16 +455,8 @@ Returns a an registryInstance object. It is a registry with a configuration and 
 ```js
 registry.instance(config, options);
 ```
-The config argument will be passed to all services (calling the run method). Currently there are 2 options:
+The config argument will be passed to all services (calling the run method). The only option available is:
 * limit: limit the number of services executed in parallel (defaults to Infinity)
-* logger: a function that takes these arguments:
-  * name: the name of the service
-  * id: a random id that changes every time you call "run"
-  * ts: the timestamp for this event
-  * evt: the name of the event
-  * payload: an object with additional information about this event
-
-See the section above on how to log.
 
 remove
 ------
@@ -558,10 +584,6 @@ In the second syntax it uses a [memoize-cache](https://github.com/sithmel/memoiz
 RegistryInstance's methods
 =======================
 This object is returned with the "instance" registry method.
-
-options
--------
-Set the options for this object. They are the same defined in the "instance" method (registry object).
 
 getExecutionOrder
 -----------------
