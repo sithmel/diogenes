@@ -30,6 +30,8 @@ function RegistryInstance(registry, config, options) {
   this._registry = registry; // backreference
   this._config = config;
   this._options = options || {};
+  this._id = this._options.id || uuid.v4();
+  this._counter = 0;
 }
 
 RegistryInstance.prototype.registry = function registryInstance_registry() {
@@ -76,7 +78,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var numberParallelCallback = 0;
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
-  var id = uuid.v4();
+  var id = this._id + '-' + ++this._counter;
   var logger = function (name, id, ts, evt, payload) {
     // not using trigger because it introduces a timeout
     instance._registry.events.all(name, id, ts, evt, payload, instance);

@@ -455,8 +455,9 @@ Returns a an registryInstance object. It is a registry with a configuration and 
 ```js
 registry.instance(config, options);
 ```
-The config argument will be passed to all services (calling the run method). The only option available is:
+The config argument will be passed to all services (calling the run method). The options available are:
 * limit: limit the number of services executed in parallel (defaults to Infinity)
+* id: used to generate the id of all executions (the one that is logged).
 
 remove
 ------
