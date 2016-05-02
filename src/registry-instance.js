@@ -1,8 +1,8 @@
-var depSort = require('./lib/dep-sort');
+var uuid = require('uuid');
 var buildLogger = require('async-deco/utils/build-logger');
-var DiogenesError = require('./lib/diogenes-error');
 var memoizeDecorator = require('async-deco/callback/memoize');
-
+var depSort = require('./lib/dep-sort');
+var DiogenesError = require('./lib/diogenes-error');
 /*
 
 RegistryInstance utilities
@@ -76,7 +76,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var numberParallelCallback = 0;
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
-  var id = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 10);
+  var id = uuid.v4();
   var logger = function (name, id, ts, evt, payload) {
     // not using trigger because it introduces a timeout
     instance._registry.events.all(name, id, ts, evt, payload, instance);
