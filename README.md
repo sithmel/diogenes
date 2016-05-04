@@ -372,7 +372,7 @@ registry.events.on(function (name, id, ts, evt, payload, instance) {
 These are the arguments passed to the event handler:
 
 * name: the name of the service
-* id: a random id that changes every time you call "run"
+* id: a random id that changes every time you call "run" (you can also set it manually)
 * ts: the timestamp for this event
 * evt: the name of the event
 * payload: an object with additional information about this event
@@ -432,7 +432,7 @@ registry.events.on(function (name, id, ts, evt, payload, instance) {
 ```
 These are the arguments passed to the event handler:
 * name: the name of the service
-* id: a random id that changes every time you call "run"
+* id: a random id that changes every time you call "run" (you can also set it manually)
 * ts: the timestamp for this event
 * evt: the name of the event
 * payload: an object with additional information about this event
@@ -455,9 +455,8 @@ Returns a an registryInstance object. It is a registry with a configuration and 
 ```js
 registry.instance(config, options);
 ```
-The config argument will be passed to all services (calling the run method). The options available are:
+The config argument will be passed to all services (calling the run method). The only option available is:
 * limit: limit the number of services executed in parallel (defaults to Infinity)
-* id: used to generate the id of all executions (the one that is logged).
 
 remove
 ------
@@ -473,7 +472,7 @@ Helper function. It runs a group of functions with the registry as "this". Usefu
 ```js
 /*module1 fir example*/
 module.exports = function (){
-  this.add('service1', ...);
+  this.service('service1').provides(...);
 };
 /*main*/
 var module1 = require('module1');
@@ -629,6 +628,12 @@ The callback will get as second argument an object with a property for any depen
 The context (this) of this function is the registry itself.
 
 It returns the registry instance.
+
+You can also set an id of the execution using:
+```js
+registryInstance.run(name, id, func);
+```
+The id is used in the logs and can be used to correlate different events.
 
 Errors in the services graph
 ============================
