@@ -13,7 +13,6 @@ Registry object
 
 function Registry() {
   this.services = {};
-  this.events = or();
 }
 
 Registry.getRegistry = function registry_getRegistry() {
@@ -35,18 +34,12 @@ Registry.prototype.forEach = function registry_forEach(callback) {
 Registry.prototype.merge = function registry_merge() {
   var registry = new Registry();
 
-  var events = Array.prototype.map.call(arguments, function (reg) {
-    return reg.events;
-  });
-
   var services = Array.prototype.map.call(arguments, function (reg) {
     return reg.services;
   });
 
   services.unshift(this.services);
   services.unshift({});
-
-  registry.events = this.events.merge.apply(null, events);
 
   registry.services = assign.apply(null, services);
   return registry;

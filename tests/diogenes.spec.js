@@ -12,18 +12,12 @@ describe('diogenes merge registries', function () {
     registry2 = Diogenes.getRegistry();
     registry1.service('answer').returnsValue(42);
     registry2.service('question').returnsValue('the answer to life the universe and everything');
-    registry1.events.on(function () {});
-    registry2.events.on(function () {});
     registry3 = registry1.merge(registry2);
   });
 
   it('must be different from previous registries', function () {
     assert.notEqual(registry1, registry3);
     assert.notEqual(registry2, registry3);
-  });
-
-  it('must copy the events', function () {
-    assert.equal(registry3.events.size(), 2);
   });
 
   it('must copy the services', function () {
@@ -50,7 +44,7 @@ describe('registry', function () {
 
   it('must return a service in a simple case (1 function)', function (done) {
     registry.service('hello').provides(function (config, deps, next) {
-      assert(registry.service('hello').isPrototypeOf(this));
+      assert.equal(registry.service('hello'), this);
       assert.deepEqual(deps, {});
       next(undefined, 'hello');
     });
@@ -442,12 +436,10 @@ describe('registry', function () {
 
     });
 
-    it('must return a correct order (readme example)', function (done) {
-      registry.instance({abstractLen: 5, abstractEllipsis: '...'})
-      .getExecutionOrder('paragraph', function (err, a) {
-        assert.deepEqual(a, ['text', 'tokens', 'abstract', 'count', 'paragraph']);
-        done();
-      });
+    it('must return a correct order (readme example)', function () {
+      var a = registry.instance({abstractLen: 5, abstractEllipsis: '...'})
+      .getExecutionOrder('paragraph');
+      assert.deepEqual(a, ['text', 'tokens', 'abstract', 'count', 'paragraph']);
     });
 
     it('must work (readme example)', function (done) {
@@ -459,12 +451,10 @@ describe('registry', function () {
       });
     });
 
-    it('must return a correct order (readme example) - alternate version', function (done) {
+    it('must return a correct order (readme example) - alternate version', function () {
       var a = registry.instance({abstractLen: 5, abstractEllipsis: '...', abstractClamp: 'chars'})
-      .getExecutionOrder('paragraph', function (err, a) {
-        assert.deepEqual(a, ['text', 'abstract', 'tokens', 'count', 'paragraph']);
-        done();
-      });
+      .getExecutionOrder('paragraph');
+      assert.deepEqual(a, ['text', 'abstract', 'tokens', 'count', 'paragraph']);
     });
 
     it('must work (readme example) - alternate version', function (done) {

@@ -63,11 +63,9 @@ describe('dfs: 4 functions', function (done) {
     });
   });
 
-  it('must return execution order', function (done) {
-    registry.instance({}).getExecutionOrder('D', function (err, list) {
-      assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
-      done();
-    });
+  it('must return execution order', function () {
+    var list = registry.instance({}).getExecutionOrder('D');
+    assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ]);
   });
 
   it('must return adjList', function () {
@@ -80,16 +78,14 @@ describe('dfs: 4 functions', function (done) {
       });
   });
 
-  it('must replace node', function (done) {
+  it('must replace node', function () {
     registry.remove('D');
     registry.service('D').dependsOn(['A']).provides(function (config, deps, next) {
       next(undefined, deps['A'] + 'D');
     });
 
-    registry.instance({}).getExecutionOrder('D', function (err, list) {
-      assert.deepEqual(list, [ 'A', 'D' ]);
-      done();
-    });
+    var list = registry.instance({}).getExecutionOrder('D');
+    assert.deepEqual(list, [ 'A', 'D' ]);
   });
 
   it('must run without config', function (done) {

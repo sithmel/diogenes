@@ -1,7 +1,6 @@
-var uuid = require('uuid');
 var buildLogger = require('async-deco/utils/build-logger');
-var memoizeDecorator = require('async-deco/callback/memoize');
 var depSort = require('./lib/dep-sort');
+var memoize = require('./lib/memoize');
 var DiogenesError = require('./lib/diogenes-error');
 /*
 
@@ -40,21 +39,17 @@ RegistryInstance.prototype._filterByConfig = function registryInstance__filterBy
   var registry = this._registry;
   var services = registry.services;
   var config = this._config;
-  var memoize = memoizeDecorator(function (name) {return name;});
-  return memoize(function (name, next) {
+  return memoize(function (name) {
     if (!(name in services)) {
-      return next(null);
+      return null;
     };
-    return services[name]._getDeps(config, next);
+    return services[name]._getDeps(config);
   });
 };
 
-RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name, next) {
+RegistryInstance.prototype.getExecutionOrder = function registryInstance_getExecutionOrder(name) {
   var getAdjlists = this._filterByConfig();
-  depSort(getAdjlists, name, function (err, sorted_services) {
-    if (err) return next(err);
-    next(null, sorted_services.map(function (item) {return item.name;}));
-  });
+  return depSort(getAdjlists, name).map(function (item) {return item.name;});
 };
 
 RegistryInstance.prototype.getAdjList = function registryInstance_getAdjList() {
@@ -66,7 +61,7 @@ RegistryInstance.prototype.getAdjList = function registryInstance_getAdjList() {
   return adjList;
 };
 
-RegistryInstance.prototype._run = function registryInstance__run(name, id, done) {
+RegistryInstance.prototype._run = function registryInstance__run(name, done) {
   var instance = this;
   var config = this._config;
   var getAdjlists = this._filterByConfig();
@@ -76,12 +71,7 @@ RegistryInstance.prototype._run = function registryInstance__run(name, id, done)
   var numberParallelCallback = 0;
   var limitParallelCallback = 'limit' in this._options ? this._options.limit : Infinity;
   var isOver = false;
-  id = id || uuid.v4();
-
-  var logger = function (name, id, ts, evt, payload) {
-    // not using trigger because it introduces a timeout
-    instance._registry.events.all(name, id, ts, evt, payload, instance);
-  };
+  var sorted_services;
 
   if (!done) {
     done = function (err, dep) {
@@ -91,92 +81,84 @@ RegistryInstance.prototype._run = function registryInstance__run(name, id, done)
     };
   }
 
-  depSort(getAdjlists, name, function (err, sorted_services) {
-    if (err) {
-      return done.call(registry, err);
+  try {
+    sorted_services = depSort(getAdjlists, name);
+  }
+  catch (err) {
+    return done.call(registry, err);
+  }
+
+  (function resolve(name, dep) {
+    var currentService, adj, currentServiceDeps;
+    var func, i = 0;
+
+    if (isOver) {
+      // the process is over (callback returned too)
+      // this may only happen if there is a duplicated callback
+      throw new DiogenesError('Diogenes: a callback has been firing more than once');
+      return;
     }
-    (function resolve(name, dep) {
-      var context, currentService, adj, currentServiceDeps;
-      var func, i = 0;
-
-      if (isOver) {
-        // the process is over (callback returned too)
-        // this may only happen if there is a duplicated callback
-        throw new DiogenesError('Diogenes: a callback has been firing more than once');
-        return;
+    else if (name in deps) {
+      // this dependency already solved.
+      // Did someone is firing the callback twice ?
+      isOver = true;
+      return done.call(registry, new DiogenesError('Diogenes: a callback has been firing more than once'));
+    }
+    else if (name) {
+      deps[name] = dep;
+      numberParallelCallback--;
+      if (!(dep instanceof Error)) {
+        services[name]._cachePush(config, dep);
       }
-      else if (name in deps) {
-        // this dependency already solved.
-        // Did someone is firing the callback twice ?
-        isOver = true;
-        return done.call(registry, new DiogenesError('Diogenes: a callback has been firing more than once'));
-      }
-      else if (name) {
-        deps[name] = dep;
-        numberParallelCallback--;
-        if (!(dep instanceof Error)) {
-          services[name]._cachePush(config, dep);
-        }
-      }
+    }
 
-      if (sorted_services.length === 0) {
-        isOver = true;
-        if (dep instanceof Error) {
-          return done.call(registry, dep);
-        }
-        else {
-          return done.call(registry, undefined, dep);
-        }
+    if (sorted_services.length === 0) {
+      isOver = true;
+      if (dep instanceof Error) {
+        return done.call(registry, dep);
       }
+      else {
+        return done.call(registry, undefined, dep);
+      }
+    }
 
-      while (i < sorted_services.length) {
-        if (numberParallelCallback >= limitParallelCallback) break;
-        currentService = services[sorted_services[i].name];
-        adj = sorted_services[i];
+    while (i < sorted_services.length) {
+      if (numberParallelCallback >= limitParallelCallback) break;
+      currentService = services[sorted_services[i].name];
+      adj = sorted_services[i];
 
-        if ('cached' in adj) {
-          setImmediate(function () {
-            resolve(currentService.name, adj.cached);
-          });
+      if ('cached' in adj) {
+        setImmediate(function () {
+          resolve(currentService.name, adj.cached);
+        });
+        sorted_services.splice(i, 1);
+      }
+      else {
+        currentServiceDeps = getDependencies(deps, adj.deps);
+        if (currentServiceDeps) {
+          try {
+            func = currentService._getFunc(config, currentServiceDeps, currentService, resolve);
+          }
+          catch (e) {
+            isOver = true;
+            return done.call(registry, e);
+          }
           sorted_services.splice(i, 1);
+          numberParallelCallback++;
+          setImmediate(func);
         }
         else {
-          currentServiceDeps = getDependencies(deps, adj.deps);
-          if (currentServiceDeps) {
-            try {
-              context = buildLogger(currentService, currentService.name, id, logger);
-              func = currentService._getFunc(config, currentServiceDeps, context, resolve);
-            }
-            catch (e) {
-              isOver = true;
-              return done.call(registry, e);
-            }
-            sorted_services.splice(i, 1);
-            numberParallelCallback++;
-            setImmediate(func);
-          }
-          else {
-            i++;
-          }
+          i++;
         }
       }
-    }());
-  });
+    }
+  }());
   return this;
 };
 
-RegistryInstance.prototype.run = function registryInstance_run(name, id, done) {
-  if (arguments.length === 2) {
-    done = id;
-    id = undefined;
-  }
-  else if (arguments.length === 1) {
-    done = undefined;
-    id = undefined;
-  }
-
+RegistryInstance.prototype.run = function registryInstance_run(name, done) {
   if (typeof name === 'string') {
-    this._run(name, id, done);
+    this._run(name, done);
     return this;
   }
 
@@ -186,7 +168,7 @@ RegistryInstance.prototype.run = function registryInstance_run(name, id, done) {
     next(undefined, deps);
   });
 
-  tempreg.instance(this._config).run('__main__', id, done);
+  tempreg.instance(this._config).run('__main__', done);
   return this;
 };
 

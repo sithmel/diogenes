@@ -22,19 +22,18 @@
   "author": "Maurizio Lupo <maurizio.lupo@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "chai": "^1.10.0",
+    "chai": "^3.5.0",
     "eslint": "^1.10.3",
-    "husky": "^0.10.2",
-    "mocha": "^2.1.0",
+    "husky": "^0.11.8",
+    "mocha": "^3.0.2",
     "npm-release": "^1.0.0"
   },
   "dependencies": {
-    "async-deco": "^4.3.0",
-    "memoize-cache": "^1.0.2",
-    "object-assign": "^4.0.1",
-    "occamsrazor": "^5.0.0",
-    "occamsrazor-validator": "^5.1.0",
-    "setimmediate": "^1.0.4",
-    "uuid": "^2.0.2"
+    "async-deco": "^7.0.0",
+    "little-ds-toolkit": "^0.3.0",
+    "object-assign": "^4.1.0",
+    "occamsrazor": "^5.0.1",
+    "occamsrazor-validator": "^6.0.0",
+    "setimmediate": "^1.0.5"
   }
 }
