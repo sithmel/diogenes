@@ -162,6 +162,10 @@ RegistryInstance.prototype.run = function registryInstance_run(name, done) {
     return this;
   }
 
+  if (name instanceof RegExp) {
+    name = Object.keys(this._registry.services).filter(RegExp.prototype.test.bind(name));
+  }
+
   var tempreg = this.registry().clone();
 
   tempreg.service('__main__').dependsOn(name).provides(function (config, deps, next) {
@@ -170,6 +174,19 @@ RegistryInstance.prototype.run = function registryInstance_run(name, done) {
 
   tempreg.instance(this._config).run('__main__', done);
   return this;
+};
+
+RegistryInstance.prototype.runP = function registryInstance_run(name) {
+  var self = this;
+  return new Promise(function (resolve, reject) {
+    self.run(name, function (err, deps) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(deps);
+      }
+    });
+  });
 };
 
 module.exports = RegistryInstance;

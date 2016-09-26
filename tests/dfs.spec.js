@@ -124,4 +124,12 @@ describe('dfs: 4 functions', function (done) {
       done();
     }, 20);
   });
+
+  it('must run more than one service using regexp', function (done) {
+    registry.instance({}).run(/(A|B)/, function (err, deps) {
+      assert.deepEqual(deps.A, 'A');
+      assert.deepEqual(deps.B, 'AB');
+      done();
+    });
+  });
 });

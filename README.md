@@ -6,92 +6,46 @@ Diogenes
 ![Registry as graph](https://upload.wikimedia.org/wikipedia/commons/b/b6/Diogenes_looking_for_a_man_-_attributed_to_JHW_Tischbein.jpg)
 > When asked why he went about with a lamp in broad daylight, Diogenes confessed, "I am looking for a [honest] man."
 
-Diogenes defines and executes functions with a common interface (services) sorting out the execution order automatically.
+Diogenes helps to use the dependency injection pattern to build an application with reusable and "easy to test" components.
 
-From functions to services
---------------------------
-Let's say that you have a function returning an html page. You usually need to execute a certain number of steps (already incapsulated into functions):
+Dependency injection
+--------------------
+This pattern is widely used. You build complicated abstractions composed by simpler abstractions:
 ```js
-decodeURL(url, function (err, id){
-  if (err) {
-    returnHTML('Error');
-  }
-  getDB(config, function (err, db){
-    if (err) {
-      returnHTML('Error');
-    }
-    getDataFromDB(db, id, function (err, obj){
-      if (err) {
-        returnHTML('Error');
-      }
-      retrieveTemplate(templateName, function (err, template){
-        if (err) {
-          returnHTML('Error');
-        }
-        renderTemplate(template, obj, function (err, html){
-          if (err) {
-            returnHTML('Error');
-          }
-          else {
-            returnHTML(html)            
-          }
-        });
-      });
-    });
-  });
-});
+var database = getDB(config.db);
+var passwordHashing = getPasswordHashing(config.secret);
+var users = getUsers(database, passwordHashing);
 ```
-Well, I can see more than one issue here. The first one, usually called "the pyramid of doom", can be partially solved using promises:
-```js
-Promise.all([ // <- this executes 2 blocks in parallel
-  decodeURL(url)
-    .then(function (id) {
-      return getDB(config)
-        .then(function (db) {
-          return getDataFromDB(db, id);
-        })
-    }),
-  retrieveTemplate(templateName)
-])
-  .then(function (results) {
-    var obj = results[0],
-        template = results[1];
-    return renderTemplate(obj, template);
-  })
-  .then(function (html) {
-    return returnHTML(html);
-  })
-  .catch(function () {
-    return returnHTML(err);
-  });
-```
-This second version is not only more concise but is also much more efficient as it executes two functions in parallel (decodeURL and retrieveTemplate). Also automatic propagation of errors allows to be much more coincise!
-But still is not perfect: handling the passage of values can be clumsy, swallowing exception when you forgot the "catch" can be dangerous, mixing promises and callback annoying ...
-But there is a worst issue, you are designing how these components interact between them, in an imperative way. Wouldn't it better if the system could figure out the execution order ? Even better working flawlessly with promises, synchronous functions and callbacks ?
+I like to call this progressively complex objects "services" because they are using the dependencies to provide a service.
+While this is a very nice way to build an application, it will leave the developer with a lot of annoying problems:
+* dealing with the boilerplate needed to create your services only when you need to (no need to rebuild a new "users" service in every module you need to use it)
+* some service might return asynchronously
+* you have to figure out and maintain the correct order for resolving the dependencies
+* you have to manage errors step by step
 
-With Diogenes you can describe the flow of informations in terms of services, describing the relations between them:
+Diogenes lets you design how these components interact between them, in an declarative way.
+
+You declare your "services" and their dependencies:
 ```js
 var Diogenes = require('diogenes');
 var registry = Diogenes.getRegistry();
 
-registry.service("id").provides(decodeURL);
-registry.service("db").provides(getDB);
-registry.service("data")
-  .dependsOn(["db", "url"])
-  .provides(getDataFromDB);
-registry.service("template").provides(retrieveTemplate);
-registry.service("html")
-  .dependsOn(["template", "data"])
-  .provides(renderTemplate);
+registry.service("database").provides(getDB);
+registry.service("passwordHashing").provides(getPasswordHashing);
+
+registry.service("users")
+  .dependsOn(["database", "passwordHashing"])
+  .provides(getUsers);
 ```
-and let the system do the job:
+and then get the service you need:
 ```js
 registry
   .instance(config)
-  .run("html", returnHTML);
+  .run("users", function (err, users) {
+    ...
+  });
 ```
-Diogenes resolves the whole dependency tree for you, executing the services in the right order (even in parallel when possible).
-Then it serves you the result on a silver platter.
+Diogenes figures out the execution order, manages error propagation, deals with synchronous and asynchronous functions transparently and much more.
 
 What is a service
 -----------------
@@ -215,9 +169,7 @@ registryInstance.run(["count", "abstract"], function (err, deps){
 In this case the second argument will contain an object with an attribute for each dependency (deps.count, deps.abstract).
 Using "run", Diogenes calls all services required to satisfy the dependencies tree. You can get the ordering using:
 ```js
-registryInstance.getExecutionOrder("paragraph", function (err, dependencies) {
-  //
-});
+var dependencies = registryInstance.getExecutionOrder("paragraph");
 ```
 It will return an array: ["text", "tokens", "abstract", "count", "paragraph"]
 Diogenes does not strictly follow that order: "count", for example doesn't require to wait for "abstract" as it depends on "tokens" only.
@@ -249,9 +201,7 @@ So you can change on the fly which function to use depending on the arguments (c
 ```js
 var registryInstance = registry.instance({abstractLen: 5, abstractEllipsis: "...", abstractClamp: "chars"});
 
-registryInstance.getExecutionOrder("paragraph", function (err, dependencies) {
-  // ....
-});
+var dependencies = registryInstance.getExecutionOrder("paragraph");
 ```
 will output: ["text", "abstract", "tokens", "count", "paragraph"].
 You can run the service as usual:
@@ -275,7 +225,7 @@ Caching a service
 If the result of a service depends only on the configuration, you can cache it.
 The "cache" method takes an object as argument with 3 different attributes:
 
-* key: (a function) it generates the key to use as cache key. It default to a single key (it will store a single value)
+* key: (a function or a string) it generates the key to use as cache key. It default to a single key (it will store a single value). It can also be a string with the name of a config attribute to use as a cache key
 * maxAge: the time in ms for preserving the cache. Default to infinity.
 * maxLen: the length of the cache. Default to infinity
 
@@ -290,120 +240,11 @@ registry.service('count')
   maxAge: 1000
 });
 ```
-The "cache" methods can also take as argument a [memoize-cache](https://github.com/sithmel/memoize-cache) object:
-```js
-var Cache = require('memoize-cache/ram-cache');
-
-var cache = new Cache({
-    key: function (config){
-      return config.abstractLen;
-    },
-    maxAge: 1000
-  });
-
-registry.service('count').cache(cache);
-```
-This is very convenient as it allows to manage the cache and can even uses different back ends (redis or file system for example).
 Lastly, using "cache" without options you will cache the first value forever.
 
 Errors
 ======
 If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. They will propagate the exception to the services depending on them.
-
-Decorators
-==========
-The "provides" and "returns" methods can optionally take an array instead of the function:
-```js
-registry.service('myservice').provides([
-  decorator1,
-  decorator2,
-  function (config, deps, next) {
-    ...
-  }
-]);
-```
-That is the equivalent of:
-```js
-registry.service('myservice').provides(
-  decorator1(decorator2())(function (config, deps, next) {
-    ...
-  }));
-```
-The last function of the array is the original function. The other items are decorators.
-A decorator is a function wrapping another function and adding some functionality.
-Here's a decorator example:
-```js
-registry.service('myservice').provides([
-  function (f) { // takes the original function as input
-    return function (config, deps, next) {
-      f(config, deps, function (err, res) {
-        next(err, res * 2); // multiply the original result by two
-      });
-    }
-  },
-  function (config, deps, next) {
-    next(config.number + 2)
-  }
-]);
-```
-Of course I suggest to put the decorator in an external function and reuse it where possible.
-A part this silly example you can find many useful decorators in this package: [async-deco](https://github.com/sithmel/async-deco).
-But be careful to add them in the right order, or they could work differently from what you expect.
-
-For synchronous or promise based function you can do the same, the original function is always converted to a "callback based function" before applying the decorators.
-```js
-registry.service('myservice').returns([
-  decorator1,
-  decorator2,
-  function (config, deps) {
-    ...
-  }
-]);
-```
-
-Logging and events
-==================
-Events are fired every time something is logged in a function. You can listen to all log events using:
-```js
-registry.events.on(function (name, id, ts, evt, payload, instance) {
-  //
-});
-```
-These are the arguments passed to the event handler:
-
-* name: the name of the service
-* id: a random id that changes every time you call "run" (you can also set it manually)
-* ts: the timestamp for this event
-* evt: the name of the event
-* payload: an object with additional information about this event
-* instance: an instance object
-
-Services don't log anything by default. You can rely on what is logged by the [decorators](https://github.com/sithmel/async-deco).
-```js
-var logDecorator = require('async-deco/callback/log');
-
-registry.service('myservice').provides([
-  logDecorator(), // this logs start, error and error events
-  function (config, deps, next) {
-    next(...);
-  }
-]);
-
-```
-You can also add your own custom log:
-```js
-var defaultLogger = require('async-deco/utils/default-logger');
-
-registry.service('myservice')
-  .returns(function (config, deps) {
-    ...
-    var log = defaultLogger.apply(this);
-    ...
-    log('myevent', {... additional info ...});
-  }
-);
-```
-You can run the "log" function with the name of the event and some additional informations in an object.
 
 Syntax
 ======
@@ -421,23 +262,6 @@ var registry = new Diogenes();
 
 Registry's attributes
 =====================
-
-events
-------
-Events are fired every time something is logged in one function.
-```js
-registry.events.on(function (name, id, ts, evt, payload, instance) {
-  //
-});
-```
-These are the arguments passed to the event handler:
-* name: the name of the service
-* id: a random id that changes every time you call "run" (you can also set it manually)
-* ts: the timestamp for this event
-* evt: the name of the event
-* payload: an object with additional information about this event
-* instance: the registry instance
-The "events" object is an occamsrazor registry. You can find its API [here](https://github.com/sithmel/occamsrazor.js)
 
 Registry's methods
 ==================
@@ -569,17 +393,11 @@ Set the cache for this service. It takes as argument the cache configuration:
 ```js
 service.cache(config);
 ```
-or
-```js
-service.cache(cache);
-```
 The configuration contains 3 parameters:
 
-* key: (a string/an array or a function) it generates the key to use as cache key. You can specify an attribute of the configuration (string), an nested property (array) or use a custom function running on the configuration. It default to a single key (it will store a single value)
+* key: (a string/an array or a function) it generates the key to use as cache key. You can specify an attribute of the configuration (string), or use a custom function running on the configuration. It default to a single key (it will store a single value)
 * maxAge: the time in ms for preserving the cache. Default to infinity.
 * maxLen: the length of the cache. Default to infinity
-
-In the second syntax it uses a [memoize-cache](https://github.com/sithmel/memoize-cache).
 
 RegistryInstance's methods
 =======================
@@ -590,23 +408,8 @@ getExecutionOrder
 Returns an array of services that should be executed with those arguments. The services are sorted by dependencies. It is not strictly the execution order as diogenes is able to execute services in parallel if possible.
 Also it will take into consideration what plugins match and the caching (a cached dependency has no dependency!):
 ```js
-registryInstance.getExecutionOrder(name, function (err, dependencies) {
-
-});
+registryInstance.getExecutionOrder(name);
 ```
-
-getAdjList
------------------
-It returns an object that represents the function s graph. It would be in the form:
-```js
-{
-  serviceA: [], // no dependencies
-  serviceB: ['serviceA'], // depends on serviceA
-  serviceC: ['serviceA','serviceB'], // depends on serviceA serviceB
-  serviceD: ['serviceB','serviceC'] // depends on serviceB serviceC
-}
-```
-This methods do not take caching into consideration. But it will use the configuration to get the dependencies.
 
 run
 ---
@@ -618,22 +421,24 @@ The function takes 2 arguments:
 * an error
 * the value of the service required
 
-You can also use the alternative syntax:
+You can also ask to execute more than one service passing an array of names:
 ```js
 registryInstance.run(names, func);
 ```
 In this case "names" is an array of strings (the dependency you want to be returned).
 The callback will get as second argument an object with a property for any dependency returned.
+If you pass a regular expression you will execute every service with the name matching the regexp:
+```js
+registryInstance.run(regexp, func);
+```
 
 The context (this) of this function is the registry itself.
 
 It returns the registry instance.
 
-You can also set an id of the execution using:
-```js
-registryInstance.run(name, id, func);
-```
-The id is used in the logs and can be used to correlate different events.
+runP
+----
+This method is equivalent to "run" but it returns a promise instead of using a callback.
 
 Errors in the services graph
 ============================

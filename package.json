@@ -1,7 +1,7 @@
 {
   "name": "diogenes",
   "version": "1.0.0",
-  "description": "Defines and executes functions with a common interface (services) sorting out the execution order automatically.",
+  "description": "A dependency injection framework.",
   "main": "src/index.js",
   "scripts": {
     "test": "mocha tests/*.js",
