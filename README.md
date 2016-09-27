@@ -10,7 +10,7 @@ Diogenes helps to use the dependency injection pattern to split your application
 
 Dependency injection
 --------------------
-The (dependency injection pattern)[https://en.wikipedia.org/wiki/Dependency_injection] is a widely used design pattern. Simply put, allows to build complicated abstractions composed by simpler abstractions. The composition happens when you "inject" one or more dependency into a function:
+The [dependency injection pattern](https://en.wikipedia.org/wiki/Dependency_injection) is a widely used design pattern. Simply put, allows to build complicated abstractions composed by simpler abstractions. The composition happens when you "inject" one or more dependency into a function:
 ```js
 var database = getDB(config.db);
 var passwordHashing = getPasswordHashing(config.secret);
