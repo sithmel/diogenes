@@ -6,17 +6,18 @@ Diogenes
 ![Registry as graph](https://upload.wikimedia.org/wikipedia/commons/b/b6/Diogenes_looking_for_a_man_-_attributed_to_JHW_Tischbein.jpg)
 > When asked why he went about with a lamp in broad daylight, Diogenes confessed, "I am looking for a [honest] man."
 
-Diogenes helps to use the dependency injection pattern to build an application with reusable and "easy to test" components.
+Diogenes helps to use the dependency injection pattern to split your application into reusable and testable components.
 
 Dependency injection
 --------------------
-This pattern is widely used. You build complicated abstractions composed by simpler abstractions:
+The (dependency injection pattern)[https://en.wikipedia.org/wiki/Dependency_injection] is a widely used design pattern. Simply put, allows to build complicated abstractions composed by simpler abstractions. The composition happens when you "inject" one or more dependency into a function:
 ```js
 var database = getDB(config.db);
 var passwordHashing = getPasswordHashing(config.secret);
 var users = getUsers(database, passwordHashing);
 ```
-I like to call this progressively complex objects "services" because they are using the dependencies to provide a service.
+I call this progressively complex objects "services" as they provide a specific functionality.
+
 While this is a very nice way to build an application, it will leave the developer with a lot of annoying problems:
 * dealing with the boilerplate needed to create your services only when you need to (no need to rebuild a new "users" service in every module you need to use it)
 * some service might return asynchronously
