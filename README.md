@@ -502,7 +502,7 @@ registry
     c++;
     console.log(c);
   });
-  events.on("reset-event", function (){
+  deps.events.on("reset-event", function (){
     c = 0;
   });
   next();
@@ -512,7 +512,7 @@ registry
   .dependsOn(['events'])
   .service('reset-button').provides(function (config, deps, next){
   document.getElementById('reset').addEventListener("click", function (){
-    events.trigger("reset-event");
+    deps.events.trigger("reset-event");
   });
   next();
 });
@@ -534,15 +534,15 @@ registry
   .service('database-connection').provides(function (config, deps){
   var connection = ..... I get the connection here
 
-  events.on('done', function (){
+  deps.events.on('done', function (){
     connection.dispose();
   });
   next();
 });
 
-registry.run(['main-service', 'events'], function (err, dep){
+registry.run(['main-service', 'events'], function (err, deps){
   ...
-  events.trigger('done');
+  deps.events.trigger('done');
 });
 ```
 
