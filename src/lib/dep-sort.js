@@ -1,42 +1,39 @@
-var DiogenesError = require('./diogenes-error');
-var assign = require('object-assign');
+var DiogenesError = require('./diogenes-error')
 
 // depth first search (topological sort)
-function depSort(adjlists, startingNode) { // depth first search
-  var already_visited = {};
-  var already_backtracked = {};
-  var adjlist, node;
-  var adjacencies;
-  var stack = [startingNode];
-  var out = [];
+function depSort (adjlists, startingNode) { // depth first search
+  var alreadyVisited = {}
+  var alreadyBacktracked = {}
+  var adjlist, node
+  var adjacencies
+  var stack = [startingNode]
+  var out = []
 
   while (stack.length) {
-    node = stack[stack.length - 1];
-    already_visited[node] = true;
+    node = stack[stack.length - 1]
+    alreadyVisited[node] = true
 
-
-    adjacencies = adjlists(node);
+    adjacencies = adjlists(node)
     if (!adjacencies) {
-      throw new DiogenesError('Diogenes: missing dependency: ' + node);
+      throw new DiogenesError('Diogenes: missing dependency: ' + node)
     }
 
     adjlist = adjacencies.deps.filter(function (adj) {
-      if (adj in already_visited && !(adj in already_backtracked)) {
-        throw new DiogenesError('Diogenes: circular dependency: ' + adj);
+      if (adj in alreadyVisited && !(adj in alreadyBacktracked)) {
+        throw new DiogenesError('Diogenes: circular dependency: ' + adj)
       }
-      return !(adj in already_visited);
-    });
+      return !(adj in alreadyVisited)
+    })
 
     if (adjlist.length) {
-      stack.push(adjlist[0]);
-    }
-    else {
-      already_backtracked[node] = true; // detecting circular deps
-      out.push(adjacencies);
-      stack.pop();
+      stack.push(adjlist[0])
+    } else {
+      alreadyBacktracked[node] = true // detecting circular deps
+      out.push(adjacencies)
+      stack.pop()
     }
   }
-  return out;
+  return out
 }
 
-module.exports = depSort;
+module.exports = depSort

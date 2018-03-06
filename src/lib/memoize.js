@@ -1,11 +1,11 @@
-function memoize(f) {
-  var cache = {};
+function memoize (f) {
+  var cache = {}
   return function (name) {
     if (!(name in cache)) {
-      cache[name] = f(name);
+      cache[name] = f(name)
     }
-    return cache[name];
-  };
+    return cache[name]
+  }
 }
 
-module.exports = memoize;
+module.exports = memoize
