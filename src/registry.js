@@ -1,7 +1,10 @@
+var assign = require('object-assign')
 var Service = require('./service')
 var memoize = require('./lib/memoize')
 var depSort = require('./lib/dep-sort')
 var DiogenesError = require('./lib/diogenes-error')
+
+// todo: clone, service description
 
 /*
 Registry utilities
@@ -61,14 +64,16 @@ Registry.prototype._filterByConfig = function registryFilterByConfig () {
 
 Registry.prototype.getExecutionOrder = function registryGetExecutionOrder (name) {
   var getAdjlists = this._filterByConfig()
-  return depSort(getAdjlists, name).map(function (item) { return item.name })
+  return depSort(getAdjlists, name)
 }
 
 Registry.prototype.getAdjList = function registryInstanceGetAdjList () {
   var adjList = {}
-  Object.keys(this.services).map(this.service).forEach(function (service) {
-    adjList[service.name] = service._deps()
-  })
+  Object.keys(this.services)
+    .map(this.service.bind(this))
+    .forEach(function (service) {
+      adjList[service.name] = service._deps()
+    })
   return adjList
 }
 
@@ -101,7 +106,7 @@ Registry.prototype._run = function registryRun (name, done) {
     if (isOver) {
       // the process is over (callback returned too)
       // this may happen when a service gets an error
-      // and someother service was still running
+      // and some other service was still running
       return
     }
 
@@ -129,10 +134,10 @@ Registry.prototype._run = function registryRun (name, done) {
     }
 
     while (i < sortedServices.length) {
-      currentService = services[sortedServices[i].name]
-      adj = sortedServices[i]
+      currentService = services[sortedServices[i]]
+      adj = getAdjlists(sortedServices[i])
 
-      currentServiceDeps = getDependencies(deps, adj.deps)
+      currentServiceDeps = getDependencies(deps, adj)
       if (currentServiceDeps) {
         sortedServices.splice(i, 1)
         currentService._run(currentServiceDeps, resolve)
@@ -151,16 +156,35 @@ Registry.prototype.run = function registryRun (name, done) {
   }
 
   if (name instanceof RegExp) {
-    name = Object.keys(this._registry.services).filter(RegExp.prototype.test.bind(name))
+    name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
   }
 
-  this.service('__temp__').dependsOn(name).provides(function (deps, next) {
+  var tempreg = this.clone()
+
+  tempreg.service('__temp__').dependsOn(name).provides(function (deps, next) {
     next(undefined, deps)
   })
 
-  this.run('__temp__', done)
-  delete this.services['__temp__']
+  tempreg.run('__temp__', done)
   return this
+}
+
+Registry.prototype.merge = function registryMerge () {
+  var registry = new Registry()
+
+  var services = Array.prototype.map.call(arguments, function (reg) {
+    return reg.services
+  })
+
+  services.unshift(this.services)
+  services.unshift({})
+
+  registry.services = assign.apply(null, services)
+  return registry
+}
+
+Registry.prototype.clone = function registryClone () {
+  return this.merge()
 }
 
 module.exports = Registry

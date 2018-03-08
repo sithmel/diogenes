@@ -19,19 +19,19 @@ describe('dfs: 4 functions', function (done) {
 
     */
     registry = Diogenes.getRegistry()
-    registry.service('A').provides(function (config, deps, next) {
+    registry.service('A').provides(function (deps, next) {
       next(undefined, 'A')
     })
 
-    registry.service('B').dependsOn(['A']).provides(function (config, deps, next) {
+    registry.service('B').dependsOn(['A']).provides(function (deps, next) {
       next(undefined, deps['A'] + 'B')
     })
 
-    registry.service('C').dependsOn(['A', 'B']).provides(function (config, deps, next) {
+    registry.service('C').dependsOn(['A', 'B']).provides(function (deps, next) {
       next(undefined, deps['A'] + deps['B'] + 'C')
     })
 
-    registry.service('D').dependsOn(['B', 'C']).provides(function (config, deps, next) {
+    registry.service('D').dependsOn(['B', 'C']).provides(function (deps, next) {
       next(undefined, deps['B'] + deps['C'] + 'D')
     })
   })
@@ -74,7 +74,7 @@ describe('dfs: 4 functions', function (done) {
   })
 
   it('must return adjList', function () {
-    assert.deepEqual(registry.instance({}).getAdjList(),
+    assert.deepEqual(registry.getAdjList(),
       {
         'A': [],
         'B': ['A'],

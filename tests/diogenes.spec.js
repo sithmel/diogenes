@@ -3,6 +3,27 @@ var Diogenes = require('../src')
 var assert = require('chai').assert
 var DiogenesError = require('../src/lib/diogenes-error')
 
+describe('diogenes merge registries', function () {
+  var registry1, registry2, registry3
+
+  beforeEach(function () {
+    registry1 = Diogenes.getRegistry()
+    registry2 = Diogenes.getRegistry()
+    registry1.service('answer').provides(42)
+    registry2.service('question').provides('the answer to life the universe and everything')
+    registry3 = registry1.merge(registry2)
+  })
+
+  it('must be different from previous registries', function () {
+    assert.notEqual(registry1, registry3)
+    assert.notEqual(registry2, registry3)
+  })
+
+  it('must copy the services', function () {
+    assert.equal(Object.keys(registry3.services).length, 2)
+  })
+})
+
 describe('registry', function () {
   var registry
 
@@ -20,14 +41,12 @@ describe('registry', function () {
 
   it('must return a service in a simple case (1 function)', function (done) {
     registry.service('hello').provides(function (deps, next) {
-      assert.equal(registry.service('hello'), this)
       assert.deepEqual(deps, {})
       next(undefined, 'hello')
     })
 
     registry.run('hello', function (err, dep) {
       if (err) return
-      assert.equal(registry, this)
       assert.deepEqual(dep, 'hello')
       done()
     })
@@ -35,7 +54,6 @@ describe('registry', function () {
 
   it('must return undefined (1 function)', function (done) {
     registry.run('hello', function (err, dep) {
-      assert.equal(registry, this)
       assert.equal(err.message, 'Diogenes: missing dependency: hello')
       assert.instanceOf(err, DiogenesError)
       done()
@@ -48,7 +66,6 @@ describe('registry', function () {
     })
 
     registry.run('hello', function (err, dep) {
-      assert.equal(registry, this)
       assert.instanceOf(err, Error)
       assert.equal(err.message, 'broken')
       done()
@@ -96,7 +113,7 @@ describe('registry', function () {
       return 'hello '
     })
 
-    registry.service('world').dependsOn(['hello']).returns(function (deps) {
+    registry.service('world').dependsOn(['hello']).provides(function (deps) {
       assert.deepEqual(deps, { hello: 'hello ' })
       return deps.hello + 'world!'
     })
@@ -140,7 +157,6 @@ describe('registry', function () {
     })
 
     registry.run('hello', function (err, dep) {
-      if (err) return
       assert.instanceOf(err, DiogenesError)
       assert.equal(err.message, 'Diogenes: circular dependency: hello')
       done()
@@ -161,7 +177,6 @@ describe('registry', function () {
     })
 
     registry.run('C', function (err, dep) {
-      if (err) return
       assert.instanceOf(err, DiogenesError)
       assert.equal(err.message, 'Diogenes: circular dependency: C')
       done()

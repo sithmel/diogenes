@@ -7,13 +7,13 @@ var assert = require('chai').assert
 var getAdjFactory = function (adjList) {
   return function (node, next) {
     if (node in adjList) {
-      return { deps: adjList[node], name: node }
+      return adjList[node]
     }
     return null
   }
 }
 
-describe.only('depSort', function () {
+describe('depSort', function () {
   var getAdj
 
   describe('1 node', function () {
@@ -24,7 +24,7 @@ describe.only('depSort', function () {
 
     it('must return 1 node (1 node)', function () {
       var l = depSort(getAdj, 'A')
-      assert.deepEqual(l, [{ name: 'A', deps: [] }])
+      assert.deepEqual(l, ['A'])
     })
 
     it('must fire exception (1 node)', function () {
@@ -40,12 +40,12 @@ describe.only('depSort', function () {
 
     it('must return 2 node (2 nodes)', function () {
       var l = depSort(getAdj, 'A')
-      assert.deepEqual(l, [{ name: 'B', deps: [] }, { name: 'A', deps: ['B'] }])
+      assert.deepEqual(l, ['B', 'A'])
     })
 
     it('must return 1 nodes (2 nodes)', function () {
       var l = depSort(getAdj, 'B')
-      assert.deepEqual(l, [{name: 'B', deps: []}])
+      assert.deepEqual(l, ['B'])
     })
 
     it('must fire exception (2 nodes)', function () {
@@ -69,17 +69,17 @@ describe.only('depSort', function () {
 
     it('must return 3 node (3 nodes)', function () {
       var l = depSort(getAdj, 'A')
-      assert.deepEqual(l, [{ name: 'C', deps: [] }, { name: 'B', deps: ['C'] }, { name: 'A', deps: ['B', 'C'] }])
+      assert.deepEqual(l, ['C', 'B', 'A'])
     })
 
     it('must return 2 nodes (3 nodes)', function () {
       var l = depSort(getAdj, 'B')
-      assert.deepEqual(l, [{name: 'C', deps: []}, {name: 'B', deps: ['C']}])
+      assert.deepEqual(l, ['C', 'B'])
     })
 
     it('must return 1 nodes (3 nodes)', function () {
       var l = depSort(getAdj, 'C')
-      assert.deepEqual(l, [{name: 'C', deps: []}])
+      assert.deepEqual(l, ['C'])
     })
   })
 
@@ -121,22 +121,22 @@ describe.only('depSort', function () {
 
     it('must return 4 node (4 nodes)', function () {
       var l = depSort(getAdj, 'A')
-      assert.deepEqual(l, [{ name: 'D', deps: [] }, { name: 'C', deps: ['D'] }, { name: 'B', deps: ['C', 'D'] }, { name: 'A', deps: ['B', 'C'] }])
+      assert.deepEqual(l, ['D', 'C', 'B', 'A'])
     })
 
     it('must return 3 nodes (4 nodes)', function () {
       var l = depSort(getAdj, 'B')
-      assert.deepEqual(l, [{name: 'D', deps: []}, {name: 'C', deps: ['D']}, {name: 'B', deps: ['C', 'D']}])
+      assert.deepEqual(l, ['D', 'C', 'B'])
     })
 
     it('must return 2 nodes (4 nodes)', function () {
       var l = depSort(getAdj, 'C')
-      assert.deepEqual(l, [{name: 'D', deps: []}, {name: 'C', deps: ['D']}])
+      assert.deepEqual(l, ['D', 'C'])
     })
 
     it('must return 1 nodes (4 nodes)', function () {
       var l = depSort(getAdj, 'D')
-      assert.deepEqual(l, [{name: 'D', deps: []}])
+      assert.deepEqual(l, ['D'])
     })
   })
 })

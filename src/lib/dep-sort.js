@@ -14,11 +14,12 @@ function depSort (adjlists, startingNode) { // depth first search
     alreadyVisited[node] = true
 
     adjacencies = adjlists(node)
+
     if (!adjacencies) {
       throw new DiogenesError('Diogenes: missing dependency: ' + node)
     }
 
-    adjlist = adjacencies.deps.filter(function (adj) {
+    adjlist = adjacencies.filter(function (adj) {
       if (adj in alreadyVisited && !(adj in alreadyBacktracked)) {
         throw new DiogenesError('Diogenes: circular dependency: ' + adj)
       }
@@ -29,7 +30,7 @@ function depSort (adjlists, startingNode) { // depth first search
       stack.push(adjlist[0])
     } else {
       alreadyBacktracked[node] = true // detecting circular deps
-      out.push(adjacencies)
+      out.push(node)
       stack.pop()
     }
   }
