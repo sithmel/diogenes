@@ -4,8 +4,6 @@ var memoize = require('./lib/memoize')
 var depSort = require('./lib/dep-sort')
 var DiogenesError = require('./lib/diogenes-error')
 
-// todo: clone, service description
-
 /*
 Registry utilities
 */
@@ -51,7 +49,6 @@ Registry.prototype.service = function registryService (name) {
   return this.services[name]
 }
 
-// here
 Registry.prototype._filterByConfig = function registryFilterByConfig () {
   var services = this.services
   return memoize(function (name) {
