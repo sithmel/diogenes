@@ -100,6 +100,11 @@ Registry.prototype._run = function registryRun (name, done) {
     var currentService, adj, currentServiceDeps
     var i = 0
 
+    if (err) {
+      isOver = true
+      return done(err)
+    }
+
     if (isOver) {
       // the process is over (callback returned too)
       // this may happen when a service gets an error
@@ -114,11 +119,6 @@ Registry.prototype._run = function registryRun (name, done) {
       return done(new DiogenesError('Diogenes: a callback has been firing more than once'))
     } else if (name) {
       deps[name] = dep
-    }
-
-    if (err) {
-      isOver = true
-      return done(err, dep)
     }
 
     if (sortedServices.length === 0) {

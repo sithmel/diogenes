@@ -42,7 +42,7 @@ Service.prototype._run = function serviceRun (deps, callback) {
     try {
       res = service._func(deps)
     } catch (e) { // erroring
-      defer(callback, e, null, service.name)
+      return defer(callback, e, null, service.name)
     }
     if (res instanceof Object && 'then' in res) { // it is a promise
       res
