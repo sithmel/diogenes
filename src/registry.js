@@ -32,14 +32,18 @@ Registry.prototype.service = function registryService (name) {
   return this.services[name]
 }
 
-Registry.prototype.getAdjList = function registryInstanceGetAdjList () {
-  var adjList = {}
+Registry.prototype.map = function registryMap (func) {
+  var out = {}
   Object.keys(this.services)
     .map(this.service.bind(this))
     .forEach(function (service) {
-      adjList[service.name] = service._deps()
+      out[service.name] = func(service)
     })
-  return adjList
+  return out
+}
+
+Registry.prototype.getAdjList = function registryGetAdjList () {
+  return this.map(function (service) { return service._deps() })
 }
 
 Registry.prototype._run = function registryRun (name) {
