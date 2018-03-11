@@ -42,7 +42,7 @@ and then get the service you need:
 ```js
 registry
   .run('users')
-  .then((user) => {
+  .then((users) => {
     ...
   })
 ```
@@ -186,11 +186,8 @@ or
 var registry = new Diogenes();
 ```
 
-Registry's attributes
-=====================
-
-Registry's methods
-==================
+Registry
+========
 
 service
 -------
@@ -228,8 +225,7 @@ registry.run(serviceName, (err, service) => {
   ...
 });
 ```
-As usual the callback uses the node convention (error as first argument).
-Using a callback, the registry is returned (convenient for chaining).
+The callback uses the node convention (error as first argument).
 
 You can also execute more than one service passing an array of names:
 ```js
@@ -281,22 +277,26 @@ registry.getAdjList();
 */
 ```
 
-Service's attributes
-====================
-
-* name: the name of the service (cannot be changed)
-
-Service's methods
-=================
+Service
+=======
 You can get a service from the registry with the "service" method.
 ```js
-var service = registry.service("service1");
+const service = registry.service('service1');
 ```
 All the service methods returns a service instance so they can be chained.
 
+dependsOn
+---------
+It defines the dependencies of a service. It may be an array or a function returning an array of strings (service names):
+```js
+service.dependsOn(array);
+
+service.dependsOn(func);
+```
+
 provides
 --------
-In the basic form you can pass a function taking a dependencies object as argument, and returning a promise.
+You can pass a function taking a dependencies object as argument, and returning a promise.
 ```js
 service.provides((deps) => ...);
 ```
@@ -304,17 +304,9 @@ You can also pass any "non function" argument:
 ```js
 service.provides(42); // Any non function argument
 ```
-This will be converted to:
-```js
-service.provides(() => Promise.resolve(42));
-```
 A synchronous function:
 ```js
 service.provides((deps) => deps.something * 2);
-```
-That will be converted in:
-```js
-service.provides((deps) => Promise.resolve(deps.something * 2));
 ```
 Or callback:
 ```js
@@ -322,15 +314,6 @@ service.provides((deps, callback) => callback(null, deps.something * 2));
 ```
 The "callback" behaviour is triggered by the extra argument "callback". Do not add that argument if you are not using the callback. Callbacks use the node convention of having the error as first argument and the result as second.
 When you pass a function to "provides", the first argument of this function is always a object with an attribute for every dependency.
-
-dependsOn
----------
-It defines the dependencies of a service. It may be an array or a function returning an array:
-```js
-service.dependsOn(array);
-
-service.dependsOn(func);
-```
 
 Compatibility
 =============
