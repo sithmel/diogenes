@@ -1,8 +1,9 @@
-var Diogenes = require('../src');
-var assert = require('chai').assert;
+/* eslint-env node, mocha */
+var Diogenes = require('../src')
+var assert = require('chai').assert
 
 describe('async parallel execution', function (done) {
-  var str, registry;
+  var str, registry
 
   beforeEach(function () {
     /*
@@ -18,45 +19,36 @@ describe('async parallel execution', function (done) {
 
     */
 
-    registry = Diogenes.getRegistry();
+    registry = Diogenes.getRegistry()
 
-    str = '';
+    str = ''
 
-    registry.service('A').provides(function (config, deps, next) {
+    registry.service('A').provides(function (deps, next) {
       setTimeout(function () {
-        str += 'A';
-        next(undefined, 'A');
-      }, 50);
-    });
+        str += 'A'
+        next(undefined, 'A')
+      }, 50)
+    })
 
-    registry.service('B').provides(function (config, deps, next) {
+    registry.service('B').provides(function (deps, next) {
       setTimeout(function () {
-        str += 'B';
-        next(undefined, 'B');
-      }, 20);
-    });
+        str += 'B'
+        next(undefined, 'B')
+      }, 20)
+    })
 
-    registry.service('C').dependsOn(['A', 'B']).provides(function (config, deps, next) {
-      str += 'C';
-      next(undefined, deps.A + deps.B + 'C');
-    });
-
-  });
+    registry.service('C').dependsOn(['A', 'B']).provides(function (deps, next) {
+      str += 'C'
+      next(undefined, deps.A + deps.B + 'C')
+    })
+  })
 
   it('must run service asynchronously', function (done) {
-    registry.instance({}).run('C', function (err, dep) {
-      assert.equal(str, 'BAC');
-      assert.equal(dep, 'ABC');
-      done();
-    });
-  });
-
-  it('must run service synchronously', function (done) {
-    registry.instance({}, {limit: 1}).run('C', function (err, dep) {
-      assert.equal(str, 'ABC');
-      assert.equal(dep, 'ABC');
-      done();
-    });
-  });
-
-});
+    registry.run('C', function (err, dep) {
+      if (err) return
+      assert.equal(str, 'BAC')
+      assert.equal(dep, 'ABC')
+      done()
+    })
+  })
+})
