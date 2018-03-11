@@ -12,9 +12,9 @@ Dependency injection
 --------------------
 The [dependency injection pattern](https://en.wikipedia.org/wiki/Dependency_injection) is a widely used design pattern. Simply put, allows to build complicated abstractions composed by simpler abstractions. The composition happens when you "inject" one or more dependency into a function:
 ```js
-var database = getDB(config.db);
-var passwordHashing = getPasswordHashing(config.secret);
-var users = getUsers(database, passwordHashing);
+const database = getDB(config.db);
+const passwordHashing = getPasswordHashing(config.secret);
+const users = getUsers(database, passwordHashing);
 ```
 I call this progressively complex objects "services" as they provide a specific functionality.
 
@@ -64,14 +64,14 @@ Importing diogenes
 ------------------
 You can import Diogenes using commonjs:
 ```js
-var Diogenes = require('diogenes');
+const Diogenes = require('diogenes');
 ```
 
 Creating a registry
 -------------------
 You can create a registry with:
 ```js
-var registry = Diogenes.getRegistry(); // of new Diogenes()
+const registry = Diogenes.getRegistry(); // of new Diogenes()
 ```
 
 Defining services
@@ -179,11 +179,11 @@ Diogenes.getRegistry
 --------------------
 Create a registry of services:
 ```js
-var registry = Diogenes.getRegistry();
+const registry = Diogenes.getRegistry();
 ```
 or
 ```js
-var registry = new Diogenes();
+const registry = new Diogenes();
 ```
 
 Registry
