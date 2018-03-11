@@ -1,20 +1,14 @@
-require('setimmediate')
 /*
 Service object
 */
-
-function defer (func) {
-  var args = Array.prototype.slice.call(arguments, 1)
-  setImmediate(function () {
-    func.apply(null, args)
-  })
-}
+var promisify = require('es6-promisify').promisify
 
 function Service (name, registry) {
   this.name = name
   this._registry = registry // backreference
-  this._cached = false
   this._deps = function () { return [] }
+  this._func = function () { return Promise.resolve() }
+  this._cache = undefined
 }
 
 Service.prototype.registry = function serviceRegistry () {
@@ -27,51 +21,42 @@ Service.prototype.dependsOn = function serviceDependsOn (deps) {
 }
 
 Service.prototype.provides = function serviceProvides (func) {
-  this._func = func
+  if (typeof func !== 'function') {
+    this._func = function () { Promise.resolve(func) } // plain value
+  } else if (func.length > 1) {
+    this._func = promisify(func) // callback function
+  } else {
+    this._func = function (deps) { // sync function or return promise
+      try {
+        var res = func(deps)
+      } catch (e) {
+        return Promise.reject(e)
+      }
+      if (res instanceof Object && 'then' in res) {
+        return res
+      } else {
+        return Promise.resolve(res)
+      }
+    }
+  }
   return this
 }
 
-Service.prototype._run = function serviceRun (deps, callback) {
+Service.prototype._run = function serviceRun (deps) {
   var service = this
-  var res
-  if (service._cached) {
-    return callback(null, service._cache, service.name)
+  if (service._cache) {
+    return service._cache
   }
-
-  if (service._func.length <= 1) { // no callback. It should return
-    try {
-      res = service._func(deps)
-    } catch (e) { // erroring
-      return defer(callback, e, null, service.name)
-    }
-    if (res instanceof Object && 'then' in res) { // it is a promise
-      res
-        .then(function (out) {
-          service._cached = true
-          service._cache = out
-          callback(null, out, service.name)
-        })
-        .catch(function (err) {
-          callback(err, null, service.name)
-        })
-    } else { // just a plain sync function
-      service._cached = true
-      service._cache = res
-      defer(callback, null, res, service.name)
-    }
-  } else { // we have a callback
-    this._func(deps, function (err, res) {
-      if (!err) {
-        service._cached = true
-        service._cache = res
-      }
-      defer(callback, err, res, service.name)
+  service._cache = service._func(deps)
+    .catch(function (err) {
+      service._cache = undefined
+      return Promise.reject(err)
     })
-  }
+  return service._cache
 }
 
 Service.prototype._getDeps = function serviceGetDeps () {
-  return this._cached ? [] : this._deps()
+  return this._cache ? [] : this._deps()
 }
 
 module.exports = Service

@@ -68,11 +68,6 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must return execution order', function () {
-    var list = registry.getExecutionOrder('D')
-    assert.deepEqual(list, [ 'A', 'B', 'C', 'D' ])
-  })
-
   it('must return adjList', function () {
     assert.deepEqual(registry.getAdjList(),
       {

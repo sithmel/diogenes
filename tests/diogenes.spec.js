@@ -90,23 +90,6 @@ describe('registry', function () {
     })
   })
 
-  it('must return an exception if the callback fires twice', function (done) {
-    registry.service('hello').provides(function (deps, next) {
-      next(undefined, 'hello ')
-      next(undefined, 'hello ')
-    })
-
-    registry.service('world').dependsOn(['hello']).provides(function (deps, next) {
-      next(undefined, deps.hello + 'world!')
-    })
-
-    registry.run('world', function (err, dep) {
-      assert.instanceOf(err, DiogenesError)
-      assert.equal(err.message, 'Diogenes: a callback has been firing more than once')
-      done()
-    })
-  })
-
   it('must return a service in a simple case (2 functions) not using next', function (done) {
     registry.service('hello').provides(function (deps) {
       assert.deepEqual(deps, {})
@@ -158,7 +141,7 @@ describe('registry', function () {
 
     registry.run('hello', function (err, dep) {
       assert.instanceOf(err, DiogenesError)
-      assert.equal(err.message, 'Diogenes: circular dependency: hello')
+      assert.equal(err.message, 'Diogenes: circular dependency')
       done()
     })
   })
@@ -178,7 +161,7 @@ describe('registry', function () {
 
     registry.run('C', function (err, dep) {
       assert.instanceOf(err, DiogenesError)
-      assert.equal(err.message, 'Diogenes: circular dependency: C')
+      assert.equal(err.message, 'Diogenes: circular dependency')
       done()
     })
   })

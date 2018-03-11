@@ -34,7 +34,7 @@
     "npm-release": "^1.0.0"
   },
   "dependencies": {
-    "object-assign": "^4.1.1",
-    "setimmediate": "^1.0.5"
+    "es6-promisify": "^6.0.0",
+    "object-assign": "^4.1.1"
   }
 }

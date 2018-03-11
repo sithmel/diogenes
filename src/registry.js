@@ -1,23 +1,6 @@
 var assign = require('object-assign')
 var Service = require('./service')
-var memoize = require('./lib/memoize')
-var depSort = require('./lib/dep-sort')
 var DiogenesError = require('./lib/diogenes-error')
-
-/*
-Registry utilities
-*/
-
-function getDependencies (currentDeps, requiredDeps) {
-  var deps = {}
-  for (var i = 0; i < requiredDeps.length; i++) {
-    if (!(requiredDeps[i] in currentDeps)) {
-      return // I can't execute this because a deps is missing
-    }
-    deps[requiredDeps[i]] = currentDeps[requiredDeps[i]]
-  }
-  return deps
-}
 
 /*
 Registry object
@@ -33,7 +16,7 @@ Registry.getRegistry = function registryGetRegistry () {
 
 Registry.prototype.init = function registryInit (funcs) {
   for (var i = 0; i < funcs.length; i++) {
-    funcs[i].apply(this)
+    funcs[i].call(this, this)
   }
 }
 
@@ -49,21 +32,6 @@ Registry.prototype.service = function registryService (name) {
   return this.services[name]
 }
 
-Registry.prototype._filterByConfig = function registryFilterByConfig () {
-  var services = this.services
-  return memoize(function (name) {
-    if (!(name in services)) {
-      return null
-    };
-    return services[name]._getDeps()
-  })
-}
-
-Registry.prototype.getExecutionOrder = function registryGetExecutionOrder (name) {
-  var getAdjlists = this._filterByConfig()
-  return depSort(getAdjlists, name)
-}
-
 Registry.prototype.getAdjList = function registryInstanceGetAdjList () {
   var adjList = {}
   Object.keys(this.services)
@@ -74,99 +42,78 @@ Registry.prototype.getAdjList = function registryInstanceGetAdjList () {
   return adjList
 }
 
-Registry.prototype._run = function registryRun (name, done) {
-  var getAdjlists = this._filterByConfig()
-  var deps = {} // all dependencies already resolved
+Registry.prototype._run = function registryRun (name) {
   var registry = this
-  var services = registry.services
-  var isOver = false
-  var sortedServices
+  var c = 0
 
-  if (!done) {
-    done = function (err, dep) {
-      if (err) {
-        throw err
-      }
+  function getPromiseFromStr (str) {
+    if (c++ > 1000) {
+      throw new DiogenesError('Diogenes: circular dependency')
     }
+    if (!(str in registry.services)) {
+      return Promise.reject(new DiogenesError('Diogenes: missing dependency: ' + str))
+    }
+
+    var deps = registry.services[str]._getDeps()
+
+    if (deps.length === 0) {
+      return registry.services[str]._run({})
+    }
+    return getPromisesFromStrArray(deps)
+      .then(registry.services[str]._run.bind(registry.services[str]))
+  }
+
+  function getPromisesFromStrArray (strArray) {
+    return Promise.all(strArray.map(getPromiseFromStr))
+      .then(function (results) {
+        var out = {}
+        for (var i = 0; i < strArray.length; i++) {
+          out[strArray[i]] = results[i]
+        }
+        return out
+      })
   }
 
   try {
-    sortedServices = depSort(getAdjlists, name)
-  } catch (err) {
-    return done(err)
+    return getPromiseFromStr(name)
+  } catch (e) {
+    return Promise.reject(e)
   }
-
-  (function resolve (err, dep, name) {
-    var currentService, adj, currentServiceDeps
-    var i = 0
-
-    if (err) {
-      isOver = true
-      return done(err)
-    }
-
-    if (isOver) {
-      // the process is over (callback returned too)
-      // this may happen when a service gets an error
-      // and some other service was still running
-      return
-    }
-
-    if (name in deps) {
-      // this dependency already solved.
-      // Did someone is firing the callback twice ?
-      isOver = true
-      return done(new DiogenesError('Diogenes: a callback has been firing more than once'))
-    } else if (name) {
-      deps[name] = dep
-    }
-
-    if (sortedServices.length === 0) {
-      isOver = true
-      if (err) {
-        return done(err)
-      } else {
-        return done(null, dep)
-      }
-    }
-
-    while (i < sortedServices.length) {
-      currentService = services[sortedServices[i]]
-      adj = getAdjlists(sortedServices[i])
-
-      currentServiceDeps = getDependencies(deps, adj)
-      if (currentServiceDeps) {
-        sortedServices.splice(i, 1)
-        currentService._run(currentServiceDeps, resolve)
-      } else {
-        i++
-      }
-    }
-  }())
-  return this
 }
 
 Registry.prototype.run = function registryRun (name, done) {
+  var promise
   if (typeof name === 'string') {
-    this._run(name, done)
+    promise = this._run(name, done)
+  } else {
+    if (name instanceof RegExp) {
+      name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
+    }
+
+    var tempreg = this.clone()
+
+    tempreg.service('__temp__').dependsOn(name)
+      .provides(function (deps) {
+        return Promise.resolve(deps)
+      })
+    promise = tempreg.run('__temp__')
+  }
+
+  if (done) {
+    promise
+      .then(function (res) {
+        done(null, res)
+      })
+      .catch(function (err) {
+        done(err)
+      })
     return this
+  } else {
+    return promise
   }
-
-  if (name instanceof RegExp) {
-    name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
-  }
-
-  var tempreg = this.clone()
-
-  tempreg.service('__temp__').dependsOn(name).provides(function (deps, next) {
-    next(undefined, deps)
-  })
-
-  tempreg.run('__temp__', done)
-  return this
 }
 
-Registry.prototype.merge = function registryMerge () {
+Registry.prototype.merge = Registry.prototype.clone = function registryMerge () {
   var registry = new Registry()
 
   var services = Array.prototype.map.call(arguments, function (reg) {
@@ -178,10 +125,6 @@ Registry.prototype.merge = function registryMerge () {
 
   registry.services = assign.apply(null, services)
   return registry
-}
-
-Registry.prototype.clone = function registryClone () {
-  return this.merge()
 }
 
 module.exports = Registry
