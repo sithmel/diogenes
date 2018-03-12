@@ -3,16 +3,56 @@ Service object
 */
 var promisify = require('es6-promisify').promisify
 
+function getDebugInfo (func) {
+  try {
+    var orig = Error.prepareStackTrace
+    Error.prepareStackTrace = function (_, stack) {
+      return stack
+    }
+    var err = new Error()
+    var stack = err.stack
+    Error.prepareStackTrace = orig
+    var stackItem = stack[2]
+    return {
+      line: stackItem.getLineNumber(),
+      fileName: stackItem.getFileName(),
+      parentFunctionName: stackItem.getFunctionName(),
+      functionName: typeof func === 'function' ? func.name : null
+    }
+  } catch (e) {
+    return {}
+  }
+}
+
 function Service (name, registry) {
   this.name = name
   this._registry = registry // backreference
   this._deps = function () { return [] }
   this._func = function () { return Promise.resolve() }
   this._cache = undefined
+  this._doc = ''
 }
 
 Service.prototype.registry = function serviceRegistry () {
   return this._registry
+}
+
+Service.prototype.doc = function serviceDoc (text) {
+  if (typeof text === 'undefined') {
+    return this._doc
+  }
+  this._doc = text
+  return this
+}
+
+Service.prototype.getMetadata = function serviceGetMetadata () {
+  return {
+    name: this.name,
+    deps: this._deps(),
+    doc: this.doc(),
+    cached: !!this._cache,
+    debugInfo: this._debugInfo
+  }
 }
 
 Service.prototype.dependsOn = function serviceDependsOn (deps) {
@@ -21,6 +61,7 @@ Service.prototype.dependsOn = function serviceDependsOn (deps) {
 }
 
 Service.prototype.provides = function serviceProvides (func) {
+  this._debugInfo = getDebugInfo(func)
   if (typeof func !== 'function') {
     this._func = function () { Promise.resolve(func) } // plain value
   } else if (func.length > 1) {

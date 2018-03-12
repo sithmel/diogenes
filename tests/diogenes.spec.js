@@ -24,6 +24,65 @@ describe('diogenes merge registries', function () {
   })
 })
 
+describe('metadata', function () {
+  var registry, service1
+
+  beforeEach(function () {
+    registry = Diogenes.getRegistry()
+    service1 = registry
+      .service('answer').provides(42).doc('to all the questions')
+
+    registry.service('question')
+      .dependsOn(['answer'])
+      .provides(function theanswer () {})
+      .doc('the important bit')
+  })
+
+  it('must return services metadata', function () {
+    assert.deepEqual(service1.getMetadata(), {
+      name: 'answer',
+      cached: false,
+      deps: [],
+      doc: 'to all the questions',
+      debugInfo: {
+        line: 33,
+        functionName: null,
+        parentFunctionName: null,
+        fileName: __filename
+      }
+    })
+  })
+
+  it('must return registry metadata', function () {
+    assert.deepEqual(registry.getMetadata(), {
+      answer: {
+        name: 'answer',
+        cached: false,
+        deps: [],
+        doc: 'to all the questions',
+        debugInfo: {
+          line: 33,
+          functionName: null,
+          parentFunctionName: null,
+          fileName: __filename
+        }
+      },
+      question: {
+        name: 'question',
+        cached: false,
+        deps: ['answer'],
+        doc: 'the important bit',
+        debugInfo: {
+          line: 37,
+          functionName: 'theanswer',
+          parentFunctionName: null,
+          fileName: __filename
+        }
+      }
+    })
+  })
+})
+
 describe('registry', function () {
   var registry
 

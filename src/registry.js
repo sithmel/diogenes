@@ -46,6 +46,10 @@ Registry.prototype.getAdjList = function registryGetAdjList () {
   return this.map(function (service) { return service._deps() })
 }
 
+Registry.prototype.getMetadata = function registryGetAdjList () {
+  return this.map(function (service) { return service.getMetadata() })
+}
+
 Registry.prototype._run = function registryRun (name) {
   var registry = this
   var c = 0

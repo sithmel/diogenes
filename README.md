@@ -277,6 +277,30 @@ registry.getAdjList();
 */
 ```
 
+getMetadata
+------------
+It returns the metadata of all services:
+```js
+registry.getMetadata();
+/* returns
+{
+  'A': {
+    name: 'A', // service name
+    cached: true/false, // true if the service was successfully called
+    deps: [], // list of deps
+    doc: '...', // service documentation string
+    debugInfo: {
+      fileName: ... // file name where service is defined
+      line: ..., // line of code where the service is defined
+      functionName: ..., // service function name (if defined)
+      parentFunctionName: ..., // the function containing the service definition
+    }
+  },
+  ...
+}
+*/
+```
+
 Service
 =======
 You can get a service from the registry with the "service" method.
@@ -314,6 +338,35 @@ service.provides((deps, callback) => callback(null, deps.something * 2));
 ```
 The "callback" behaviour is triggered by the extra argument "callback". Do not add that argument if you are not using the callback. Callbacks use the node convention of having the error as first argument and the result as second.
 When you pass a function to "provides", the first argument of this function is always a object with an attribute for every dependency.
+
+doc
+---
+set/get the documentation string.
+```js
+service.doc(); // returns documentation string
+service.doc('... service description ...'); // set the doc string
+```
+
+getMetadata
+------------
+It returns the metadata of this service:
+```js
+service.getMetadata();
+/* returns
+{
+  name: 'A', // service name
+  cached: true/false, // true if the service was successfully called
+  deps: [], // list of deps
+  doc: '...', // service documentation string
+  debugInfo: {
+    fileName: ... // file name where service is defined
+    line: ..., // line of code where the service is defined
+    functionName: ..., // service function name (if defined)
+    parentFunctionName: ..., // the function containing the service definition
+  }
+}
+*/
+```
 
 Compatibility
 =============
