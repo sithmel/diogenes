@@ -301,6 +301,21 @@ registry.getMetadata();
 */
 ```
 
+shutdown
+--------
+The purpose of this method is allow all asynchronous call to be terminated before a system shutdown.
+After calling this method the service won't execute the "run" method anymore (It will return an exception). The method returns a promise (or a callback). This will be fulfilled when all previous "run" has been fulfilled of rejected.
+```js
+
+const A = registry.run('A')
+const C = registry.run('C')
+registry.shutdown()
+  .then(() => {
+    // "A" and "C" are fulfilled
+    registry.run('B') // rejected with DiogenesShutdownError
+  })
+```
+
 Service
 =======
 You can get a service from the registry with the "service" method.

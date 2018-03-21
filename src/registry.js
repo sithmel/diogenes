@@ -1,6 +1,8 @@
 var assign = require('object-assign')
+var uuid = require('uuid/v1')
 var Service = require('./service')
 var DiogenesError = require('./lib/diogenes-error')
+var DiogenesShutdownError = require('./lib/diogenes-shutdown')
 
 /*
 Registry object
@@ -8,6 +10,8 @@ Registry object
 
 function Registry () {
   this.services = {}
+  this.running = {}
+  this._isShuttingDown = false
 }
 
 Registry.getRegistry = function registryGetRegistry () {
@@ -26,7 +30,7 @@ Registry.prototype.service = function registryService (name) {
   }
 
   if (!(name in this.services)) {
-    this.services[name] = new Service(name, this)
+    this.services[name] = new Service(name)
   }
 
   return this.services[name]
@@ -53,6 +57,12 @@ Registry.prototype.getMetadata = function registryGetAdjList () {
 Registry.prototype._run = function registryRun (name) {
   var registry = this
   var c = 0
+  var runId = uuid()
+  var promise
+
+  if (this._isShuttingDown) {
+    return Promise.reject(new DiogenesShutdownError('Diogenes: shutting down'))
+  }
 
   function getPromiseFromStr (str) {
     if (c++ > 1000) {
@@ -65,10 +75,10 @@ Registry.prototype._run = function registryRun (name) {
     var deps = registry.services[str]._getDeps()
 
     if (deps.length === 0) {
-      return registry.services[str]._run({})
+      return registry.services[str]._run(runId, {})
     }
     return getPromisesFromStrArray(deps)
-      .then(registry.services[str]._run.bind(registry.services[str]))
+      .then(registry.services[str]._run.bind(registry.services[str], runId))
   }
 
   function getPromisesFromStrArray (strArray) {
@@ -83,8 +93,19 @@ Registry.prototype._run = function registryRun (name) {
   }
 
   try {
-    return getPromiseFromStr(name)
+    promise = getPromiseFromStr(name)
+      .then(function (res) {
+        delete registry.running[runId]
+        return Promise.resolve(res)
+      })
+      .catch(function (err) {
+        delete registry.running[runId]
+        return Promise.reject(err)
+      })
+    registry.running[runId] = promise
+    return promise
   } catch (e) {
+    delete registry.running[runId]
     return Promise.reject(e)
   }
 }
@@ -133,6 +154,30 @@ Registry.prototype.merge = Registry.prototype.clone = function registryMerge () 
 
   registry.services = assign.apply(null, services)
   return registry
+}
+
+Registry.prototype.shutdown = function registryShutdown (done) {
+  var registry = this
+  registry._isShuttingDown = true
+
+  var promise = Promise.all(Object.keys(registry.running)
+    .map(function (key) {
+      return registry.running[key]
+        .catch(function () { return Promise.resolve(null) })
+    }))
+
+  if (done) {
+    promise
+      .then(function (res) {
+        done(null, res)
+      })
+      .catch(function (err) {
+        done(err)
+      })
+    return this
+  } else {
+    return promise
+  }
 }
 
 module.exports = Registry

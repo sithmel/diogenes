@@ -133,11 +133,15 @@ describe('registry', function () {
 
   it('must return a service in a simple case (2 functions)', function (done) {
     registry.service('hello').provides(function (deps, next) {
+      assert.typeOf(this.id, 'string')
+      assert.isDefined(this.service)
       assert.deepEqual(deps, {})
       next(undefined, 'hello ')
     })
 
     registry.service('world').dependsOn(['hello']).provides(function (deps, next) {
+      assert.typeOf(this.id, 'string')
+      assert.isDefined(this.service)
       assert.deepEqual(deps, {hello: 'hello '})
       next(undefined, deps.hello + 'world!')
     })
@@ -234,6 +238,76 @@ describe('registry', function () {
       assert.instanceOf(err, DiogenesError)
       assert.equal(err.message, 'Diogenes: missing dependency: world')
       done()
+    })
+  })
+
+  describe('shutdown', function () {
+    it('must wait to shutdown', function (done) {
+      var services = ''
+
+      registry.service('A').provides(function (deps, next) {
+        setTimeout(function () {
+          services += 'A'
+          next(undefined, undefined)
+        }, 100)
+      })
+
+      registry.service('B').dependsOn(['A']).provides(function (deps, next) {
+        setTimeout(function () {
+          services += 'B'
+          next(undefined, undefined)
+        }, 100)
+      })
+
+      registry.service('C').dependsOn(['A']).provides(function (deps, next) {
+        setTimeout(function () {
+          services += 'C'
+          next(undefined, undefined)
+        }, 100)
+      })
+
+      registry.run('B')
+      registry.run('C')
+      registry.shutdown(function () {
+        registry.run('B', function (err) {
+          assert.equal(err.message, 'Diogenes: shutting down')
+        })
+        assert.equal(services, 'ABC')
+        done()
+      })
+    })
+
+    it('must wait to shutdown, also failing methods', function (done) {
+      var services = ''
+
+      registry.service('A').provides(function (deps, next) {
+        services += 'A'
+        next(new Error('broken'), undefined)
+      })
+
+      registry.service('B').provides(function (deps, next) {
+        setTimeout(function () {
+          services += 'B'
+          next(undefined, undefined)
+        }, 100)
+      })
+
+      registry.service('C').dependsOn(['B']).provides(function (deps, next) {
+        setTimeout(function () {
+          services += 'C'
+          next(undefined, undefined)
+        }, 100)
+      })
+
+      registry.run('A')
+      registry.run('C')
+      registry.shutdown(function () {
+        registry.run('B', function (err) {
+          assert.equal(err.message, 'Diogenes: shutting down')
+        })
+        assert.equal(services, 'ABC')
+        done()
+      })
     })
   })
 })

@@ -24,17 +24,12 @@ function getDebugInfo (func) {
   }
 }
 
-function Service (name, registry) {
+function Service (name) {
   this.name = name
-  this._registry = registry // backreference
   this._deps = function () { return [] }
   this._func = function () { return Promise.resolve() }
   this._cache = undefined
   this._doc = ''
-}
-
-Service.prototype.registry = function serviceRegistry () {
-  return this._registry
 }
 
 Service.prototype.doc = function serviceDoc (text) {
@@ -83,12 +78,13 @@ Service.prototype.provides = function serviceProvides (func) {
   return this
 }
 
-Service.prototype._run = function serviceRun (deps) {
+Service.prototype._run = function serviceRun (id, deps) {
   var service = this
+  var context = { id: id, service: service }
   if (service._cache) {
     return service._cache
   }
-  service._cache = service._func(deps)
+  service._cache = service._func.call(context, deps)
     .catch(function (err) {
       service._cache = undefined
       return Promise.reject(err)
