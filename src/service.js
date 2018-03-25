@@ -1,3 +1,5 @@
+var uuid = require('uuid/v1')
+
 /*
 Service object
 */
@@ -5,14 +7,14 @@ var promisify = require('es6-promisify').promisify
 
 function getDebugInfo (func) {
   try {
-    var orig = Error.prepareStackTrace
+    const orig = Error.prepareStackTrace
     Error.prepareStackTrace = function (_, stack) {
       return stack
     }
-    var err = new Error()
-    var stack = err.stack
+    const err = new Error()
+    const stack = err.stack
     Error.prepareStackTrace = orig
-    var stackItem = stack[2]
+    const stackItem = stack[3]
     return {
       line: stackItem.getLineNumber(),
       fileName: stackItem.getFileName(),
@@ -24,12 +26,27 @@ function getDebugInfo (func) {
   }
 }
 
-function Service (name) {
-  this.name = name
-  this._deps = function () { return [] }
-  this._func = function () { return Promise.resolve() }
-  this._cache = undefined
+function extractDocString (f) {
+  const str = f.toString()
+  const re = /\/\*\*(.+?)\*\*\//
+  const match = re.exec(str)
+  if (match) {
+    return match[1].trim()
+  }
+}
+
+function Service (nameOrFunc) {
   this._doc = ''
+  this._deps = function () { return [] }
+  this._cache = undefined
+  if (typeof nameOrFunc === 'string') {
+    this.name = nameOrFunc
+    this._provides(function () { return Promise.resolve() })
+  } else if (typeof nameOrFunc === 'function') {
+    this.name = nameOrFunc.name || uuid()
+    this._provides(nameOrFunc)
+    this.doc(extractDocString(nameOrFunc))
+  }
 }
 
 Service.prototype.doc = function serviceDoc (text) {
@@ -56,6 +73,10 @@ Service.prototype.dependsOn = function serviceDependsOn (deps) {
 }
 
 Service.prototype.provides = function serviceProvides (func) {
+  return this._provides(func)
+}
+
+Service.prototype._provides = function serviceProvides (func) {
   this._debugInfo = getDebugInfo(func)
   if (typeof func !== 'function') {
     this._func = function () { Promise.resolve(func) } // plain value
@@ -79,17 +100,16 @@ Service.prototype.provides = function serviceProvides (func) {
 }
 
 Service.prototype._run = function serviceRun (id, deps) {
-  var service = this
-  var context = { id: id, service: service }
-  if (service._cache) {
-    return service._cache
+  const context = { id: id, service: this }
+  if (this._cache) {
+    return this._cache
   }
-  service._cache = service._func.call(context, deps)
-    .catch(function (err) {
-      service._cache = undefined
+  this._cache = this._func.call(context, deps)
+    .catch((err) => {
+      this._cache = undefined
       return Promise.reject(err)
     })
-  return service._cache
+  return this._cache
 }
 
 Service.prototype._getDeps = function serviceGetDeps () {

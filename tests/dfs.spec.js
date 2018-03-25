@@ -1,9 +1,9 @@
 /* eslint-env node, mocha */
-var Diogenes = require('../src')
-var assert = require('chai').assert
+const Diogenes = require('../src')
+const assert = require('chai').assert
 
-describe('dfs: 4 functions', function (done) {
-  var registry
+describe('dfs: 4 functions', (done) => {
+  let registry
 
   beforeEach(function () {
     /*
@@ -36,7 +36,7 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must return leftmost service', function (done) {
+  it('must return leftmost service', (done) => {
     registry.run('A', function (err, dep) {
       if (err) return
       assert.deepEqual(dep, 'A')
@@ -44,7 +44,7 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must return middle service (1)', function (done) {
+  it('must return middle service (1)', (done) => {
     registry.run('B', function (err, dep) {
       if (err) return
       assert.deepEqual(dep, 'AB')
@@ -52,7 +52,7 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must return middle service (2)', function (done) {
+  it('must return middle service (2)', (done) => {
     registry.run('C', function (err, dep) {
       if (err) return
       assert.deepEqual(dep, 'AABC')
@@ -60,7 +60,7 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must return rightmost service', function (done) {
+  it('must return rightmost service', (done) => {
     registry.run('D', function (err, dep) {
       if (err) return
       assert.deepEqual(dep, 'ABAABCD')
@@ -68,7 +68,7 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must return adjList', function () {
+  it('must return adjList', () => {
     assert.deepEqual(registry.getAdjList(),
       {
         'A': [],
@@ -78,14 +78,14 @@ describe('dfs: 4 functions', function (done) {
       })
   })
 
-  it('must run without callback', function (done) {
+  it('must run without callback', (done) => {
     registry.run('D')
     setTimeout(function () {
       done()
     }, 20)
   })
 
-  it('must run more than one service', function (done) {
+  it('must run more than one service', (done) => {
     registry.run(['A', 'D'], function (err, deps) {
       if (err) return
       assert.deepEqual(deps.A, 'A')
@@ -94,14 +94,14 @@ describe('dfs: 4 functions', function (done) {
     })
   })
 
-  it('must run more than one service, no config, no callback', function (done) {
+  it('must run more than one service, no config, no callback', (done) => {
     registry.run(['A', 'D'])
     setTimeout(function () {
       done()
     }, 20)
   })
 
-  it('must run more than one service using regexp', function (done) {
+  it('must run more than one service using regexp', (done) => {
     registry.run(/(A|B)/, function (err, deps) {
       if (err) return
       assert.deepEqual(deps.A, 'A')

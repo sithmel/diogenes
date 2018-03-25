@@ -1,2 +1,2 @@
-var Registry = require('./registry')
+const Registry = require('./registry')
 module.exports = Registry

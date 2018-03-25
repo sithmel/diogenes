@@ -1,15 +1,33 @@
-var assign = require('object-assign')
-var uuid = require('uuid/v1')
-var Service = require('./service')
-var DiogenesError = require('./lib/diogenes-error')
-var DiogenesShutdownError = require('./lib/diogenes-shutdown')
+const uuid = require('uuid/v1')
+const Service = require('./service')
+const DiogenesError = require('./lib/diogenes-error')
+const DiogenesShutdownError = require('./lib/diogenes-shutdown')
+
+function isStr (s) {
+  return typeof s === 'string'
+}
+
+function isFunc (f) {
+  return typeof f === 'function'
+}
+
+// tries to get a name from a string or a function
+function getName (nameOrFunc) {
+  if (isStr(nameOrFunc)) {
+    return nameOrFunc
+  }
+  if (isFunc(nameOrFunc)) {
+    return nameOrFunc.name || 'undefined'
+  }
+  return 'undefined'
+}
 
 /*
 Registry object
 */
 
 function Registry () {
-  this.services = {}
+  this.services = new Map()
   this.running = {}
   this._isShuttingDown = false
 }
@@ -18,36 +36,48 @@ Registry.getRegistry = function registryGetRegistry () {
   return new Registry()
 }
 
+Registry.prototype.has = function registryHas (nameOrFunc) {
+  return this.services.has(nameOrFunc)
+}
+
+Registry.prototype.set = function registrySet (nameOrFunc, service) {
+  this.services.set(nameOrFunc, service)
+}
+
+Registry.prototype.get = function registryGet (nameOrFunc) {
+  return this.services.get(nameOrFunc)
+}
+
 Registry.prototype.init = function registryInit (funcs) {
-  for (var i = 0; i < funcs.length; i++) {
-    funcs[i].call(this, this)
+  for (const func of funcs) {
+    func.call(this, this)
   }
 }
 
-Registry.prototype.service = function registryService (name) {
-  if (typeof name !== 'string') {
-    throw new DiogenesError('Diogenes: the name of the service should be a string')
+Registry.prototype.service = function registryService (nameOrFunc) {
+  if (!isStr(nameOrFunc) && !isFunc(nameOrFunc)) {
+    throw new DiogenesError('Diogenes: the service should be a string or a function')
   }
 
-  if (!(name in this.services)) {
-    this.services[name] = new Service(name)
+  if (!this.has(nameOrFunc)) {
+    this.set(nameOrFunc, new Service(nameOrFunc))
   }
 
-  return this.services[name]
+  return this.get(nameOrFunc)
 }
 
 Registry.prototype.map = function registryMap (func) {
   var out = {}
-  Object.keys(this.services)
-    .map(this.service.bind(this))
-    .forEach(function (service) {
-      out[service.name] = func(service)
-    })
+  for (const service of this.services.values()) {
+    out[service.name] = func(service)
+  }
   return out
 }
 
 Registry.prototype.getAdjList = function registryGetAdjList () {
-  return this.map(function (service) { return service._deps() })
+  return this.map((service) =>
+    service._deps()
+      .map((dep) => this.has(dep) ? this.service(dep).name : `NOT FOUND: ${getName(dep)}`))
 }
 
 Registry.prototype.getMetadata = function registryGetAdjList () {
@@ -55,45 +85,45 @@ Registry.prototype.getMetadata = function registryGetAdjList () {
 }
 
 Registry.prototype._run = function registryRun (name) {
-  var registry = this
-  var c = 0
-  var runId = uuid()
-  var promise
+  const registry = this
+  const runId = uuid()
+  let c = 0
 
   if (this._isShuttingDown) {
     return Promise.reject(new DiogenesShutdownError('Diogenes: shutting down'))
   }
 
-  function getPromiseFromStr (str) {
+  const getPromiseFromStr = (nameOfFunc) => {
     if (c++ > 1000) {
       throw new DiogenesError('Diogenes: circular dependency')
     }
-    if (!(str in registry.services)) {
-      return Promise.reject(new DiogenesError('Diogenes: missing dependency: ' + str))
+    const service = this.get(nameOfFunc)
+
+    if (!service) {
+      return Promise.reject(new DiogenesError(`Diogenes: missing dependency: ${getName(nameOfFunc)}`))
     }
 
-    var deps = registry.services[str]._getDeps()
+    const deps = service._getDeps()
 
     if (deps.length === 0) {
-      return registry.services[str]._run(runId, {})
+      return service._run(runId, {})
     }
     return getPromisesFromStrArray(deps)
-      .then(registry.services[str]._run.bind(registry.services[str], runId))
+      .then((d) => service._run(runId, d))
   }
 
-  function getPromisesFromStrArray (strArray) {
-    return Promise.all(strArray.map(getPromiseFromStr))
+  const getPromisesFromStrArray = (strArray) =>
+    Promise.all(strArray.map(getPromiseFromStr))
       .then(function (results) {
-        var out = {}
+        const out = {}
         for (var i = 0; i < strArray.length; i++) {
           out[strArray[i]] = results[i]
         }
         return out
       })
-  }
 
   try {
-    promise = getPromiseFromStr(name)
+    const promise = getPromiseFromStr(name)
       .then(function (res) {
         delete registry.running[runId]
         return Promise.resolve(res)
@@ -111,15 +141,15 @@ Registry.prototype._run = function registryRun (name) {
 }
 
 Registry.prototype.run = function registryRun (name, done) {
-  var promise
+  let promise
   if (typeof name === 'string') {
     promise = this._run(name, done)
   } else {
     if (name instanceof RegExp) {
-      name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
+      name = Array.from(this.services.values()).map(function (service) { return service.name }).filter(RegExp.prototype.test.bind(name))
     }
 
-    var tempreg = this.clone()
+    const tempreg = this.clone()
 
     tempreg.service('__temp__').dependsOn(name)
       .provides(function (deps) {
@@ -143,28 +173,25 @@ Registry.prototype.run = function registryRun (name, done) {
 }
 
 Registry.prototype.merge = Registry.prototype.clone = function registryMerge () {
-  var registry = new Registry()
+  const registry = new Registry()
 
-  var services = Array.prototype.map.call(arguments, function (reg) {
-    return reg.services
-  })
+  const services = Array.prototype
+    .map.call(arguments, function (reg) {
+      return Array.from(reg.services.entries())
+    })
+    .reduce((acc, value) => {
+      return acc.concat(value)
+    }, [])
 
-  services.unshift(this.services)
-  services.unshift({})
-
-  registry.services = assign.apply(null, services)
+  registry.services = new Map(Array.from(this.services.entries()).concat(services))
   return registry
 }
 
 Registry.prototype.shutdown = function registryShutdown (done) {
-  var registry = this
-  registry._isShuttingDown = true
+  this._isShuttingDown = true
 
-  var promise = Promise.all(Object.keys(registry.running)
-    .map(function (key) {
-      return registry.running[key]
-        .catch(function () { return Promise.resolve(null) })
-    }))
+  var promise = Promise.all(Object.keys(this.running)
+    .map((key) => this.running[key].catch(() => Promise.resolve(null))))
 
   if (done) {
     promise
