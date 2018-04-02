@@ -138,7 +138,7 @@ You can call a service using the method "run" on a registry.
 registry.run('paragraph')
   .then((p) => {
     console.log("This paragraph is " + p.count + " words long");
-    console.log("The abstract is: " + p.anstract);
+    console.log("The abstract is: " + p.abstract);
     console.log("This is the original text:");
     console.log(p.text);            
   })
@@ -152,7 +152,7 @@ registry.run('paragraph', (err, p) => {
     return;
   }
   console.log("This paragraph is " + p.count + " words long");
-  console.log("The abstract is: " + p.anstract);
+  console.log("The abstract is: " + p.abstract);
   console.log("This is the original text:");
   console.log(p.text);            
 })

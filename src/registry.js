@@ -3,6 +3,7 @@ const Service = require('./service')
 const DiogenesError = require('./lib/diogenes-error')
 const DiogenesShutdownError = require('./lib/diogenes-shutdown')
 const getName = require('./lib/get-name')
+
 /*
 Registry object
 */
