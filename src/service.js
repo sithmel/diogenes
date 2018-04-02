@@ -1,6 +1,8 @@
 const promisify = require('es6-promisify').promisify
+const LRUCache = require('little-ds-toolkit/lib/lru-cache')
 const getName = require('./lib/get-name')
 const DiogenesError = require('./lib/diogenes-error')
+const DepsToKey = require('./lib/deps-to-key')
 
 /*
 Service object
@@ -39,7 +41,6 @@ function extractDocString (f) {
 function Service (nameOrFunc) {
   this._doc = ''
   this._deps = function () { return [] }
-  this._cache = undefined
   this.name = getName(nameOrFunc)
   if (!this.name) {
     throw new DiogenesError('The service must have a name. Use either a string or a named function')
@@ -50,6 +51,12 @@ function Service (nameOrFunc) {
     this._provides(nameOrFunc)
     this.doc(extractDocString(nameOrFunc))
   }
+  this.depsToKey = new DepsToKey()
+  this.setCache({ maxLen: 500, defaultTTL: 10000 })
+}
+
+Service.prototype.setCache = function serviceSetCache (opts) {
+  this.cache = new LRUCache(opts)
 }
 
 Service.prototype.doc = function serviceDoc (text) {
@@ -60,16 +67,15 @@ Service.prototype.doc = function serviceDoc (text) {
   return this
 }
 
-Service.prototype.depsStr = function serviceDepsStr () {
+Service.prototype.deps = function serviceDeps () {
   return this._deps().map(getName)
 }
 
 Service.prototype.getMetadata = function serviceGetMetadata () {
   return {
     name: this.name,
-    deps: this.depsStr(),
+    deps: this.deps(),
     doc: this.doc(),
-    cached: !!this._cache,
     debugInfo: this._debugInfo
   }
 }
@@ -111,19 +117,15 @@ Service.prototype._provides = function serviceProvides (func) {
 
 Service.prototype._run = function serviceRun (id, deps) {
   const context = { id: id, service: this }
-  if (this._cache) {
-    return this._cache
+  const cacheKey = this.depsToKey.getIdFromValues(deps)
+  if (this.cache.has(cacheKey)) {
+    return Promise.resolve(this.cache.get(cacheKey))
   }
-  this._cache = this._func.call(context, deps)
-    .catch((err) => {
-      this._cache = undefined
-      return Promise.reject(err)
+  return this._func.call(context, deps)
+    .then((value) => {
+      this.cache.set(cacheKey, value)
+      return value
     })
-  return this._cache
-}
-
-Service.prototype._getDeps = function serviceGetDeps () {
-  return this._cache ? [] : this._deps().map(getName)
 }
 
 module.exports = Service

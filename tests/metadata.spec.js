@@ -19,7 +19,6 @@ describe('metadata', () => {
   it('must return services metadata', () => {
     assert.deepEqual(service1.getMetadata(), {
       name: 'answer',
-      cached: false,
       deps: [],
       doc: 'to all the questions',
       debugInfo: {
@@ -35,7 +34,6 @@ describe('metadata', () => {
     assert.deepEqual(registry.getMetadata(), {
       answer: {
         name: 'answer',
-        cached: false,
         deps: [],
         doc: 'to all the questions',
         debugInfo: {
@@ -47,7 +45,6 @@ describe('metadata', () => {
       },
       question: {
         name: 'question',
-        cached: false,
         deps: ['answer'],
         doc: 'the important bit',
         debugInfo: {
@@ -76,11 +73,10 @@ describe('docstring', () => {
   it('must return services metadata', () => {
     assert.deepEqual(service1.getMetadata(), {
       name: 'hello',
-      cached: false,
       deps: [],
       doc: 'here is the doc string',
       debugInfo: {
-        line: 70,
+        line: 67,
         functionName: 'hello',
         parentFunctionName: 'beforeEach',
         fileName: __filename

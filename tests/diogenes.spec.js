@@ -200,20 +200,20 @@ describe('registry', () => {
         }, 100)
       })
 
-      registry.service('C').dependsOn(['A']).provides(function (deps, next) {
+      registry.service('C').dependsOn(['A', 'B']).provides(function (deps, next) {
         setTimeout(function () {
           services += 'C'
           next(undefined, undefined)
         }, 100)
       })
 
-      registry.run('B')
-      registry.run('C')
+      registry.run('B') // AB
+      registry.run('C') // ABC
       registry.shutdown(function () {
         registry.run('B', function (err) {
           assert.equal(err.message, 'Diogenes: shutting down')
         })
-        assert.equal(services, 'ABC')
+        assert.equal(services, 'AABBC')
         done()
       })
     })

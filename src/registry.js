@@ -57,7 +57,7 @@ Registry.prototype.map = function registryMap (func) {
 }
 
 Registry.prototype.getAdjList = function registryGetAdjList () {
-  return this.map((service) => service.depsStr())
+  return this.map((service) => service.deps())
 }
 
 Registry.prototype.getMetadata = function registryGetAdjList () {
@@ -65,6 +65,7 @@ Registry.prototype.getMetadata = function registryGetAdjList () {
 }
 
 Registry.prototype._run = function registryRun (name) {
+  const cache = {}
   const registry = this
   const runId = uuid()
   let c = 0
@@ -83,13 +84,19 @@ Registry.prototype._run = function registryRun (name) {
       return Promise.reject(new DiogenesError(`Diogenes: missing dependency: ${getName(nameOfFunc)}`))
     }
 
-    const deps = service._getDeps()
+    if (service.name in cache) {
+      return cache[service.name]
+    }
+
+    const deps = service.deps()
 
     if (deps.length === 0) {
-      return service._run(runId, {})
+      cache[service.name] = service._run(runId, {})
+    } else {
+      cache[service.name] = getPromisesFromStrArray(deps)
+        .then((d) => service._run(runId, d))
     }
-    return getPromisesFromStrArray(deps)
-      .then((d) => service._run(runId, d))
+    return cache[service.name]
   }
 
   const getPromisesFromStrArray = (strArray) =>
@@ -173,6 +180,27 @@ Registry.prototype.shutdown = function registryShutdown (done) {
 
   var promise = Promise.all(Object.keys(this.running)
     .map((key) => this.running[key].catch(() => Promise.resolve(null))))
+
+  if (done) {
+    promise
+      .then(function (res) {
+        done(null, res)
+      })
+      .catch(function (err) {
+        done(err)
+      })
+    return this
+  } else {
+    return promise
+  }
+}
+
+Registry.prototype.flush = function registryFlush (done) {
+  const promise = this.shutdown()
+    .then(() => {
+      this._isShuttingDown = false
+      return Promise.resolve(null)
+    })
 
   if (done) {
     promise
