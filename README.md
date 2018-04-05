@@ -172,6 +172,69 @@ Errors
 ======
 If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. When a service gets an exception, its state is not cached. So it can be executed again.
 
+Using function references
+=========================
+"service" and "dependsOn" allow to use function references instead of strings (the functions should have a name!):
+```js
+registry
+  .service(function service2 (deps) {
+    // ... function implementation ...
+  })
+  .dependsOn([service2]);
+```
+is equivalent to:
+```js
+registry
+  .service('service2')
+  .provides((deps) => {
+    // ... function implementation ...
+  })
+  .dependsOn(['service2']);
+```
+
+Caching
+=======
+When you run a service, diogenes ensures you only execute a service once. There are cases in which you want to cache the output of a service between different executions. You can do so setting the cache.
+```js
+registry
+  .service('service1')
+  .provides((deps) => { /* ... */ })
+  .setCache({ len: 1 })
+```
+The cache depends on the service dependencies, so you are going to use the cached value only if the dependencies didn't change. Objects are compared by reference. You can set 2 cache options:
+* **len**: number of cached version to store
+* **ttl**: time to live in ms
+The len is mandatory.
+Here's some guideline:
+* if you want to execute something only once set "len: 1" and ensure the dependencies are cached in the same way
+* for pure functions, only use "len"
+* for functions with side effects you can decide to not use caching, in this way they are executed every time. But you can also apply a bit of caching (if the service only READ data), in this case you should use both len and ttl.
+
+Docstring
+=========
+You can define a docstring in 2 ways:
+```js
+registry
+  .service('service1')
+  .doc('this is some helpful information')
+```
+or
+```js
+registry
+  .service(function service1(deps) {
+    /**
+    this is some helpful information
+    **/
+  })
+```
+And you can retrieve a docString with:
+```js
+registry
+  .service('service1')
+  .doc()
+```
+Docstrings can be used to store info about services.
+
 Syntax
 ======
 
@@ -195,6 +258,11 @@ Returns a single service. It creates the service if it doesn't exist.
 ```js
 registry.service("name");
 ```
+You can also pass a function (a named function!):
+```js
+registry.service(name);
+```
+Passing a function is equivalent to both defining a service and providing an implementation.
 
 init
 ----
@@ -241,6 +309,13 @@ registry.run(/service[0-9]?/)
     ...
   })
 ```
+You can also pass an object with some extra dependencies to be used for this execution:
+```js
+registry.run('service2', { service1: 'hello' })
+  .then(({ service1, service2 }) => {
+    ...
+  })
+```
 
 merge/clone
 -----------
@@ -276,6 +351,7 @@ registry.getAdjList();
 }
 */
 ```
+As an optional argument you can pass an object with some extra dependencies.
 
 getMetadata
 ------------
@@ -300,6 +376,7 @@ registry.getMetadata();
 }
 */
 ```
+As an optional argument you can pass an object with some extra dependencies.
 
 shutdown
 --------
@@ -326,7 +403,7 @@ All the service methods returns a service instance so they can be chained.
 
 dependsOn
 ---------
-It defines the dependencies of a service. It may be an array or a function returning an array of strings (service names):
+It defines the dependencies of a service. It may be an array or a function returning an array of strings (service names) or an array of functions:
 ```js
 service.dependsOn(array);
 
@@ -385,7 +462,7 @@ service.getMetadata();
 
 Compatibility
 =============
-Diogenes is written is ES5 but it requires "Promise" support. Please provide a polyfill in the global namespace if promises are not supported.
+Diogenes is written is ES6. Please transpile it for using with old browsers/node.js. Also provide a polyfill for Promises and WeakMaps.
 
 Acknowledgements
 ================

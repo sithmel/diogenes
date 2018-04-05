@@ -24,6 +24,178 @@ describe('diogenes merge registries', () => {
   })
 })
 
+describe('diogenes adding additional deps on the fly', () => {
+  it('add deps on the fly', (done) => {
+    const registry = Diogenes.getRegistry()
+    registry
+      .service('B')
+      .provides(({ A }) => A)
+      .dependsOn(['A'])
+
+    registry.run('B', { A: 10 })
+      .then(res => {
+        assert.equal(res, 10)
+        done()
+      })
+  })
+})
+
+describe('diogenes caching behaviour', () => {
+  it('executes every time without cache', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeA = 0
+    let executeB = 0
+    registry.service('A')
+      .provides(() => {
+        executeA++
+        return 'A'
+      })
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+    registry.run('B')
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeA, 1)
+        assert.equal(executeB, 1)
+        registry.run('B')
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeA, 2)
+            assert.equal(executeB, 2)
+            done()
+          })
+      })
+  })
+
+  it('executes only once with cache', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeA = 0
+    let executeB = 0
+    registry.service('A')
+      .provides(() => {
+        executeA++
+        return 'A'
+      })
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1 })
+
+    registry.run('B')
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeA, 1)
+        assert.equal(executeB, 1)
+        registry.run('B')
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeA, 2)
+            assert.equal(executeB, 1)
+            done()
+          })
+      })
+  })
+
+  it('executes only once with cache', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        registry.run('B', { A: 'A' })
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeB, 1)
+            done()
+          })
+      })
+  })
+
+  it('executes twice with cache invalidation', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        registry.run('B', { A: 'A2' })
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeB, 2)
+            done()
+          })
+      })
+  })
+
+  it('executes only once with cache (and ttl)', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1, ttl: 5 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        registry.run('B', { A: 'A' })
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeB, 1)
+            done()
+          })
+      })
+  })
+
+  it('executes twice with cache (and ttl)', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1, ttl: 5 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        setTimeout(() => {
+          registry.run('B', { A: 'A' })
+            .then(res => {
+              assert.equal(res, 'B')
+              assert.equal(executeB, 2)
+              done()
+            })
+        }, 10)
+      })
+  })
+})
+
 describe('registry', () => {
   let registry
 

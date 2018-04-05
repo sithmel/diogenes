@@ -56,23 +56,28 @@ Registry.prototype.map = function registryMap (func) {
   return out
 }
 
-Registry.prototype.getAdjList = function registryGetAdjList () {
-  return this.map((service) => service.deps())
+Registry.prototype.addDeps = function registryAddDeps (deps) {
+  let reg = this.clone()
+  Object.keys(deps)
+    .forEach((serviceName) => {
+      reg.service(serviceName).provides(() => deps[serviceName])
+    })
+  return reg
 }
 
-Registry.prototype.getMetadata = function registryGetAdjList () {
-  return this.map(function (service) { return service.getMetadata() })
+Registry.prototype.getAdjList = function registryGetAdjList (deps) {
+  const reg = deps ? this.addDeps(deps) : this
+  return reg.map((service) => service.deps())
 }
 
-Registry.prototype._run = function registryRun (name) {
+Registry.prototype.getMetadata = function registryGetMetadata (deps) {
+  const reg = deps ? this.addDeps(deps) : this
+  return reg.map(function (service) { return service.getMetadata() })
+}
+
+Registry.prototype._run = function registryRun (name, runId) {
   const cache = {}
-  const registry = this
-  const runId = uuid()
   let c = 0
-
-  if (this._isShuttingDown) {
-    return Promise.reject(new DiogenesShutdownError('Diogenes: shutting down'))
-  }
 
   const getPromiseFromStr = (nameOfFunc) => {
     if (c++ > 1000) {
@@ -111,53 +116,63 @@ Registry.prototype._run = function registryRun (name) {
 
   try {
     const promise = getPromiseFromStr(name)
-      .then(function (res) {
-        delete registry.running[runId]
-        return Promise.resolve(res)
-      })
-      .catch(function (err) {
-        delete registry.running[runId]
-        return Promise.reject(err)
-      })
-    registry.running[runId] = promise
     return promise
   } catch (e) {
-    delete registry.running[runId]
     return Promise.reject(e)
   }
 }
 
-Registry.prototype.run = function registryRun (name, done) {
+// clone registry and run. BEWARE: "_run" runs in a different registry (the cloned one)
+Registry.prototype.run = function registryRun (name, deps, done) {
+  done = typeof deps === 'function' ? deps : done
+  deps = typeof deps === 'object' ? deps : {}
+  const runId = uuid()
   let promise
-  if (typeof name === 'string' || typeof name === 'function') {
-    promise = this._run(getName(name), done)
+
+  if (this._isShuttingDown) {
+    promise = Promise.reject(new DiogenesShutdownError('Diogenes: shutting down'))
   } else {
-    if (name instanceof RegExp) {
-      name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
-    } else if (Array.isArray(name)) {
-      name = name.map(getName)
+    const tempreg = this.addDeps(deps)
+    if (typeof name === 'string' || typeof name === 'function') {
+      promise = tempreg._run(getName(name), runId)
+    } else {
+      if (name instanceof RegExp) {
+        name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
+      } else if (Array.isArray(name)) {
+        name = name.map(getName)
+      }
+
+      tempreg.service('__temp__').dependsOn(name)
+        .provides(function (deps) {
+          return Promise.resolve(deps)
+        })
+      promise = tempreg._run('__temp__', runId)
     }
-
-    const tempreg = this.clone()
-
-    tempreg.service('__temp__').dependsOn(name)
-      .provides(function (deps) {
-        return Promise.resolve(deps)
-      })
-    promise = tempreg.run('__temp__')
   }
 
+  const promiseWithCleanUp = promise
+    .then((res) => {
+      delete this.running[runId]
+      return Promise.resolve(res)
+    })
+    .catch((err) => {
+      delete this.running[runId]
+      return Promise.reject(err)
+    })
+
+  this.running[runId] = promiseWithCleanUp
+
   if (done) {
-    promise
-      .then(function (res) {
+    promiseWithCleanUp
+      .then((res) => {
         done(null, res)
       })
-      .catch(function (err) {
+      .catch((err) => {
         done(err)
       })
     return this
   } else {
-    return promise
+    return promiseWithCleanUp
   }
 }
 

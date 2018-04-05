@@ -4,6 +4,8 @@ const getName = require('./lib/get-name')
 const DiogenesError = require('./lib/diogenes-error')
 const DepsToKey = require('./lib/deps-to-key')
 
+const depsToKey = new DepsToKey()
+
 /*
 Service object
 */
@@ -51,12 +53,24 @@ function Service (nameOrFunc) {
     this._provides(nameOrFunc)
     this.doc(extractDocString(nameOrFunc))
   }
-  this.depsToKey = new DepsToKey()
-  this.setCache({ maxLen: 500, defaultTTL: 10000 })
+}
+
+Service.prototype.disableCache = function serviceDisableCache () {
+  this.cache = undefined
+  return this
 }
 
 Service.prototype.setCache = function serviceSetCache (opts) {
-  this.cache = new LRUCache(opts)
+  if (typeof opts !== 'object') {
+    throw new Error('You should pass an option object with "len" and "ttl" (optional)')
+  }
+  if (!('len' in opts)) {
+    throw new Error('You should define a the length of the cache (len)')
+  }
+  const defaultTTL = opts.ttl
+  const maxLen = opts.len
+  this.cache = new LRUCache({ maxLen, defaultTTL })
+  return this
 }
 
 Service.prototype.doc = function serviceDoc (text) {
@@ -76,6 +90,7 @@ Service.prototype.getMetadata = function serviceGetMetadata () {
     name: this.name,
     deps: this.deps(),
     doc: this.doc(),
+    cache: this.cache ? { len: this.cache.maxLen, ttl: this.cache.defaultTTL } : false,
     debugInfo: this._debugInfo
   }
 }
@@ -95,7 +110,7 @@ Service.prototype._provides = function serviceProvides (func) {
     throw new DiogenesError(`You already defined a function for ${this.name}`)
   }
   if (typeof func !== 'function') {
-    this._func = function () { Promise.resolve(func) } // plain value
+    this._func = function () { return Promise.resolve(func) } // plain value
   } else if (func.length > 1) {
     this._func = promisify(func) // callback function
   } else {
@@ -117,7 +132,11 @@ Service.prototype._provides = function serviceProvides (func) {
 
 Service.prototype._run = function serviceRun (id, deps) {
   const context = { id: id, service: this }
-  const cacheKey = this.depsToKey.getIdFromValues(deps)
+  if (!this.cache) { // uncached
+    return this._func.call(context, deps)
+  }
+  // cached
+  const cacheKey = depsToKey.getIdFromValues(deps)
   if (this.cache.has(cacheKey)) {
     return Promise.resolve(this.cache.get(cacheKey))
   }

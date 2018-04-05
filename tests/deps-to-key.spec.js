@@ -67,5 +67,8 @@ describe('deps to key', (done) => {
       assert.equal(depsToKey.getIdFromValues({ a: 1, b: 2 }), depsToKey.getIdFromValues({ b: 2, a: 1 }))
       assert.notEqual(depsToKey.getIdFromValues({ a: 1, b: 2 }), depsToKey.getIdFromValues({ a: 1, b: 3 }))
     })
+    it('return nothing for empty object', () => {
+      assert.equal(depsToKey.getIdFromValues({}), '')
+    })
   })
 })
