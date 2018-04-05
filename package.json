@@ -7,9 +7,9 @@
     "test": "mocha tests/*.js",
     "watch": "npm run test -- -w",
     "lint": "eslint --fix --ext .js ./src ./tests",
-    "release:major": "./node_modules/.bin/npm-release major",
-    "release:minor": "./node_modules/.bin/npm-release minor",
-    "release:patch": "./node_modules/.bin/npm-release patch",
+    "release:major": "npm-release major",
+    "release:minor": "npm-release minor",
+    "release:patch": "npm-release patch",
     "precommit": "npm run lint",
     "prepush": "npm run test"
   },
@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "es6-promisify": "^6.0.0",
-    "object-assign": "^4.1.1",
+    "little-ds-toolkit": "^1.0.0",
     "uuid": "^3.2.1"
   }
 }

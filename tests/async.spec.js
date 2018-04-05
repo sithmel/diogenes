@@ -1,9 +1,9 @@
 /* eslint-env node, mocha */
-var Diogenes = require('../src')
-var assert = require('chai').assert
+const Diogenes = require('../src')
+const assert = require('chai').assert
 
-describe('async parallel execution', function (done) {
-  var str, registry
+describe('async parallel execution', (done) => {
+  let str, registry
 
   beforeEach(function () {
     /*
@@ -43,7 +43,7 @@ describe('async parallel execution', function (done) {
     })
   })
 
-  it('must run service asynchronously', function (done) {
+  it('must run service asynchronously', (done) => {
     registry.run('C', function (err, dep) {
       if (err) return
       assert.equal(str, 'BAC')

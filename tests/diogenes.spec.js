@@ -1,10 +1,10 @@
 /* eslint-env node, mocha */
-var Diogenes = require('../src')
-var assert = require('chai').assert
-var DiogenesError = require('../src/lib/diogenes-error')
+const Diogenes = require('../src')
+const assert = require('chai').assert
+const DiogenesError = require('../src/lib/diogenes-error')
 
-describe('diogenes merge registries', function () {
-  var registry1, registry2, registry3
+describe('diogenes merge registries', () => {
+  let registry1, registry2, registry3
 
   beforeEach(function () {
     registry1 = Diogenes.getRegistry()
@@ -14,7 +14,7 @@ describe('diogenes merge registries', function () {
     registry3 = registry1.merge(registry2)
   })
 
-  it('must be different from previous registries', function () {
+  it('must be different from previous registries', () => {
     assert.notEqual(registry1, registry3)
     assert.notEqual(registry2, registry3)
   })
@@ -24,81 +24,194 @@ describe('diogenes merge registries', function () {
   })
 })
 
-describe('metadata', function () {
-  var registry, service1
+describe('diogenes adding additional deps on the fly', () => {
+  it('add deps on the fly', (done) => {
+    const registry = Diogenes.getRegistry()
+    registry
+      .service('B')
+      .provides(({ A }) => A)
+      .dependsOn(['A'])
 
-  beforeEach(function () {
-    registry = Diogenes.getRegistry()
-    service1 = registry
-      .service('answer').provides(42).doc('to all the questions')
-
-    registry.service('question')
-      .dependsOn(['answer'])
-      .provides(function theanswer () {})
-      .doc('the important bit')
-  })
-
-  it('must return services metadata', function () {
-    assert.deepEqual(service1.getMetadata(), {
-      name: 'answer',
-      cached: false,
-      deps: [],
-      doc: 'to all the questions',
-      debugInfo: {
-        line: 33,
-        functionName: null,
-        parentFunctionName: null,
-        fileName: __filename
-      }
-    })
-  })
-
-  it('must return registry metadata', function () {
-    assert.deepEqual(registry.getMetadata(), {
-      answer: {
-        name: 'answer',
-        cached: false,
-        deps: [],
-        doc: 'to all the questions',
-        debugInfo: {
-          line: 33,
-          functionName: null,
-          parentFunctionName: null,
-          fileName: __filename
-        }
-      },
-      question: {
-        name: 'question',
-        cached: false,
-        deps: ['answer'],
-        doc: 'the important bit',
-        debugInfo: {
-          line: 37,
-          functionName: 'theanswer',
-          parentFunctionName: null,
-          fileName: __filename
-        }
-      }
-    })
+    registry.run('B', { A: 10 })
+      .then(res => {
+        assert.equal(res, 10)
+        done()
+      })
   })
 })
 
-describe('registry', function () {
-  var registry
+describe('diogenes caching behaviour', () => {
+  it('executes every time without cache', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeA = 0
+    let executeB = 0
+    registry.service('A')
+      .provides(() => {
+        executeA++
+        return 'A'
+      })
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+    registry.run('B')
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeA, 1)
+        assert.equal(executeB, 1)
+        registry.run('B')
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeA, 2)
+            assert.equal(executeB, 2)
+            done()
+          })
+      })
+  })
 
-  beforeEach(function () {
+  it('executes only once with cache', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeA = 0
+    let executeB = 0
+    registry.service('A')
+      .provides(() => {
+        executeA++
+        return 'A'
+      })
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1 })
+
+    registry.run('B')
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeA, 1)
+        assert.equal(executeB, 1)
+        registry.run('B')
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeA, 2)
+            assert.equal(executeB, 1)
+            done()
+          })
+      })
+  })
+
+  it('executes only once with cache', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        registry.run('B', { A: 'A' })
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeB, 1)
+            done()
+          })
+      })
+  })
+
+  it('executes twice with cache invalidation', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        registry.run('B', { A: 'A2' })
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeB, 2)
+            done()
+          })
+      })
+  })
+
+  it('executes only once with cache (and ttl)', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1, ttl: 5 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        registry.run('B', { A: 'A' })
+          .then(res => {
+            assert.equal(res, 'B')
+            assert.equal(executeB, 1)
+            done()
+          })
+      })
+  })
+
+  it('executes twice with cache (and ttl)', (done) => {
+    const registry = Diogenes.getRegistry()
+    let executeB = 0
+    registry.service('B').dependsOn(['A'])
+      .provides(() => {
+        executeB++
+        return 'B'
+      })
+      .setCache({ len: 1, ttl: 5 })
+
+    registry.run('B', { A: 'A' })
+      .then(res => {
+        assert.equal(res, 'B')
+        assert.equal(executeB, 1)
+        setTimeout(() => {
+          registry.run('B', { A: 'A' })
+            .then(res => {
+              assert.equal(res, 'B')
+              assert.equal(executeB, 2)
+              done()
+            })
+        }, 10)
+      })
+  })
+})
+
+describe('registry', () => {
+  let registry
+
+  beforeEach(() => {
     registry = Diogenes.getRegistry()
   })
 
-  describe('init', function () {
-    it('must run with right context', function () {
+  describe('init', () => {
+    it('must run with right context', () => {
       registry.init([function () {
         assert.equal(registry, this)
       }])
     })
   })
 
-  it('must return a service in a simple case (1 function)', function (done) {
+  it('must return a service in a simple case (1 function)', (done) => {
     registry.service('hello').provides(function (deps, next) {
       assert.deepEqual(deps, {})
       next(undefined, 'hello')
@@ -111,7 +224,7 @@ describe('registry', function () {
     })
   })
 
-  it('must return undefined (1 function)', function (done) {
+  it('must return undefined (1 function)', (done) => {
     registry.run('hello', function (err, dep) {
       assert.equal(err.message, 'Diogenes: missing dependency: hello')
       assert.instanceOf(err, DiogenesError)
@@ -119,7 +232,7 @@ describe('registry', function () {
     })
   })
 
-  it('must return an exception if the function fails', function (done) {
+  it('must return an exception if the function fails', (done) => {
     registry.service('hello').provides(function (deps) {
       throw new Error('broken')
     })
@@ -131,7 +244,7 @@ describe('registry', function () {
     })
   })
 
-  it('must return a service in a simple case (2 functions)', function (done) {
+  it('must return a service in a simple case (2 functions)', (done) => {
     registry.service('hello').provides(function (deps, next) {
       assert.typeOf(this.id, 'string')
       assert.isDefined(this.service)
@@ -153,7 +266,7 @@ describe('registry', function () {
     })
   })
 
-  it('must return a service in a simple case (2 functions) not using next', function (done) {
+  it('must return a service in a simple case (2 functions) not using next', (done) => {
     registry.service('hello').provides(function (deps) {
       assert.deepEqual(deps, {})
       return 'hello '
@@ -171,7 +284,7 @@ describe('registry', function () {
     })
   })
 
-  it('must return a service in a simple case (2 functions), dependencies are a function', function (done) {
+  it('must return a service in a simple case (2 functions), dependencies are a function', (done) => {
     registry.service('hello').provides(function (deps, next) {
       assert.deepEqual(deps, {})
       next(undefined, 'hello ')
@@ -181,7 +294,7 @@ describe('registry', function () {
       return ['hello']
     }
 
-    registry.service('world').dependsOn(getDeps).provides(function (deps, next) {
+    registry.service('world').dependsOn(getDeps).provides((deps, next) => {
       assert.deepEqual(deps, {hello: 'hello '})
       next(undefined, deps.hello + 'world!')
     })
@@ -193,7 +306,7 @@ describe('registry', function () {
     })
   })
 
-  it('must recognize a circular dependency', function (done) {
+  it('must recognize a circular dependency', (done) => {
     registry.service('hello').dependsOn(['world']).provides(function (deps, next) {
       next(undefined, 'hello ')
     })
@@ -209,7 +322,7 @@ describe('registry', function () {
     })
   })
 
-  it('must recognize a circular dependency (3 services)', function (done) {
+  it('must recognize a circular dependency (3 services)', (done) => {
     registry.service('A').dependsOn(['C']).provides(function (deps, next) {
       next(undefined, undefined)
     })
@@ -229,7 +342,7 @@ describe('registry', function () {
     })
   })
 
-  it('must throw an exception when missing dependency', function (done) {
+  it('must throw an exception when missing dependency', (done) => {
     registry.service('hello').dependsOn(['world']).provides(function (deps, next) {
       next(undefined, 'hello ')
     })
@@ -241,9 +354,9 @@ describe('registry', function () {
     })
   })
 
-  describe('shutdown', function () {
-    it('must wait to shutdown', function (done) {
-      var services = ''
+  describe('shutdown', () => {
+    it('must wait to shutdown', (done) => {
+      let services = ''
 
       registry.service('A').provides(function (deps, next) {
         setTimeout(function () {
@@ -259,25 +372,25 @@ describe('registry', function () {
         }, 100)
       })
 
-      registry.service('C').dependsOn(['A']).provides(function (deps, next) {
+      registry.service('C').dependsOn(['A', 'B']).provides(function (deps, next) {
         setTimeout(function () {
           services += 'C'
           next(undefined, undefined)
         }, 100)
       })
 
-      registry.run('B')
-      registry.run('C')
+      registry.run('B') // AB
+      registry.run('C') // ABC
       registry.shutdown(function () {
         registry.run('B', function (err) {
           assert.equal(err.message, 'Diogenes: shutting down')
         })
-        assert.equal(services, 'ABC')
+        assert.equal(services, 'AABBC')
         done()
       })
     })
 
-    it('must wait to shutdown, also failing methods', function (done) {
+    it('must wait to shutdown, also failing methods', (done) => {
       var services = ''
 
       registry.service('A').provides(function (deps, next) {
