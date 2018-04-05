@@ -204,11 +204,13 @@ registry
 The cache depends on the service dependencies, so you are going to use the cached value only if the dependencies didn't change. Objects are compared by reference. You can set 2 cache options:
 * **len**: number of cached version to store
 * **ttl**: time to live in ms
+
 The len is mandatory.
 Here's some guideline:
-* if you want to execute something only once set "len: 1" and ensure the dependencies are cached in the same way
-* for pure functions, only use "len"
-* for functions with side effects you can decide to not use caching, in this way they are executed every time. But you can also apply a bit of caching (if the service only READ data), in this case you should use both len and ttl.
+
+* if you want to execute something only once set "len: 1" and ensure its dependencies are cached in the same way
+* if you want to cache pure functions, only use "len"
+* for functions with side effects you can decide to not use caching, in this way they are executed every time. But you can also apply a bit of caching (if the service only READS data), in this case you should use both len and ttl.
 
 Docstring
 =========
