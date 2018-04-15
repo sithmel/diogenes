@@ -1,10 +1,6 @@
 const promisify = require('es6-promisify').promisify
-const LRUCache = require('little-ds-toolkit/lib/lru-cache')
 const getName = require('./lib/get-name')
 const DiogenesError = require('./lib/diogenes-error')
-const DepsToKey = require('./lib/deps-to-key')
-
-const depsToKey = new DepsToKey()
 
 /*
 Service object
@@ -36,13 +32,13 @@ function extractDocString (f) {
   const re = /\/\*\*(.+?)\*\*\//
   const match = re.exec(str)
   if (match) {
-    return match[1].trim()
+    return match[1]
   }
 }
 
 function Service (nameOrFunc) {
   this._doc = ''
-  this._deps = function () { return [] }
+  this._deps = []
   this.name = getName(nameOrFunc)
   if (!this.name) {
     throw new DiogenesError('The service must have a name. Use either a string or a named function')
@@ -55,34 +51,16 @@ function Service (nameOrFunc) {
   }
 }
 
-Service.prototype.disableCache = function serviceDisableCache () {
-  this.cache = undefined
-  return this
-}
-
-Service.prototype.setCache = function serviceSetCache (opts) {
-  if (typeof opts !== 'object') {
-    throw new Error('You should pass an option object with "len" and "ttl" (optional)')
-  }
-  if (!('len' in opts)) {
-    throw new Error('You should define a the length of the cache (len)')
-  }
-  const defaultTTL = opts.ttl
-  const maxLen = opts.len
-  this.cache = new LRUCache({ maxLen, defaultTTL })
-  return this
-}
-
 Service.prototype.doc = function serviceDoc (text) {
   if (typeof text === 'undefined') {
     return this._doc
   }
-  this._doc = text
+  this._doc = text.trim()
   return this
 }
 
 Service.prototype.deps = function serviceDeps () {
-  return this._deps().map(getName)
+  return this._deps.map(getName)
 }
 
 Service.prototype.getMetadata = function serviceGetMetadata () {
@@ -90,13 +68,12 @@ Service.prototype.getMetadata = function serviceGetMetadata () {
     name: this.name,
     deps: this.deps(),
     doc: this.doc(),
-    cache: this.cache ? { len: this.cache.maxLen, ttl: this.cache.defaultTTL } : false,
     debugInfo: this._debugInfo
   }
 }
 
 Service.prototype.dependsOn = function serviceDependsOn (deps) {
-  this._deps = typeof deps === 'function' ? deps : function () { return deps }
+  this._deps = deps
   return this
 }
 
@@ -132,19 +109,7 @@ Service.prototype._provides = function serviceProvides (func) {
 
 Service.prototype._run = function serviceRun (id, deps) {
   const context = { id: id, service: this }
-  if (!this.cache) { // uncached
-    return this._func.call(context, deps)
-  }
-  // cached
-  const cacheKey = depsToKey.getIdFromValues(deps)
-  if (this.cache.has(cacheKey)) {
-    return Promise.resolve(this.cache.get(cacheKey))
-  }
   return this._func.call(context, deps)
-    .then((value) => {
-      this.cache.set(cacheKey, value)
-      return value
-    })
 }
 
 module.exports = Service

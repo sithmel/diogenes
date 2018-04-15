@@ -166,11 +166,10 @@ registry.run(["count", "abstract"])
   })
 ```
 In this case the result will be an object with an attribute for each dependency (deps.count, deps.abstract).
-Once a service has been executed, the result is cached forever.
 
 Errors
 ======
-If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed. When a service gets an exception, its state is not cached. So it can be executed again.
+If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed.
 
 Using function references
 =========================
@@ -191,26 +190,6 @@ registry
   })
   .dependsOn(['service2']);
 ```
-
-Caching
-=======
-When you run a service, diogenes ensures you only execute a service once. There are cases in which you want to cache the output of a service between different executions. You can do so setting the cache.
-```js
-registry
-  .service('service1')
-  .provides((deps) => { /* ... */ })
-  .setCache({ len: 1 })
-```
-The cache depends on the service dependencies, so you are going to use the cached value only if the dependencies didn't change. Objects are compared by reference. You can set 2 cache options:
-* **len**: number of cached version to store
-* **ttl**: time to live in ms
-
-The len is mandatory.
-Here's some guideline:
-
-* if you want to execute something only once set "len: 1" and ensure its dependencies are cached in the same way
-* if you want to cache pure functions, only use "len"
-* for functions with side effects you can decide to not use caching, in this way they are executed every time. But you can also apply a bit of caching (if the service only READS data), in this case you should use both len and ttl.
 
 Docstring
 =========
@@ -364,7 +343,6 @@ registry.getMetadata();
 {
   'A': {
     name: 'A', // service name
-    cached: true/false, // true if the service was successfully called
     deps: [], // list of deps
     doc: '...', // service documentation string
     debugInfo: {
@@ -449,7 +427,6 @@ service.getMetadata();
 /* returns
 {
   name: 'A', // service name
-  cached: true/false, // true if the service was successfully called
   deps: [], // list of deps
   doc: '...', // service documentation string
   debugInfo: {

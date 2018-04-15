@@ -21,7 +21,6 @@ describe('metadata', () => {
       name: 'answer',
       deps: [],
       doc: 'to all the questions',
-      cache: false,
       debugInfo: {
         line: 11,
         functionName: null,
@@ -37,7 +36,6 @@ describe('metadata', () => {
         name: 'answer',
         deps: [],
         doc: 'to all the questions',
-        cache: false,
         debugInfo: {
           line: 11,
           functionName: null,
@@ -49,7 +47,6 @@ describe('metadata', () => {
         name: 'question',
         deps: ['answer'],
         doc: 'the important bit',
-        cache: false,
         debugInfo: {
           line: 15,
           functionName: 'theanswer',
@@ -78,9 +75,8 @@ describe('docstring', () => {
       name: 'hello',
       deps: [],
       doc: 'here is the doc string',
-      cache: false,
       debugInfo: {
-        line: 70,
+        line: 67,
         functionName: 'hello',
         parentFunctionName: 'beforeEach',
         fileName: __filename

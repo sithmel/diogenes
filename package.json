@@ -35,7 +35,6 @@
   },
   "dependencies": {
     "es6-promisify": "^6.0.0",
-    "little-ds-toolkit": "^1.0.0",
     "uuid": "^3.2.1"
   }
 }
