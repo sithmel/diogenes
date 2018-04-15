@@ -1,6 +1,6 @@
 {
   "name": "diogenes",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "A dependency injection framework.",
   "main": "src/index.js",
   "scripts": {
