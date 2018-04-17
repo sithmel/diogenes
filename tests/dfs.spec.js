@@ -1,6 +1,7 @@
 /* eslint-env node, mocha */
 const Diogenes = require('../src')
 const assert = require('chai').assert
+const promisify = require('util').promisify
 
 describe('dfs: 4 functions', (done) => {
   let registry
@@ -19,21 +20,21 @@ describe('dfs: 4 functions', (done) => {
 
     */
     registry = Diogenes.getRegistry()
-    registry.service('A').provides(function (deps, next) {
+    registry.service('A').provides(promisify(function (deps, next) {
       next(undefined, 'A')
-    })
+    }))
 
-    registry.service('B').dependsOn(['A']).provides(function (deps, next) {
+    registry.service('B').dependsOn(['A']).provides(promisify(function (deps, next) {
       next(undefined, deps['A'] + 'B')
-    })
+    }))
 
-    registry.service('C').dependsOn(['A', 'B']).provides(function (deps, next) {
+    registry.service('C').dependsOn(['A', 'B']).provides(promisify(function (deps, next) {
       next(undefined, deps['A'] + deps['B'] + 'C')
-    })
+    }))
 
-    registry.service('D').dependsOn(['B', 'C']).provides(function (deps, next) {
+    registry.service('D').dependsOn(['B', 'C']).provides(promisify(function (deps, next) {
       next(undefined, deps['B'] + deps['C'] + 'D')
-    })
+    }))
   })
 
   it('must return leftmost service', (done) => {

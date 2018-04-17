@@ -1,5 +1,3 @@
-const promisify = require('es6-promisify').promisify
-const getName = require('./lib/get-name')
 const DiogenesError = require('./lib/diogenes-error')
 
 /*
@@ -27,28 +25,10 @@ function getDebugInfo (func, stackLevel) {
   }
 }
 
-function extractDocString (f) {
-  const str = f.toString()
-  const re = /\/\*\*(.+?)\*\*\//
-  const match = re.exec(str)
-  if (match) {
-    return match[1]
-  }
-}
-
-function Service (nameOrFunc) {
+function Service (name) {
   this._doc = ''
   this._deps = []
-  this.name = getName(nameOrFunc)
-  if (!this.name) {
-    throw new DiogenesError('The service must have a name. Use either a string or a named function')
-  }
-
-  if (typeof nameOrFunc === 'function') {
-    this._debugInfo = getDebugInfo(nameOrFunc, 3)
-    this._provides(nameOrFunc)
-    this.doc(extractDocString(nameOrFunc))
-  }
+  this.name = name
 }
 
 Service.prototype.doc = function serviceDoc (text) {
@@ -60,7 +40,7 @@ Service.prototype.doc = function serviceDoc (text) {
 }
 
 Service.prototype.deps = function serviceDeps () {
-  return this._deps.map(getName)
+  return this._deps
 }
 
 Service.prototype.getMetadata = function serviceGetMetadata () {
@@ -79,17 +59,11 @@ Service.prototype.dependsOn = function serviceDependsOn (deps) {
 
 Service.prototype.provides = function serviceProvides (func) {
   this._debugInfo = getDebugInfo(func, 2)
-  return this._provides(func)
-}
-
-Service.prototype._provides = function serviceProvides (func) {
   if (this._func) {
     throw new DiogenesError(`You already defined a function for ${this.name}`)
   }
   if (typeof func !== 'function') {
     this._func = function () { return Promise.resolve(func) } // plain value
-  } else if (func.length > 1) {
-    this._func = promisify(func) // callback function
   } else {
     this._func = function (deps) { // sync function or return promise
       try {

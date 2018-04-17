@@ -2,7 +2,6 @@ const uuid = require('uuid/v1')
 const Service = require('./service')
 const DiogenesError = require('./lib/diogenes-error')
 const DiogenesShutdownError = require('./lib/diogenes-shutdown')
-const getName = require('./lib/get-name')
 
 /*
 Registry object
@@ -18,16 +17,16 @@ Registry.getRegistry = function registryGetRegistry () {
   return new Registry()
 }
 
-Registry.prototype.has = function registryHas (nameOrFunc) {
-  return getName(nameOrFunc) in this.services
+Registry.prototype.has = function registryHas (name) {
+  return name in this.services
 }
 
-Registry.prototype.set = function registrySet (nameOrFunc, service) {
-  this.services[getName(nameOrFunc)] = service
+Registry.prototype.set = function registrySet (name, service) {
+  this.services[name] = service
 }
 
-Registry.prototype.get = function registryGet (nameOrFunc) {
-  return this.services[getName(nameOrFunc)]
+Registry.prototype.get = function registryGet (name) {
+  return this.services[name]
 }
 
 Registry.prototype.init = function registryInit (funcs) {
@@ -36,16 +35,16 @@ Registry.prototype.init = function registryInit (funcs) {
   }
 }
 
-Registry.prototype.service = function registryService (nameOrFunc) {
-  if (typeof nameOrFunc !== 'string' && typeof nameOrFunc !== 'function') {
-    throw new DiogenesError('Diogenes: the service should be a string or a function')
+Registry.prototype.service = function registryService (name) {
+  if (typeof name !== 'string') {
+    throw new DiogenesError('Diogenes: the service name should be a string')
   }
 
-  if (!this.has(nameOrFunc)) {
-    this.set(nameOrFunc, new Service(nameOrFunc))
+  if (!this.has(name)) {
+    this.set(name, new Service(name))
   }
 
-  return this.get(nameOrFunc)
+  return this.get(name)
 }
 
 Registry.prototype.map = function registryMap (func) {
@@ -79,14 +78,14 @@ Registry.prototype._run = function registryRun (name, runId) {
   const cache = {}
   let c = 0
 
-  const getPromiseFromStr = (nameOfFunc) => {
+  const getPromiseFromStr = (name) => {
     if (c++ > 1000) {
       throw new DiogenesError('Diogenes: circular dependency')
     }
-    const service = this.get(nameOfFunc)
+    const service = this.get(name)
 
     if (!service) {
-      return Promise.reject(new DiogenesError(`Diogenes: missing dependency: ${getName(nameOfFunc)}`))
+      return Promise.reject(new DiogenesError(`Diogenes: missing dependency: ${name}`))
     }
 
     if (service.name in cache) {
@@ -133,13 +132,13 @@ Registry.prototype.run = function registryRun (name, deps, done) {
     promise = Promise.reject(new DiogenesShutdownError('Diogenes: shutting down'))
   } else {
     const tempreg = this.addDeps(deps)
-    if (typeof name === 'string' || typeof name === 'function') {
-      promise = tempreg._run(getName(name), runId)
+    if (typeof name === 'string') {
+      promise = tempreg._run(name, runId)
     } else {
       if (name instanceof RegExp) {
         name = Object.keys(this.services).filter(RegExp.prototype.test.bind(name))
       } else if (Array.isArray(name)) {
-        name = name.map(getName)
+        name = name
       }
 
       tempreg.service('__temp__').dependsOn(name)

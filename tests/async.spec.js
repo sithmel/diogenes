@@ -1,6 +1,7 @@
 /* eslint-env node, mocha */
 const Diogenes = require('../src')
 const assert = require('chai').assert
+const promisify = require('util').promisify
 
 describe('async parallel execution', (done) => {
   let str, registry
@@ -23,24 +24,31 @@ describe('async parallel execution', (done) => {
 
     str = ''
 
-    registry.service('A').provides(function (deps, next) {
-      setTimeout(function () {
-        str += 'A'
-        next(undefined, 'A')
-      }, 50)
-    })
+    registry
+      .service('A')
+      .provides(promisify(function (deps, next) {
+        setTimeout(function () {
+          str += 'A'
+          next(undefined, 'A')
+        }, 50)
+      }))
 
-    registry.service('B').provides(function (deps, next) {
-      setTimeout(function () {
-        str += 'B'
-        next(undefined, 'B')
-      }, 20)
-    })
+    registry
+      .service('B')
+      .provides(promisify(function (deps, next) {
+        setTimeout(function () {
+          str += 'B'
+          next(undefined, 'B')
+        }, 20)
+      }))
 
-    registry.service('C').dependsOn(['A', 'B']).provides(function (deps, next) {
-      str += 'C'
-      next(undefined, deps.A + deps.B + 'C')
-    })
+    registry
+      .service('C')
+      .dependsOn(['A', 'B'])
+      .provides(promisify(function (deps, next) {
+        str += 'C'
+        next(undefined, deps.A + deps.B + 'C')
+      }))
   })
 
   it('must run service asynchronously', (done) => {
