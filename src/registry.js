@@ -1,7 +1,7 @@
 const Service = require('./service')
 const DiogenesError = require('./lib/diogenes-error')
 const uuid = require('uuid/v1')
-
+const RegistryRunner = require('./registry-runner')
 /*
 Registry object
 */
@@ -12,6 +12,10 @@ function Registry () {
 
 Registry.getRegistry = function registryGetRegistry () {
   return new Registry()
+}
+
+Registry.getRegistryRunner = function registryGetRegistryRunner () {
+  return new RegistryRunner()
 }
 
 Registry.prototype.has = function registryHas (name) {

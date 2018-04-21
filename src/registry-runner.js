@@ -35,7 +35,7 @@ RegistryRunner.prototype.run = function registryRun (registry, name, deps, done)
         .provides(function (deps) {
           return Promise.resolve(deps)
         })
-      promise = tempreg._run('__temp__', runId)
+      promise = tempreg.run('__temp__', runId)
     }
   }
 
