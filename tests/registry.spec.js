@@ -247,6 +247,18 @@ describe('registry', () => {
       })
   })
 
+  it('must return a service using return', () => {
+    registry.service('hello').provides(function (deps) {
+      assert.deepEqual(deps, {})
+      return 'hello'
+    })
+
+    return registry.run('hello')
+      .then(function (dep) {
+        assert.deepEqual(dep, 'hello')
+      })
+  })
+
   it('must return a service in a simple case (2 functions)', () => {
     registry.service('hello').provides(function (deps) {
       assert.deepEqual(deps, {})
@@ -261,6 +273,26 @@ describe('registry', () => {
     return registry.run('world')
       .then(function (dep) {
         assert.deepEqual(dep, 'hello world!')
+      })
+  })
+
+  it('can use pass an object to dependsOn', () => {
+    registry.service('A').provides(function (deps) {
+      return Promise.resolve('hello')
+    })
+
+    registry.service('B').provides((deps) => {
+      return Promise.resolve('world')
+    })
+
+    registry.service('C').dependsOn({ dep1: 'A', dep2: 'B' }).provides((deps) => {
+      assert.deepEqual(deps, {dep1: 'hello', dep2: 'world'})
+      return deps.dep1 + ' ' + deps.dep2
+    })
+
+    return registry.run('C')
+      .then(function (dep) {
+        assert.deepEqual(dep, 'hello world')
       })
   })
 
@@ -309,6 +341,45 @@ describe('registry', () => {
       .catch(function (err) {
         assert.instanceOf(err, DiogenesError)
         assert.equal(err.message, 'Diogenes: missing dependency: world')
+      })
+  })
+})
+
+describe('missingDeps', () => {
+  it('returns a list of missing deps', () => {
+    const registry = Diogenes.getRegistry()
+    registry.service('A')
+    registry.service('B').dependsOn(['A', 'Z'])
+    registry.service('C').dependsOn(['X', 'Y'])
+    assert.deepEqual(registry.missingDeps(), ['Z', 'X', 'Y'])
+  })
+  it('returns no missing deps', () => {
+    const registry = Diogenes.getRegistry()
+    registry.service('A')
+    registry.service('B').dependsOn(['A'])
+    registry.service('C').dependsOn(['A', 'B'])
+    assert.deepEqual(registry.missingDeps(), [])
+  })
+})
+
+describe('compose', () => {
+  it('decorates with promisify', () => {
+    const registry = Diogenes.getRegistry()
+    registry.service('A').provides([ promisify, (deps, next) => next(null, 3) ])
+    return registry.run('A')
+      .then(res => {
+        assert.equal(res, 3)
+      })
+  })
+
+  it('decorates with promisify and a custom decorator', () => {
+    const registry = Diogenes.getRegistry()
+    const double = (func) => (deps) => func(deps).then((res) => res * 2)
+
+    registry.service('A').provides([ double, promisify, (deps, next) => next(null, 3) ])
+    return registry.run('A')
+      .then(res => {
+        assert.equal(res, 6)
       })
   })
 })

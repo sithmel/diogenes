@@ -2,6 +2,7 @@ const Service = require('./service')
 const DiogenesError = require('./lib/diogenes-error')
 const uuid = require('uuid/v1')
 const RegistryRunner = require('./registry-runner')
+
 /*
 Registry object
 */
@@ -57,10 +58,20 @@ Registry.prototype.map = function registryMap (func) {
 }
 
 Registry.prototype.getAdjList = function registryGetAdjList () {
-  return this.map((service) => service.deps())
+  return this.map((service) => service.depsArray())
 }
 
-Registry.prototype.getMetadata = function registryGetMetadata (deps) {
+Registry.prototype.missingDeps = function registryMissingDeps () {
+  const adjList = this.getAdjList()
+  const deps = Object.keys(adjList)
+    .reduce((accum, key) => {
+      return accum.concat(adjList[key])
+    }, [])
+  return Array.from(new Set(deps))
+    .filter((dep) => !(dep in adjList))
+}
+
+Registry.prototype.getMetadata = function registryGetMetadata () {
   return this.map(function (service) { return service.getMetadata() })
 }
 
@@ -84,23 +95,32 @@ Registry.prototype.run = function registryRun (name, runId) {
     }
 
     const deps = service.deps()
+    const depsArray = service.depsArray()
 
-    if (deps.length === 0) {
-      cache[service.name] = service._run(runId, {})
+    if (depsArray.length === 0) {
+      cache[service.name] = service.run(runId, {})
     } else {
-      cache[service.name] = getPromisesFromStrArray(deps)
-        .then((d) => service._run(runId, d))
+      cache[service.name] = getPromisesFromDeps(depsArray, deps)
+        .then((d) => service.run(runId, d))
     }
     return cache[service.name]
   }
 
-  const getPromisesFromStrArray = (strArray) =>
-    Promise.all(strArray.map(getPromiseFromStr))
+  const getPromisesFromDeps = (depsArray, depsObj) =>
+    Promise.all(depsArray.map(getPromiseFromStr))
       .then(function (results) {
-        const out = {}
-        for (var i = 0; i < strArray.length; i++) {
-          out[strArray[i]] = results[i]
+        // map dependencies on an object
+        const depMap = {}
+        for (let i = 0; i < depsArray.length; i++) {
+          depMap[depsArray[i]] = results[i]
         }
+        // map object on another object values
+        const out = {}
+        Object.keys(depsObj).forEach((key) => {
+          const value = depMap[depsObj[key]]
+          out[key] = value
+        })
+
         return out
       })
 

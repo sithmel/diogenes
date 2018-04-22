@@ -31,11 +31,11 @@ RegistryRunner.prototype.run = function registryRun (registry, name, deps, done)
         name = Object.keys(registry.services).filter(RegExp.prototype.test.bind(name))
       }
       // if it is not a string and a regexp, it is an array
-      tempreg.service('__temp__').dependsOn(name)
+      tempreg.service(runId).dependsOn(name)
         .provides(function (deps) {
           return Promise.resolve(deps)
         })
-      promise = tempreg.run('__temp__', runId)
+      promise = tempreg.run(runId, runId)
     }
   }
 
