@@ -50,12 +50,11 @@ Diogenes figures out the execution order, manages error propagation, deals with 
 
 What is a service
 -----------------
-A service is a unit of code with a name. It can be a simple value, a synchronous function (returning a value), an asynchronous function using a callback or an asynchronous function returning a promise.
+A service is a unit of code with a name. It can be a simple value, a synchronous function (returning a value) or an asynchronous function returning a promise.
 It takes as argument an object containing the dependencies (output of other services).
-Optionally you can pass a callback.
 
 A service outputs a "dependency", this is identified with the service name.
-Services are organized inside a registry. The common interface allows to automate how the dependencies are resolved within the registry.
+Services are organised inside a registry. The common interface allows to automate how the dependencies are resolved within the registry.
 
 A step by step example
 ======================
@@ -99,15 +98,8 @@ registry
   .service("text")
   .provides((deps) => readFile('diogenes.txt', {encoding: 'utf8'}));
 ```
-or you can use a callback:
-```js
-registry.service("text")
-  .provides((deps, next) => {
-    fs.readFile('diogenes.txt', {encoding: 'utf8'}, next);
-  });
-```
-The callback should use the node.js convention: the first argument is the error instance (or null if there isn't any) and the second is the value returned.
-As you can see, Diogenes allows to mix sync and async (callback and promise based) functions. How cool is that?
+As you can see, Diogenes allows to mix sync and async functions.
+
 Let's add other services:
 ```js
 registry.service("tokens")
@@ -144,69 +136,19 @@ registry.run('paragraph')
   })
   .catch((err) => console.log(err.message))
 ```
-p will be the output of the paragraph service. You can alternatively pass a callback to "run".
-```js
-registry.run('paragraph', (err, p) => {
-  if (err) {
-    console.log(err.message)
-    return;
-  }
-  console.log("This paragraph is " + p.count + " words long");
-  console.log("The abstract is: " + p.abstract);
-  console.log("This is the original text:");
-  console.log(p.text);            
-})
-```
+p will be the output of the paragraph service.
 
-If you need more than one service, you can pass a list of services:
-```js
-registry.run(["count", "abstract"])
-  .then({ count, paragraph } => {
-    ...
-  })
-```
-In this case the result will be an object with an attribute for each dependency (deps.count, deps.abstract).
-
-Errors
-======
+When resolving a dependency graph, diogenes takes care of executing every service at most once.
 If a service returns or throws an exception, this is propagated along the execution graph. Services getting an exception as one of the dependencies, are not executed.
-
-Using function references
-=========================
-"service" and "dependsOn" allow to use function references instead of strings (the functions should have a name!):
-```js
-registry
-  .service(function service2 (deps) {
-    // ... function implementation ...
-  })
-  .dependsOn([service2]);
-```
-is equivalent to:
-```js
-registry
-  .service('service2')
-  .provides((deps) => {
-    // ... function implementation ...
-  })
-  .dependsOn(['service2']);
-```
 
 Docstring
 =========
-You can define a docstring in 2 ways:
+A docstring is a description of the service. That may help using diogenes-lantern, a tool that shows your registry with a graph.
+You can set a docstring like this:
 ```js
 registry
   .service('service1')
   .doc('this is some helpful information')
-```
-or
-```js
-registry
-  .service(function service1(deps) {
-    /**
-    this is some helpful information
-    **/
-  })
 ```
 And you can retrieve a docString with:
 ```js
@@ -214,7 +156,102 @@ registry
   .service('service1')
   .doc()
 ```
-Docstrings can be used to store info about services.
+
+registry-runner
+===============
+Registry runner is an object that takes care of running services. This adds many features to a simple registry. You can create a runner like this:
+```js
+const registryRunner = Diogenes.getRegistryRunner()
+```
+then you can run a service with:
+```js
+registryRunner.run(registry, 'myservice')
+```
+Registry runner allows to use callbacks:
+```js
+registryRunner.run(registry, 'myservice', (err, myservice) => {
+  ...
+})
+```
+The callback uses the node.js convention, the error is the first argument.
+
+Another feature allows to execute multiple services efficiently using an array or a regular expression:
+```js
+registryRunner.run(registry, /myservice[1-3]/)
+```
+or the equivalent:
+```js
+registryRunner.run(registry, ['myservice1', 'myservice2', 'myservice3'])
+```
+The result will be an object with an attribute for every dependency.
+
+Using this feature is different to:
+```js
+Promise.all([registry.run('myservice1'), registry.run('myservice2'), registry.run('myservice3')])
+```
+Because it ensures that every service is executed at most once.
+
+You can also use the same method to add services without dependencies, without changing the original registry:
+```js
+registryRunner.run(registry, 'myservice', { times: 3 })
+```
+So if a service depends on "times", it will get 3. This can be useful for testing (injecting a mock in the dependency graph).
+It is also useful to give an "execution context" that is different every time (think for example the request data in a web application).
+
+The registry runner keeps track of all pending execution so is able to gracefully shutdown:
+
+```js
+registryRunner.shutdown()
+  .then(() => {
+    console.log('We can shutdown')
+  })
+
+registryRunner.run('myservice1') // this return a promise rejection because the registry is not accepting new tasks
+```
+
+Registry and decorators
+=======================
+[The decorator pattern](https://en.wikipedia.org/wiki/Decorator_pattern) can be very useful to enhance a service. For example adding a caching layer, logging or to convert a callback based service to use a promise (promisify is a decorator).
+The method "provides" includes a shortcut to add decorators to the service. In the next example I am able to add a service that uses a callback instead of promises:
+```js
+registry.service('myservice')
+  .provides([
+    promisify,
+    (deps, next) => {
+      .. do something
+      next(null, result)
+    }])
+```
+In the next example I use a decorator to ensure a service is executed only once:
+```js
+const onlyOnce = (func) => {
+  let cache
+  return (deps) => {
+    if (typeof cache === 'undefined') {
+      cache = func(deps)
+    }
+    return cache
+  }  
+}
+
+registry.service('myservice')
+  .provides([
+    onlyOnce,
+    (deps) => {
+      ...
+    }])
+```
+You can add multiple decorators:
+```js
+registry.service('myservice')
+  .provides([logger, onlyOnce, myservice])
+```
+This is the equivalent of:
+```js
+registry.service('myservice')
+  .provides(logger(onlyOnce(myservice)))
+```
+You can find many examples of what you can do with decorators on [async-deco](https://github.com/sithmel/async-deco) and on [diogenes-utils](https://github.com/sithmel/diogenes-utils).
 
 Syntax
 ======
@@ -230,6 +267,13 @@ or
 const registry = new Diogenes();
 ```
 
+Diogenes.getRegistryRunner
+--------------------
+Create a registry runner instance:
+```js
+const registry = Diogenes.getRegistryRunner();
+```
+
 Registry
 ========
 
@@ -239,11 +283,6 @@ Returns a single service. It creates the service if it doesn't exist.
 ```js
 registry.service("name");
 ```
-You can also pass a function (a named function!):
-```js
-registry.service(name);
-```
-Passing a function is equivalent to both defining a service and providing an implementation.
 
 init
 ----
@@ -268,35 +307,6 @@ registry.run(serviceName)
     ...
   });
 ```
-It can also use a callback:
-```js
-registry.run(serviceName, (err, service) => {
-  ...
-});
-```
-The callback uses the node convention (error as first argument).
-
-You can also execute more than one service passing an array of names:
-```js
-registry.run(['service1', 'service2'])
-  .then(({ service1, service2 }) => {
-    ...
-  })
-```
-or using a regular expression:
-```js
-registry.run(/service[0-9]?/)
-  .then(({ service1, service2 }) => {
-    ...
-  })
-```
-You can also pass an object with some extra dependencies to be used for this execution:
-```js
-registry.run('service2', { service1: 'hello' })
-  .then(({ service1, service2 }) => {
-    ...
-  })
-```
 
 merge/clone
 -----------
@@ -304,7 +314,6 @@ It allows to create a new registry, merging services of different registries:
 ```js
 const registry4 = registry1.merge(registry2, registry3)
 ```
-The state of of services will be preserved. So for example, if a service has already been successfully executed, this won't be executed again.
 Calling merge without argument, creates a clone.
 
 getAdjList
@@ -332,7 +341,11 @@ registry.getAdjList();
 }
 */
 ```
-As an optional argument you can pass an object with some extra dependencies.
+
+missingDeps
+-----------
+This method returns an array of service names that are not in the registry, but are dependencies of of some service.
+This can be useful for debugging.
 
 getMetadata
 ------------
@@ -356,22 +369,6 @@ registry.getMetadata();
 }
 */
 ```
-As an optional argument you can pass an object with some extra dependencies.
-
-shutdown
---------
-The purpose of this method is allow all asynchronous call to be terminated before a system shutdown.
-After calling this method the service won't execute the "run" method anymore (It will return an exception). The method returns a promise (or a callback). This will be fulfilled when all previous "run" has been fulfilled of rejected.
-```js
-
-const A = registry.run('A')
-const C = registry.run('C')
-registry.shutdown()
-  .then(() => {
-    // "A" and "C" are fulfilled
-    registry.run('B') // rejected with DiogenesShutdownError
-  })
-```
 
 Service
 =======
@@ -383,11 +380,21 @@ All the service methods returns a service instance so they can be chained.
 
 dependsOn
 ---------
-It defines the dependencies of a service. It may be an array or a function returning an array of strings (service names) or an array of functions:
+It defines the dependencies of a service. It may be an array or an object:
 ```js
-service.dependsOn(array);
+service.dependsOn([...]);
 
-service.dependsOn(func);
+service.dependsOn({...});
+```
+Using an object you can use the dependencies under different names. For example, this are equivalent:
+```js
+service.dependsOn(['A', 'B']);
+service.dependsOn({ A: 'A', B: 'B' });
+```
+You can use the object like this:
+```js
+service.dependsOn({ value: 'A' })
+  .provides(({ value }) => return value * 2);
 ```
 
 provides
@@ -400,16 +407,16 @@ You can also pass any "non function" argument:
 ```js
 service.provides(42); // Any non function argument
 ```
-A synchronous function:
+Or a synchronous function:
 ```js
 service.provides((deps) => deps.something * 2);
 ```
-Or callback:
+If you pass an array or more than one argument, the first arguments are used to decorate the others:
 ```js
-service.provides((deps, callback) => callback(null, deps.something * 2));
+service.provides(arg1, arg2, arg3, arg4);
+// is the equivalent of
+service.provides(arg1(arg2(arg3(arg4))));
 ```
-The "callback" behaviour is triggered by the extra argument "callback". Do not add that argument if you are not using the callback. Callbacks use the node convention of having the error as first argument and the result as second.
-When you pass a function to "provides", the first argument of this function is always a object with an attribute for every dependency.
 
 doc
 ---
@@ -439,9 +446,52 @@ service.getMetadata();
 */
 ```
 
+Registry Runner
+===============
+This object runs services, keeping track of their execution.
+
+run
+---
+This method runs one or more services:
+```js
+registryRunner.run(service, 'servicename')
+```
+by default it returns a promise but can also use a callback (using the node convention):
+```js
+registryRunner.run(service, 'servicename', (err, res) => { ... })
+```
+you can run multiple services using a regular expression or an array of names.
+
+You can also pass an object with some extra dependencies to be used for this execution:
+```js
+registry.run('service2', { service1: 'hello' })
+  .then(({ service2 }) => {
+    ...
+  })
+```
+
+shutdown
+--------
+The purpose of this method is to allow all asynchronous call to be terminated before a system shutdown.
+After calling this method the registry runner won't execute the "run" method anymore (It will return an exception). The method returns a promise (or uses a callback). This will be fulfilled when all previous "run" has been fulfilled of rejected.
+```js
+registryRunner.run(registry, 'A')
+registryRunner.run(registry, 'C')
+
+registry.shutdown()
+  .then(() => {
+    // "A" and "C" are fulfilled
+  })
+registryRunner.run(registry, 'A')  // rejected with DiogenesShutdownError
+```
+
+flush
+-----
+Flush runs a shutdown and then restore the registry to its normal state.
+
 Compatibility
 =============
-Diogenes is written is ES6. Please transpile it for using with old browsers/node.js. Also provide a polyfill for Promises and WeakMaps.
+Diogenes is written is ES6. Please transpile it for using with old browsers/node.js. Also provide a polyfill for Promises, WeakMaps and Sets.
 
 Acknowledgements
 ================

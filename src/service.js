@@ -74,6 +74,7 @@ Service.prototype.dependsOn = function serviceDependsOn (deps) {
 }
 
 Service.prototype.provides = function serviceProvides (func) {
+  func = arguments.length > 1 ? Array.prototype.slice.call(arguments, 0) : func
   let originalFunction, resultingFunction
   if (Array.isArray(func)) {
     originalFunction = func[func.length - 1]
