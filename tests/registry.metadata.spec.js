@@ -57,30 +57,3 @@ describe('metadata', () => {
     })
   })
 })
-
-describe('docstring', () => {
-  let service1
-
-  beforeEach(() => {
-    const registry = Diogenes.getRegistry()
-    service1 = registry
-      .service(function hello (deps) {
-        /** here is the doc string **/
-        return 'hello'
-      })
-  })
-
-  it('must return services metadata', () => {
-    assert.deepEqual(service1.getMetadata(), {
-      name: 'hello',
-      deps: [],
-      doc: 'here is the doc string',
-      debugInfo: {
-        line: 67,
-        functionName: 'hello',
-        parentFunctionName: 'beforeEach',
-        fileName: __filename
-      }
-    })
-  })
-})

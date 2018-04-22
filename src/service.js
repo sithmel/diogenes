@@ -1,6 +1,5 @@
-const promisify = require('es6-promisify').promisify
-const getName = require('./lib/get-name')
 const DiogenesError = require('./lib/diogenes-error')
+const compose = require('./lib/compose')
 
 /*
 Service object
@@ -27,28 +26,10 @@ function getDebugInfo (func, stackLevel) {
   }
 }
 
-function extractDocString (f) {
-  const str = f.toString()
-  const re = /\/\*\*(.+?)\*\*\//
-  const match = re.exec(str)
-  if (match) {
-    return match[1]
-  }
-}
-
-function Service (nameOrFunc) {
+function Service (name) {
   this._doc = ''
-  this._deps = []
-  this.name = getName(nameOrFunc)
-  if (!this.name) {
-    throw new DiogenesError('The service must have a name. Use either a string or a named function')
-  }
-
-  if (typeof nameOrFunc === 'function') {
-    this._debugInfo = getDebugInfo(nameOrFunc, 3)
-    this._provides(nameOrFunc)
-    this.doc(extractDocString(nameOrFunc))
-  }
+  this._deps = {}
+  this.name = name
 }
 
 Service.prototype.doc = function serviceDoc (text) {
@@ -60,56 +41,61 @@ Service.prototype.doc = function serviceDoc (text) {
 }
 
 Service.prototype.deps = function serviceDeps () {
-  return this._deps.map(getName)
+  return this._deps
+}
+
+Service.prototype.depsArray = function serviceDepsArray () {
+  return Array.from(new Set(Object.values(this._deps)))
 }
 
 Service.prototype.getMetadata = function serviceGetMetadata () {
   return {
     name: this.name,
-    deps: this.deps(),
+    deps: this.depsArray(),
     doc: this.doc(),
     debugInfo: this._debugInfo
   }
 }
 
 Service.prototype.dependsOn = function serviceDependsOn (deps) {
-  this._deps = deps
+  if (Array.isArray(deps)) {
+    this._deps = deps.reduce((acc, value) => {
+      acc[value] = value
+      return acc
+    }, {})
+  } else if (typeof deps === 'object') {
+    this._deps = deps
+  } else if (typeof deps === 'undefined') {
+    this._deps = {}
+  } else {
+    throw new DiogenesError('Dependency can be an array, an object or undefined')
+  }
   return this
 }
 
 Service.prototype.provides = function serviceProvides (func) {
-  this._debugInfo = getDebugInfo(func, 2)
-  return this._provides(func)
-}
-
-Service.prototype._provides = function serviceProvides (func) {
-  if (this._func) {
-    throw new DiogenesError(`You already defined a function for ${this.name}`)
-  }
-  if (typeof func !== 'function') {
-    this._func = function () { return Promise.resolve(func) } // plain value
-  } else if (func.length > 1) {
-    this._func = promisify(func) // callback function
+  func = arguments.length > 1 ? Array.prototype.slice.call(arguments, 0) : func
+  let originalFunction, resultingFunction
+  if (Array.isArray(func)) {
+    originalFunction = func[func.length - 1]
+    resultingFunction = compose(func.slice(0, -1))(originalFunction)
   } else {
-    this._func = function (deps) { // sync function or return promise
-      try {
-        var res = func(deps)
-      } catch (e) {
-        return Promise.reject(e)
-      }
-      if (res instanceof Object && 'then' in res) {
-        return res
-      } else {
-        return Promise.resolve(res)
-      }
-    }
+    originalFunction = func
+    resultingFunction = func
+  }
+  this._debugInfo = getDebugInfo(originalFunction, 2)
+  if (typeof resultingFunction !== 'function') {
+    this._func = function () { return Promise.resolve(func) } // plain value
+  } else {
+    this._func = resultingFunction
   }
   return this
 }
 
-Service.prototype._run = function serviceRun (id, deps) {
+Service.prototype.run = function serviceRun (id, deps) {
   const context = { id: id, service: this }
-  return this._func.call(context, deps)
+  return Promise.resolve()
+    .then(() => this._func.call(context, deps))
 }
 
 module.exports = Service
