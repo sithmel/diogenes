@@ -70,7 +70,7 @@ Creating a registry
 -------------------
 You can create a registry with:
 ```js
-const registry = Diogenes.getRegistry(); // of new Diogenes()
+const registry = Diogenes.getRegistry(); // or new Diogenes()
 ```
 
 Defining services
@@ -143,7 +143,7 @@ If a service returns or throws an exception, this is propagated along the execut
 
 Docstring
 =========
-A docstring is a description of the service. That may help using diogenes-lantern, a tool that shows your registry with a graph.
+A docstring is the description of the service. That may help using diogenes-lantern, a tool that shows your registry with a graph.
 You can set a docstring like this:
 ```js
 registry
@@ -212,7 +212,7 @@ registryRunner.run('myservice1') // this return a promise rejection because the 
 Registry and decorators
 =======================
 [The decorator pattern](https://en.wikipedia.org/wiki/Decorator_pattern) can be very useful to enhance a service. For example adding a caching layer, logging or to convert a callback based service to use a promise (promisify is a decorator).
-The method "provides" includes a shortcut to add decorators to the service. In the next example I am able to add a service that uses a callback instead of promises:
+The method "provides" includes a shortcut to add decorators to the service. If you pass an array or more than one argument, to the method. In the next example I am able to add a service that uses a callback instead of promises:
 ```js
 registry.service('myservice')
   .provides([
@@ -224,6 +224,7 @@ registry.service('myservice')
 ```
 In the next example I use a decorator to ensure a service is executed only once:
 ```js
+// define my decorator
 const onlyOnce = (func) => {
   let cache
   return (deps) => {
@@ -251,7 +252,15 @@ This is the equivalent of:
 registry.service('myservice')
   .provides(logger(onlyOnce(myservice)))
 ```
-You can find many examples of what you can do with decorators on [async-deco](https://github.com/sithmel/async-deco) and on [diogenes-utils](https://github.com/sithmel/diogenes-utils).
+You can find many examples of what you can do with decorators on [async-deco](https://github.com/sithmel/async-deco) and on [diogenes-utils](https://github.com/sithmel/diogenes-utils). This one in particular, contains a decorator that caches a service.
+```js
+const cacheService = require('diogenes-utils').cacheService
+registry.service('myservice')
+  .provides([
+    cacheService({ len: 3, ttl: 10000 }),
+    myservice
+  ])
+```
 
 Syntax
 ======
@@ -344,7 +353,7 @@ registry.getAdjList();
 
 missingDeps
 -----------
-This method returns an array of service names that are not in the registry, but are dependencies of of some service.
+This method returns an array of service names that are not in the registry, but are dependencies of another service.
 This can be useful for debugging.
 
 getMetadata
@@ -420,7 +429,7 @@ service.provides(arg1(arg2(arg3(arg4))));
 
 doc
 ---
-set/get the documentation string.
+get/set the documentation string.
 ```js
 service.doc(); // returns documentation string
 service.doc('... service description ...'); // set the doc string
@@ -469,6 +478,7 @@ registry.run('service2', { service1: 'hello' })
     ...
   })
 ```
+The extra dependencies won't be added to the original registry.
 
 shutdown
 --------
